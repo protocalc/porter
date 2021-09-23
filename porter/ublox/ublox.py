@@ -1,6 +1,6 @@
 import struct
-import ubx
-import ubx_cfg_db
+import ublox.ubx as ubx
+import ublox.ubx_cfg_db as ubx_cfg_db
 import pickle
 from bitarray import util, bitarray
 import serial
@@ -650,24 +650,41 @@ class UBXMessage:
        
 class UBXio:
 
-    def __init__(self, port, baudrate):
+    def __init__(self, port=None, baudrate=None, serial_connection=None):
 
         '''
         Connect to a ublox module using a serial connection. 
         Default baudrate for ublox modules is 38400
         '''
 
-        self.port = port
-        self.conn = serial.Serial(self.port, baudrate)
+        if serial_connection is None:
+            if port is not None and baudrate is not None:
+                self.port = port
+                self.conn = serial.Serial(self.port, baudrate)
+        else:
+            self.conn = serial_connection
 
     def save_binary(self, chunks_size=10, filename='attitude_binary', max_bytes=None):
+
+        '''
+        Read continuosly the serial port and then save the data on a pickle file. 
+        Data are saved as read, so they are in binary format
+        Parameters:
+        - chunks_size: int, the number of byte to read each time from the 
+                       serial port 
+        - filename: str, the name of the pickle file to be create
+        - max_bytes: int, the maximum number of bytes to read from the serial port
+        '''
+
+        '''
+        Add saving NMEA data
+        '''
 
         count = 0
 
         pck = open(filename, 'ab')
         while True:
 
-            print('Waiting', self.conn.in_waiting)
             pickle.dump(self.conn.read(chunks_size), pck)
             
             if max_bytes is not None:
@@ -682,13 +699,13 @@ class UBXio:
         if save_data:
             f = h5py.File(filename+'.hdf5', 'a')
             try:
-                ubx_group = f.create_group('UBX')
+                f.create_group('UBX')
             except ValueError:
-                ubx_group = f['UBX']
+                pass
             try:
-                nmea_group = f.create_group('NMEA')
+                f.create_group('NMEA')
             except ValueError:
-                nmea_group = f['NMEA']
+                pass
 
         msg_cat = self.find_header()
 
@@ -699,13 +716,12 @@ class UBXio:
             else:
                 msg = self.read()
 
-            print('Waiting', self.conn.in_waiting)
             if isinstance(msg, bytes):
                 ubxmsg = UBXMessage()
                 ubxmsg.decode(msg)
                 name, fields, values = ubxmsg.name, \
-                                       ubxmsg.fields_name, \
-                                       ubxmsg.values
+                    ubxmsg.fields_name, \
+                    ubxmsg.values
                 
                 if save_data:             
                     if name not in list(f['UBX'].keys()):
@@ -737,9 +753,7 @@ class UBXio:
             c = self.conn.read(1)
 
             line += c
-
             if len(line)>=2:
-
                 if line[-2:] == HEADER:
                     msg_cat = 'ubx'
                     break
@@ -774,7 +788,6 @@ class UBXio:
             msg_length = struct.unpack('<H', pre[-2:])
 
             final_msg = self.conn.read(msg_length[0]+2)
-
             final_msg = msg_cat+pre+final_msg
 
         else:
@@ -826,6 +839,80 @@ class UBXio:
             id_char = ubx.ubx_dict[msg_class][msg_id]['char']
 
         return id_char
+
+    def read_msg(self, **kwargs):
+
+        '''
+        Read the first message availble from a UBlox device 
+        '''
+
+        msg_cat = kwargs.get('msg_cat', None)
+        first_msg = kwargs.get('first_msg', True)
+        decode = kwargs.get('decode', False)
+
+        if msg_cat is None:
+            if first_msg:
+                cat = self.find_header()
+                if cat == 'ubx':
+                    msg_cat = HEADER
+                elif cat == 'nmea':
+                    msg_cat = b'$'
+                elif cat == 'rtcm':
+                    msg_cat = RTCM_HEADER
+            else:
+                msg_cat = self.conn.read(2)
+        else:
+            if msg_cat == 'ubx':
+                msg_cat = HEADER
+            elif msg_cat == 'nmea':
+                msg_cat = b'$'
+            elif msg_cat == 'rtcm':
+                msg_cat = RTCM_HEADER
+
+        if msg_cat == HEADER:
+            pre = self.conn.read(4)
+            msg_length = struct.unpack('<H', pre[-2:])
+
+            final_msg = self.conn.read(msg_length[0]+2)
+            final_msg = msg_cat+pre+final_msg
+
+            if decode:
+                ubxmsg = UBXMessage()
+                ubxmsg.decode(final_msg)
+                name, fields, values = ubxmsg.name, \
+                    ubxmsg.fields_name, \
+                    ubxmsg.values
+
+                return name, fields, values
+
+        else:
+            if len(msg_cat) != 1:
+                msg_cat_temp = msg_cat[0:1]
+            else:
+                msg_cat_temp = msg_cat
+
+            if msg_cat_temp == b'$':
+                msg = self.conn.read_until(terminator=b'\r\n')
+
+                if decode:
+                    final_msg = (msg_cat+msg).decode('utf-8')
+                else:
+                    final_msg = msg_cat+msg
+
+            elif msg_cat_temp == RTCM_HEADER:
+                
+                if len(msg_cat) != 1:
+                    pre = msg_cat[1:]+self.conn.read(1)
+                else:
+                    pre = self.conn.read(2)
+
+                msg_length = struct.unpack('!H', pre)
+                msg_length = 0x03ff & msg_length[0]
+
+                final_msg = self.conn.read(msg_length+3)
+                final_msg = msg_cat[0]+pre+final_msg
+
+        return final_msg
 
     def read_single_msg(self, **kwargs):
 
@@ -921,7 +1008,6 @@ class UBXio:
                 pre = self.conn.read(2)
 
                 if pre[0:1] == msg_class:
-
                     if pre[1:2] in msg_id:
                         length = self.conn.read(2)
 
@@ -933,8 +1019,8 @@ class UBXio:
                         ubxmsg = UBXMessage()
                         ubxmsg.decode(msg)
                         name, fields, values = ubxmsg.name, \
-                                            ubxmsg.fields_name, \
-                                            ubxmsg.values
+                            ubxmsg.fields_name, \
+                            ubxmsg.values
 
                         print(dict(zip(fields, values)))
 
@@ -957,8 +1043,6 @@ class UBXio:
         ubxmsg = UBXMessage(msg_class=msg_class, msg_id=msg_id)
 
         ubxmsg.encode(vals)
-
-        print(ubxmsg.ubx_msg)
 
         self.conn.write(ubxmsg.ubx_msg)
 
@@ -1003,6 +1087,183 @@ class UBXutils:
 
         self.ubx_obj = UBXio(self.port, self.baudrate)
 
+    def enableSurvey(self, survey_time, survey_accuracy):
+
+        '''
+        Enable Survey Mode for initializing an RTK base:
+        Parameters:
+        - survey_time: float. Time for the survey in seconds
+        - survey_accuracy: float. Accuracy required for the survey in meters
+        '''
+
+        survey_accuracy = int(survey_accuracy*1e4)
+
+        survey_dict = {
+            "version": 0,  
+            "layers": {
+                'ram': 1,
+                'bbr': 0,
+                'flash': 0
+            },
+            "transaction": {
+                'action': 0,
+            }, 
+            "reserved0": 0,
+            "group": {
+                "keys": [('CFG_TMODE_MODE', 1), \
+                         ('CFG_TMODE_SVIN_MIN_DUR', int(survey_time)), \
+                         ('CFG_TMODE_SVIN_ACC_LIMIT', survey_accuracy)]
+            }
+        }
+
+        self.ubx_obj.write_msg('CFG', 'VALSET', survey_dict, True) 
+
+    def disableSurvey(self):
+
+        survey_dict = {
+            "version": 0,  
+            "layers": {
+                'ram': 1,
+                'bbr': 0,
+                'flash': 0
+            },
+            "transaction": {
+                'action': 1,
+            },
+            "reserved0": 0,
+            "group": {
+                "keys": [('CFG_TMODE_MODE', 0)]
+            }
+        }
+
+        self.ubx_obj.write_msg('CFG', 'VALSET', survey_dict, True)
+
+    def confRTCMmsg_output(self, uart_port=2, usb=True):
+
+        '''
+        Configure the output of required RTCM messages.
+        Optional:
+        - uart_port: int. Choose between the UART 1 and 2 as output of 
+                     RTCM messages
+        '''
+        
+        if usb:
+            rtcm_out = 'CFG_USBOUTPROT_RTCM3X'
+
+            rtcm_msg_1005 = "CFG_MSGOUT_RTCM_3X_TYPE1005_USB"
+            rtcm_msg_1074 = "CFG_MSGOUT_RTCM_3X_TYPE1074_USB" 
+            rtcm_msg_1084 = "CFG_MSGOUT_RTCM_3X_TYPE1084_USB"
+            rtcm_msg_1094 = "CFG_MSGOUT_RTCM_3X_TYPE1094_USB"
+            rtcm_msg_1124 = "CFG_MSGOUT_RTCM_3X_TYPE1124_USB"
+            rtcm_msg_1230 = "CFG_MSGOUT_RTCM_3X_TYPE1230_USB"
+        else:
+            if uart_port == 1:
+                rtcm_out = 'CFG_UART1OUTPROT_RTCM3X'
+
+                rtcm_msg_1005 = "CFG_MSGOUT_RTCM_3X_TYPE1005_UART1"
+                rtcm_msg_1074 = "CFG_MSGOUT_RTCM_3X_TYPE1074_UART1" 
+                rtcm_msg_1084 = "CFG_MSGOUT_RTCM_3X_TYPE1084_UART1"
+                rtcm_msg_1094 = "CFG_MSGOUT_RTCM_3X_TYPE1094_UART1"
+                rtcm_msg_1124 = "CFG_MSGOUT_RTCM_3X_TYPE1124_UART1"
+                rtcm_msg_1230 = "CFG_MSGOUT_RTCM_3X_TYPE1230_UART1"
+
+            elif uart_port == 2:
+                rtcm_out = 'CFG_UART2OUTPROT_RTCM3X'
+
+                rtcm_msg_1005 = "CFG_MSGOUT_RTCM_3X_TYPE1005_UART2"
+                rtcm_msg_1074 = "CFG_MSGOUT_RTCM_3X_TYPE1074_UART2" 
+                rtcm_msg_1084 = "CFG_MSGOUT_RTCM_3X_TYPE1084_UART2"
+                rtcm_msg_1094 = "CFG_MSGOUT_RTCM_3X_TYPE1094_UART2"
+                rtcm_msg_1124 = "CFG_MSGOUT_RTCM_3X_TYPE1124_UART2"
+                rtcm_msg_1230 = "CFG_MSGOUT_RTCM_3X_TYPE1230_UART2"
+
+
+        RTCM_dict = {
+            "version": 0,  
+            "layers": {
+                'ram': 1,
+                'bbr': 0,
+                'flash': 0
+            },
+            "transaction": {
+                'action': 1,
+            },
+            "reserved0": 0,
+            "group": {
+                "keys": [(rtcm_out, 1), \
+                         (rtcm_msg_1005, 1), \
+                         (rtcm_msg_1074, 1), \
+                         (rtcm_msg_1084, 1), \
+                         (rtcm_msg_1094, 1), \
+                         (rtcm_msg_1124, 1), \
+                         (rtcm_msg_1230, 1)]
+            }
+        }
+
+        self.ubx_obj.write_msg('CFG', 'VALSET', RTCM_dict, True)
+
+    def configure_frequency(self, freq):
+
+        '''
+        Set the frequency of the update for the navigation solution
+        Parameter:
+        - freq: float. Frquency of the update in Hz
+        '''
+
+        time = 1/freq*1000.
+
+        update_dict = {
+            "version": 0,  
+            "layers": {
+                'ram': 1,
+                'bbr': 0,
+                'flash': 0
+            },
+            "transaction": {
+                'action': 1,
+            },
+            "reserved0": 0,
+            "group": {
+                "keys": [('CFG_RATE_MEAS', time)]
+            }
+        }
+
+        self.ubx_obj.write_msg('CFG', 'VALSET', update_dict, True)
+
+    def confRTCMmsg_input(self, uart_port=2):
+
+        '''
+        Configure the option to input RTCM messages.
+        Optional:
+        - uart_port: int. Choose between the UART 1 and 2 as input of 
+                     RTCM messages
+        '''
+        
+
+        if uart_port == 1:
+            rtcm_in = 'CFG_UART1INPROT_RTCM3X'
+
+        elif uart_port == 2:
+            rtcm_in = 'CFG_UART2INPROT_RTCM3X'
+
+
+        RTCM_dict = {
+            "version": 0,  
+            "layers": {
+                'ram': 1,
+                'bbr': 0,
+                'flash': 0
+            },
+            "transaction": {
+                'action': 1,
+            },
+            "reserved0": 0,
+            "group": {
+                "keys": [(rtcm_in, 1)]
+            }
+        }
+
+        self.ubx_obj.write_msg('CFG', 'VALSET', RTCM_dict, True)
              
 
         

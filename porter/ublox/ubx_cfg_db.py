@@ -1,4 +1,4 @@
-from ubx import (U1, I1, U2, I2, U4, I4, R4, R8, X1, E1, L, X8)
+from ublox.ubx import (U1, I1, U2, I2, U4, I4, R4, R8, X1, E1, L, X8)
 
 UBX_CONFIG_DATABASE = {
     # CFG_ANA AssistNow Autonomous and Offline configuration
