@@ -1,5 +1,6 @@
 from PyQt5 import QtCore
 import copy
+import struct
 import ublox.ublox as ublox
 
 class datahandler(QtCore.QObjects):
@@ -30,3 +31,9 @@ class datahandler(QtCore.QObjects):
         elif lst[0] == 'ADC':
             val = copy.copy(lst[1])
             self.data.emit(val)
+
+        elif lst[0] == 'INC':
+            val = copy.copy(lst[1])
+            ang_x, ang_y = struct.unpack('>ll', val)
+            ang = [ang_x, ang_y]
+            self.data.emit(ang)

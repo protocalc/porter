@@ -128,7 +128,7 @@ class ads1115:
             for i in range(len(self.chan)):
                 voltage.append(self.chan[i].voltage)
         else:
-            voltage = [self.chan[0].voltage]
+            voltage = self.chan[0].voltage
         return voltage
 
     def set_data_rate(self, data_rate):
