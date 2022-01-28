@@ -71,7 +71,7 @@ class ubx_device(threading.Thread):
         self.pck = open('ubx_log.pck', 'ab')
 
         self.qlock = qlock
-        self.ulock = ulock 
+        self.ulock = ulock
 
     def run(self):
 
@@ -81,9 +81,10 @@ class ubx_device(threading.Thread):
             msg = 'UBX'
             msg += self.conn.read_msg()
             self.ulock.release()
-            self.qlock.acquire()
-            self.tx_queue.put(msg)
-            self.qlock.release()
+            if self.tx_queue is not None:
+                self.qlock.acquire()
+                self.tx_queue.put(msg)
+                self.qlock.release()
             pickle.dump(msg, self.pck)
 
 class adc_device(threading.Thread):
@@ -105,9 +106,10 @@ class adc_device(threading.Thread):
             msg = 'ADC'
             msg += self.conn.get_voltage()
             self.alock.release()
-            self.qlock.acquire()
-            self.tx_queue.put(msg)
-            self.qlock.release()
+            if self.tx_queue is not None:
+                self.qlock.acquire()
+                self.tx_queue.put(msg)
+                self.qlock.release()
             pickle.dump(msg, self.pck)
 
 class inc_device(threading.Thread):
@@ -129,9 +131,10 @@ class inc_device(threading.Thread):
             msg = 'INC'
             msg += self.conn.get_xy_angles(return_binary=True)
             self.ilock.release()
-            self.qlock.acquire()
-            self.tx_queue.put(msg)
-            self.qlock.release()
+            if self.tx_queue is not None:
+                self.qlock.acquire()
+                self.tx_queue.put(msg)
+                self.qlock.release()
             pickle.dump(msg, self.pck)
 
 
@@ -146,6 +149,7 @@ def main():
     xbee_port = cfg.get('XBEE', 'port')
     xbee_baud = cfg.get('XBEE', 'baud')
     xbee_remote = cfg.get('XBEE', 'remote')
+    xbee_use = cfg.get('XBEE', 'use')
 
     inc_port = cfg.get('INC', 'port')
     inc_baud = cfg.get('INC', 'baud')
@@ -167,15 +171,20 @@ def main():
         'INC': [inc_conn, ilock]
     }
 
-    xbee_conn = xbee.comms(xbee_port, xbee_baud, xbee_remote)
-
-    tx_queue = queue.Queue()
+    
+    if xbee_use == 'True':
+        xbee_conn = xbee.comms(xbee_port, xbee_baud, xbee_remote)
+        tx_queue = queue.Queue()
+    else:
+        tx_queue = None
 
     ubx_device(ubx_conn, tx_queue, qlock, ulock, daemon=True).start()
     adc_device(adc_conn, tx_queue, qlock, alock, daemon=True).start()
     inc_device(inc_conn, tx_queue, qlock, ilock, daemon=True).start()
-    transmitter(xbee_conn, tx_queue, qlock, xlock, daemon=True).start()
-    receiver(xbee_conn, sensors, xlock, daemon=True).start()
+
+    if tx_queue is not None:
+        transmitter(xbee_conn, tx_queue, qlock, xlock, daemon=True).start()
+        receiver(xbee_conn, sensors, xlock, daemon=True).start()
 
     try:
         while True:
