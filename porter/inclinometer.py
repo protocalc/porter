@@ -30,7 +30,7 @@ class inclinometer:
 
         return self.instrument.read_long(start_reg, signed=True)/1000
 
-    def get_xy_angles(self, return_binary=False):
+    def read_msg(self, return_binary=False):
 
         ang = self.instrument.read_registers(0, 4)
 

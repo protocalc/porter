@@ -5,10 +5,33 @@ import pickle
 import configparser
 import ublox.ublox as ublox
 import telemetry.xbee as xbee
+import random
 
-import ads1115 as ads
+import subprocess
+import shlex
+
 import inclinometer as inc
 
+try:
+    import ads1115 as ads
+except ModuleNotFoundError:
+    pass
+
+class mySerial:
+
+    def __init__(self, port, baud, dev):
+
+        self.port = port
+        self.baud = baud
+        self.dev = dev
+
+    def read_msg(self, **kwargs):
+
+        val = str(random.random())+'END'
+        print(self.dev, val)
+
+        time.sleep(0.5)
+        return val
 
 class receiver(threading.Thread):
 
@@ -90,6 +113,7 @@ class ubx_device(threading.Thread):
 class adc_device(threading.Thread):
 
     def __init__(self, conn, tx_queue, qlock, alock, *args, **kwargs):
+        
         super().__init__(*args, **kwargs)
         
         self.conn = conn
@@ -129,7 +153,7 @@ class inc_device(threading.Thread):
         while True:
             self.ilock.acquire()
             msg = 'INC'
-            msg += self.conn.get_xy_angles(return_binary=True)
+            msg += self.conn.read_msg(return_binary=True)
             self.ilock.release()
             if self.tx_queue is not None:
                 self.qlock.acquire()
@@ -139,9 +163,14 @@ class inc_device(threading.Thread):
 
 
 def main():
+
+    cmd = 'gphoto2 --wait-event=4s --interval=1 --frames=100 --capture-image-and-download --filename=%Y%m%d-%H%M%S-%03n.%C'
+    cmds = shlex.split(cmd)
+
+    p = subprocess.Popen(cmds, close_fds=True)
     
     cfg = configparser.ConfigParser()
-    cfg.read('rover_config.cfg')
+    cfg.read('config/rover_config.cfg')
 
     ubx_port = cfg.get('UBX', 'port')
     ubx_baud = cfg.get('UBX', 'baud')
@@ -154,10 +183,18 @@ def main():
     inc_port = cfg.get('INC', 'port')
     inc_baud = cfg.get('INC', 'baud')
     inc_address = cfg.get('INC', 'address')
-    
-    ubx_conn = ublox.UBXio(ubx_port, ubx_baud)
-    inc_conn = inc.inclinometer(inc_port, inc_address, inc_baud)
-    adc_conn = ads.ads1115([0,1], mode='differential')
+
+    local = cfg.get('LOCAL', 'local_dev')
+
+    if local == 'True':
+
+        ubx_conn = mySerial(ubx_port, ubx_baud, dev='UBX')
+        inc_conn = mySerial(inc_port, inc_baud, dev='INC')
+        adc_conn = None #Due to the ads library for local development no ADC connection is created
+    else:
+        ubx_conn = ublox.UBXio(ubx_port, ubx_baud)
+        inc_conn = inc.inclinometer(inc_port, inc_address, inc_baud)
+        adc_conn = ads.ads1115([0,1], mode='differential')
 
     qlock = threading.Lock()
     ulock = threading.Lock()
@@ -170,7 +207,6 @@ def main():
         'ADC': [adc_conn, alock],
         'INC': [inc_conn, ilock]
     }
-
     
     if xbee_use == 'True':
         xbee_conn = xbee.comms(xbee_port, xbee_baud, xbee_remote)
@@ -179,10 +215,10 @@ def main():
         tx_queue = None
 
     ubx_device(ubx_conn, tx_queue, qlock, ulock, daemon=True).start()
-    adc_device(adc_conn, tx_queue, qlock, alock, daemon=True).start()
     inc_device(inc_conn, tx_queue, qlock, ilock, daemon=True).start()
 
     if tx_queue is not None:
+        adc_device(adc_conn, tx_queue, qlock, alock, daemon=True).start()
         transmitter(xbee_conn, tx_queue, qlock, xlock, daemon=True).start()
         receiver(xbee_conn, sensors, xlock, daemon=True).start()
 
