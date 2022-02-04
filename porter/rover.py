@@ -9,6 +9,7 @@ import random
 
 import subprocess
 import shlex
+import signal
 
 import inclinometer as inc
 
@@ -44,9 +45,11 @@ class receiver(threading.Thread):
 
         self.xlock = xlock
 
+        self.shutdown_flag = threading.Event()
+
     def run(self):
 
-        while True:
+        while not self.shutdown_flag.is_set():
 
             self.xlock.acquire()
             dest, msg = self.xbee_obj.poll_msg()
@@ -73,9 +76,11 @@ class transmitter(threading.Thread):
         self.qlock = qlock
         self.xlock = xlock
 
+        self.shutdown_flag = threading.Event()
+
     def run(self):
 
-        while True:
+        while not self.shutdown_flag.is_set():
             while not self.tx_queue.empty():
                 self.qlock.acquire()
                 self.xlock.acquire()
@@ -96,9 +101,11 @@ class ubx_device(threading.Thread):
         self.qlock = qlock
         self.ulock = ulock
 
+        self.shutdown_flag = threading.Event()
+
     def run(self):
 
-        while True:
+        while not self.shutdown_flag.is_set():
 
             self.ulock.acquire()
             msg = 'UBX'
@@ -123,9 +130,11 @@ class adc_device(threading.Thread):
         self.qlock = qlock
         self.alock = alock
 
+        self.shutdown_flag = threading.Event()
+
     def run(self):
 
-        while True:
+        while not self.shutdown_flag.is_set():
             self.alock.acquire()
             msg = 'ADC'
             msg += self.conn.get_voltage()
@@ -148,9 +157,11 @@ class inc_device(threading.Thread):
         self.qlock = qlock
         self.ilock = ilock
 
+        self.shutdown_flag = threading.Event()
+
     def run(self):
 
-        while True:
+        while not self.shutdown_flag.is_set():
             self.ilock.acquire()
             msg = 'INC'
             msg += self.conn.read_msg(return_binary=True)
@@ -161,14 +172,27 @@ class inc_device(threading.Thread):
                 self.qlock.release()
             pickle.dump(msg, self.pck)
 
+'''
+Classes and Function to deal with interrupting the code 
+'''
+
+class ServiceExit(Exception):
+    """
+    Custom exception which is used to trigger the clean exit
+    of all running threads and the main program.
+    """
+    pass
+
+def service_shutdown(signum, frame):
+    print('Caught signal %d' % signum)
+    raise ServiceExit
+
 
 def main():
 
-    cmd = 'gphoto2 --wait-event=4s --interval=1 --frames=100 --capture-image-and-download --filename=%Y%m%d-%H%M%S-%03n.%C'
-    cmds = shlex.split(cmd)
+    signal.signal(signal.SIGTERM, service_shutdown)
+    signal.signal(signal.SIGINT, service_shutdown)
 
-    p = subprocess.Popen(cmds, close_fds=True)
-    
     cfg = configparser.ConfigParser()
     cfg.read('config/rover_config.cfg')
 
@@ -186,41 +210,66 @@ def main():
 
     local = cfg.get('LOCAL', 'local_dev')
 
-    if local == 'True':
+    try:
+        cmd = 'gphoto2 --wait-event=4s --interval=1 --frames=100 --capture-image-and-download --filename=%Y%m%d-%H%M%S-%03n.%C'
+        cmds = shlex.split(cmd)
 
-        ubx_conn = mySerial(ubx_port, ubx_baud, dev='UBX')
-        inc_conn = mySerial(inc_port, inc_baud, dev='INC')
-        adc_conn = None #Due to the ads library for local development no ADC connection is created
-    else:
-        ubx_conn = ublox.UBXio(ubx_port, ubx_baud)
-        inc_conn = inc.inclinometer(inc_port, inc_address, inc_baud)
-        adc_conn = ads.ads1115([0,1], mode='differential')
+        p = subprocess.Popen(cmds, close_fds=True)
 
-    qlock = threading.Lock()
-    ulock = threading.Lock()
-    alock = threading.Lock()
-    ilock = threading.Lock()
-    xlock = threading.Lock()
+        if local == 'True':
 
-    sensors = {
-        'UBX': [ubx_conn, ulock],
-        'ADC': [adc_conn, alock],
-        'INC': [inc_conn, ilock]
-    }
-    
-    if xbee_use == 'True':
-        xbee_conn = xbee.comms(xbee_port, xbee_baud, xbee_remote)
-        tx_queue = queue.Queue()
-    else:
-        tx_queue = None
+            ubx_conn = mySerial(ubx_port, ubx_baud, dev='UBX')
+            inc_conn = mySerial(inc_port, inc_baud, dev='INC')
+            adc_conn = None #Due to the ads library for local development no ADC connection is created
+        else:
+            ubx_conn = ublox.UBXio(ubx_port, ubx_baud)
+            inc_conn = inc.inclinometer(inc_port, inc_address, inc_baud)
+            adc_conn = ads.ads1115([0,1], mode='differential')
 
-    ubx_device(ubx_conn, tx_queue, qlock, ulock, daemon=True).start()
-    inc_device(inc_conn, tx_queue, qlock, ilock, daemon=True).start()
+        qlock = threading.Lock()
+        ulock = threading.Lock()
+        alock = threading.Lock()
+        ilock = threading.Lock()
+        xlock = threading.Lock()
 
-    if tx_queue is not None:
-        adc_device(adc_conn, tx_queue, qlock, alock, daemon=True).start()
-        transmitter(xbee_conn, tx_queue, qlock, xlock, daemon=True).start()
-        receiver(xbee_conn, sensors, xlock, daemon=True).start()
+        sensors = {
+            'UBX': [ubx_conn, ulock],
+            'ADC': [adc_conn, alock],
+            'INC': [inc_conn, ilock]
+        }
+        
+        if xbee_use == 'True':
+            xbee_conn = xbee.comms(xbee_port, xbee_baud, xbee_remote)
+            tx_queue = queue.Queue()
+        else:
+            tx_queue = None
+
+        ubx_device(ubx_conn, tx_queue, qlock, ulock, daemon=True).start()
+        inc_device(inc_conn, tx_queue, qlock, ilock, daemon=True).start()
+
+        if tx_queue is not None:
+            adc_device(adc_conn, tx_queue, qlock, alock, daemon=True).start()
+            transmitter(xbee_conn, tx_queue, qlock, xlock, daemon=True).start()
+            receiver(xbee_conn, sensors, xlock, daemon=True).start()
+
+        while True:
+            time.sleep(0.5)
+
+    except ServiceExit:
+        # Terminate the running threads.
+        # Set the shutdown flag on each thread to trigger a clean shutdown of each thread.
+        ubx_device.shutdown_flag.set()
+        inc_device.shutdown_flag.set()
+
+        ubx_device.join()
+        inc_device.join()
+
+        if tx_queue is not None:
+            adc_device.shutdown_flag.set()
+            transmitter.shutdown_flag.set()
+            receiver.shutdown_flag.set()
+        
+
 
     try:
         while True:

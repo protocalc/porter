@@ -3,7 +3,7 @@ import copy
 import struct
 import ublox.ublox as ublox
 
-class datahandler(QtCore.QObjects):
+class datahandler(QtCore.QObject):
 
     data = QtCore.pyqtSignal()
 
