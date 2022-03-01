@@ -2,7 +2,6 @@
 #https://github.com/adafruit/Adafruit_CircuitPython_ADS1x15
 #https://www.adafruit.com/product/1085
 
-
 import time
 import board
 import busio
@@ -118,7 +117,7 @@ class ads1115:
             value = [self.chan[0].value]
         return value
   
-    def get_voltage(self):
+    def get_voltage(self, time_info=True):
 
         '''
         Get the converted voltage from the ADC
@@ -126,9 +125,15 @@ class ads1115:
         if len(self.chan) > 1:
             voltage=[]
             for i in range(len(self.chan)):
-                voltage.append(self.chan[i].voltage)
+                voltage.append([time.time(), self.chan[i].voltage])
         else:
             voltage = self.chan[0].voltage
+            t = time.time()
+
+            if time_info:
+                voltage = [t, voltage]
+
+
         return voltage
 
     def set_data_rate(self, data_rate):

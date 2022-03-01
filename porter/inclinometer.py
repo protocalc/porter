@@ -30,16 +30,22 @@ class inclinometer:
 
         return self.instrument.read_long(start_reg, signed=True)/1000
 
-    def read_msg(self, return_binary=False):
+    def read_msg(self, return_binary=False, time_info=True):
 
         ang = self.instrument.read_registers(0, 4)
+        t = time.time()
 
         if return_binary:
-            return struct.pack('>HHHH', *ang)
+            data = struct.pack('>HHHH', *ang)
         else:
             ang_x, ang_y = struct.unpack('>ll', struct.pack('>HHHH', *ang))
 
-            return ang_x/1000, ang_y/1000
+            data = (ang_x/1000, ang_y/1000)
+
+        if time_info:
+            return [t, data]
+        else:
+            data
 
     def get_temperature(self):
 

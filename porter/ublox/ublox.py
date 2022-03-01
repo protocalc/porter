@@ -707,14 +707,12 @@ class UBXio:
             except ValueError:
                 pass
 
-        msg_cat = self.find_header()
-
         while True:
 
             if count == 0:
-                msg = self.read(cat=msg_cat)
+                msg = self.read_msg()
             else:
-                msg = self.read()
+                msg = self.read_msg(first_msg=False)
 
             if isinstance(msg, bytes):
                 ubxmsg = UBXMessage()
@@ -770,54 +768,6 @@ class UBXio:
                             pass
         return msg_cat
 
-    def read(self, cat=None, first_msg=False):
-
-        if cat is None and first_msg:
-            msg_cat = self.conn.read(2)
-        else:
-            if cat == 'ubx':
-                msg_cat = HEADER
-            elif cat == 'nmea':
-                msg_cat = b'$'
-            elif cat == 'rtcm':
-                msg_cat = RTCM_HEADER
-
-        if msg_cat == HEADER:
-
-            pre = self.conn.read(4)
-            msg_length = struct.unpack('<H', pre[-2:])
-
-            final_msg = self.conn.read(msg_length[0]+2)
-            final_msg = msg_cat+pre+final_msg
-
-        else:
-            if len(msg_cat) != 1:
-                msg_cat_temp = msg_cat[0:1]
-            else:
-                msg_cat_temp = msg_cat
-
-            if msg_cat_temp == b'$':
-                msg = self.conn.read_until(terminator=b'\r\n')
-
-                final_msg = (msg_cat+msg).decode('utf-8')
-
-            elif msg_cat_temp == RTCM_HEADER:
-                
-                if len(msg_cat) != 1:
-                    pre = msg_cat[1:]+self.conn.read(1)
-                else:
-                    pre = self.conn.read(2)
-
-                msg_length = struct.unpack('!H', pre)
-
-                msg_length = 0x03ff & msg_length[0]
-
-                final_msg = self.conn.read(msg_length+3)
-
-                final_msg = msg_cat[0]+pre+final_msg
-
-        return final_msg
-
     def class2char(self, msg_class):
         
         if isinstance(msg_class, list):
@@ -849,6 +799,7 @@ class UBXio:
         msg_cat = kwargs.get('msg_cat', None)
         first_msg = kwargs.get('first_msg', True)
         decode = kwargs.get('decode', False)
+        time_info = kwargs.get('time_info', True)
 
         if msg_cat is None:
             if first_msg:
@@ -874,6 +825,7 @@ class UBXio:
             msg_length = struct.unpack('<H', pre[-2:])
 
             final_msg = self.conn.read(msg_length[0]+2)
+            t = time.time()
             final_msg = msg_cat+pre+final_msg
 
             if decode:
@@ -883,7 +835,7 @@ class UBXio:
                     ubxmsg.fields_name, \
                     ubxmsg.values
 
-                return name, fields, values
+                final_msg = (name, fields, values)
 
         else:
             if len(msg_cat) != 1:
@@ -893,6 +845,7 @@ class UBXio:
 
             if msg_cat_temp == b'$':
                 msg = self.conn.read_until(terminator=b'\r\n')
+                t = time.time()
 
                 if decode:
                     final_msg = (msg_cat+msg).decode('utf-8')
@@ -910,9 +863,13 @@ class UBXio:
                 msg_length = 0x03ff & msg_length[0]
 
                 final_msg = self.conn.read(msg_length+3)
+                t = time.time()
                 final_msg = msg_cat[0]+pre+final_msg
 
-        return final_msg
+        if time_info:
+            return [t, final_msg]
+        else:
+            return final_msg
 
     def read_single_msg(self, **kwargs):
 
@@ -1048,7 +1005,6 @@ class UBXio:
 
         if ack:
             self.read_single_msg(msg_cat ='ubx', ubx_class='ACK')
-
 
 class UBXutils:
 

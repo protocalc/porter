@@ -28,15 +28,14 @@ class mySerial:
 
     def read_msg(self, **kwargs):
 
-        val = str(random.random())+'END'
-        print(self.dev, val)
+        val = str(random.random())
 
-        time.sleep(0.5)
+        time.sleep(0.01)
         return val
 
 class receiver(threading.Thread):
 
-    def __init__(self, xbee_obj, conn_dict, xlock, *args, **kwargs):
+    def __init__(self, xbee_obj, conn_dict, xlock, flag, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
 
@@ -45,7 +44,7 @@ class receiver(threading.Thread):
 
         self.xlock = xlock
 
-        self.shutdown_flag = threading.Event()
+        self.shutdown_flag = flag
 
     def run(self):
 
@@ -66,7 +65,7 @@ class receiver(threading.Thread):
 
 class transmitter(threading.Thread):
 
-    def __init__(self, xbee_obj, tx_queue, qlock, xlock, *args, **kwargs):
+    def __init__(self, xbee_obj, tx_queue, qlock, xlock, flag, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
 
@@ -76,7 +75,7 @@ class transmitter(threading.Thread):
         self.qlock = qlock
         self.xlock = xlock
 
-        self.shutdown_flag = threading.Event()
+        self.shutdown_flag = flag
 
     def run(self):
 
@@ -90,26 +89,28 @@ class transmitter(threading.Thread):
 
 class ubx_device(threading.Thread):
 
-    def __init__(self, conn, tx_queue, qlock, ulock, *args, **kwargs):
+    def __init__(self, conn, tx_queue, qlock, ulock, flag, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
 
         self.conn = conn
         self.tx_queue = tx_queue
-        self.pck = open('ubx_log.pck', 'ab')
+        self.pck = open('ubx_data.pck', 'ab')
 
         self.qlock = qlock
         self.ulock = ulock
 
-        self.shutdown_flag = threading.Event()
+        self.shutdown_flag = flag
 
     def run(self):
 
         while not self.shutdown_flag.is_set():
-
+            print('UBX', self.shutdown_flag.is_set())
             self.ulock.acquire()
-            msg = 'UBX'
-            msg += self.conn.read_msg()
+            msg = []
+            msg.append('UBX')
+            msg.append(time.time())
+            msg.append(self.conn.read_msg())
             self.ulock.release()
             if self.tx_queue is not None:
                 self.qlock.acquire()
@@ -119,25 +120,27 @@ class ubx_device(threading.Thread):
 
 class adc_device(threading.Thread):
 
-    def __init__(self, conn, tx_queue, qlock, alock, *args, **kwargs):
+    def __init__(self, conn, tx_queue, qlock, alock, flag, *args, **kwargs):
         
         super().__init__(*args, **kwargs)
         
         self.conn = conn
         self.tx_queue = tx_queue
-        self.pck = open('adc_log.pck', 'ab')
+        self.pck = open('adc_data.pck', 'ab')
 
         self.qlock = qlock
         self.alock = alock
 
-        self.shutdown_flag = threading.Event()
+        self.shutdown_flag = flag
 
     def run(self):
 
         while not self.shutdown_flag.is_set():
             self.alock.acquire()
-            msg = 'ADC'
-            msg += self.conn.get_voltage()
+            msg = []
+            msg.append('ADC')
+            msg.append(time.time())
+            msg.append(self.conn.get_voltage())
             self.alock.release()
             if self.tx_queue is not None:
                 self.qlock.acquire()
@@ -147,24 +150,27 @@ class adc_device(threading.Thread):
 
 class inc_device(threading.Thread):
 
-    def __init__(self, conn, tx_queue, qlock, ilock, *args, **kwargs):
+    def __init__(self, conn, tx_queue, qlock, ilock, flag, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         self.conn = conn
         self.tx_queue = tx_queue
-        self.pck = open('inc_log.pck', 'ab')
+        self.pck = open('inc_data.pck', 'ab')
 
         self.qlock = qlock
         self.ilock = ilock
 
-        self.shutdown_flag = threading.Event()
+        self.shutdown_flag = flag
 
     def run(self):
 
         while not self.shutdown_flag.is_set():
+            print('INC', self.shutdown_flag.is_set())
             self.ilock.acquire()
-            msg = 'INC'
-            msg += self.conn.read_msg(return_binary=True)
+            msg = []
+            msg.append('INC')
+            msg.append(time.time())
+            msg.append(self.conn.read_msg(return_binary=True))
             self.ilock.release()
             if self.tx_queue is not None:
                 self.qlock.acquire()
@@ -193,6 +199,8 @@ def main():
     signal.signal(signal.SIGTERM, service_shutdown)
     signal.signal(signal.SIGINT, service_shutdown)
 
+    flag = threading.Event()
+
     cfg = configparser.ConfigParser()
     cfg.read('config/rover_config.cfg')
 
@@ -211,10 +219,10 @@ def main():
     local = cfg.get('LOCAL', 'local_dev')
 
     try:
-        cmd = 'gphoto2 --wait-event=4s --interval=1 --frames=100 --capture-image-and-download --filename=%Y%m%d-%H%M%S-%03n.%C'
-        cmds = shlex.split(cmd)
+        # cmd = 'gphoto2 --wait-event=4s --interval=1 --frames=100 --capture-image-and-download --filename=%Y%m%d-%H%M%S-%03n.%C'
+        # cmds = shlex.split(cmd)
 
-        p = subprocess.Popen(cmds, close_fds=True)
+        # p = subprocess.Popen(cmds, close_fds=True)
 
         if local == 'True':
 
@@ -244,8 +252,8 @@ def main():
         else:
             tx_queue = None
 
-        ubx_device(ubx_conn, tx_queue, qlock, ulock, daemon=True).start()
-        inc_device(inc_conn, tx_queue, qlock, ilock, daemon=True).start()
+        ubx_device(ubx_conn, tx_queue, qlock, ulock, flag, daemon=True).start()
+        inc_device(inc_conn, tx_queue, qlock, ilock, flag, daemon=True).start()
 
         if tx_queue is not None:
             adc_device(adc_conn, tx_queue, qlock, alock, daemon=True).start()
@@ -253,29 +261,12 @@ def main():
             receiver(xbee_conn, sensors, xlock, daemon=True).start()
 
         while True:
-            time.sleep(0.5)
+            pass
 
     except ServiceExit:
         # Terminate the running threads.
         # Set the shutdown flag on each thread to trigger a clean shutdown of each thread.
-        ubx_device.shutdown_flag.set()
-        inc_device.shutdown_flag.set()
-
-        ubx_device.join()
-        inc_device.join()
-
-        if tx_queue is not None:
-            adc_device.shutdown_flag.set()
-            transmitter.shutdown_flag.set()
-            receiver.shutdown_flag.set()
-        
-
-
-    try:
-        while True:
-            time.sleep(3)
-    except KeyboardInterrupt:
-        print("Exiting")
+        flag.set()
 
 if __name__ == '__main__':
     main()
