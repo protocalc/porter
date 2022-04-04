@@ -1,5 +1,6 @@
 import minimalmodbus as mm 
 import struct
+import time
 
 freq_dict = {
     '1': 0.125,

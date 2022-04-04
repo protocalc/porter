@@ -2,6 +2,30 @@ from PyQt5 import QtWidgets, QtCore
 import copy
 import time
 import pyqtgraph as pg
+import numpy as np
+
+class Plotting(QtCore.QObject):
+
+    signal = QtCore.pyqtSignal(object)                             # object
+
+    def __init__(self, time=0, parent=None):
+        super().__init__()
+        self.s  = None                                      # +++
+        self.phase = 0                                      # +++
+        self.t = time
+        self._isRunning = True
+
+    def run(self):
+        while self._isRunning:
+            self.s = np.sin(float(np.random.rand(1))* np.pi * self.t + self.phase)
+            self.signal.emit([self.t, self.s]) 
+            self.t += 0.01
+            QtCore.QThread.msleep(200)
+            if self.t > 2:
+                break
+    
+    def stop(self):
+        self._isRunning = False
 
 class TelemetryTab(QtWidgets.QWidget):
 
@@ -50,9 +74,32 @@ class TelemetryTab(QtWidgets.QWidget):
         self.data.append(val)
         self.time.append(t)
 
-        self.plot.setData(self.time-self.time[0], self.data)
+        self.plot.setData(self.time, self.data)
+    
+    def generate_random(self):
 
+        self.update_plot_data(np.random.rand(), np.random.rand())
 
+    def plotting_group(self):
+
+        self.guiplot = pg.PlotWidget()
+        self.plot = self.guiplot.plot()
+        self.plot.setClipToView(True)
+
+        self.PLOTgroup = QtWidgets.QGroupBox("Power Emitted")
+
+        layout = QtWidgets.QGridLayout()
+        layout.addWidget(self.guiplot)
+
+        self.adc_plot()
+
+        self.PLOTgroup.setLayout(layout)
+
+    def adc_plot(self):
+        self.data.append(float(np.random.rand(1)))
+        print(self.data)
+        self.plot.setData(self.data)
+        
     def gps_group(self):
 
         self.GPSgroup = QtWidgets.QGroupBox("UBLOX Controls")
@@ -88,17 +135,17 @@ class TelemetryTab(QtWidgets.QWidget):
 
         self.GPSgroup.setLayout(layout)
 
-    def plotting_group(self):
+    # def plotting_group(self):
 
-        self.guiplot = pg.PlotWidget()
-        self.plot = self.guiplot.plot()
-        self.plot.setClipToView(True)
+    #     self.guiplot = pg.PlotWidget()
+    #     self.plot = self.guiplot.plot()
+    #     self.plot.setClipToView(True)
 
-        self.PLOTgroup = QtWidgets.QGroupBox("Power Emitted")
+    #     self.PLOTgroup = QtWidgets.QGroupBox("Power Emitted")
 
-        layout = QtWidgets.QGridLayout()
-        layout.addWidget(self.guiplot)
+    #     layout = QtWidgets.QGridLayout()
+    #     layout.addWidget(self.guiplot)
 
-        #self.adc_plot()
+    #     self.generate_random()
 
-        self.PLOTgroup.setLayout(layout)
+    #     self.PLOTgroup.setLayout(layout)

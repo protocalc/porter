@@ -6,6 +6,7 @@ from bitarray import util, bitarray
 import serial
 import h5py
 import numpy as np
+import time
 
 HEADER = bytes((0xB5, 0x62))
 RTCM_HEADER = b'\xd3'
@@ -844,7 +845,7 @@ class UBXio:
                 msg_cat_temp = msg_cat
 
             if msg_cat_temp == b'$':
-                msg = self.conn.read_until(terminator=b'\r\n')
+                msg = self.conn.read_until(expected=b'\r\n')
                 t = time.time()
 
                 if decode:
@@ -941,7 +942,7 @@ class UBXio:
             while True:
                 cat = self.find_header()
                 if cat == 'nmea':
-                    final_msg = self.conn.read_until(terminator=b'\r\n')
+                    final_msg = self.conn.read_until(expected=b'\r\n')
 
                     vals = (b'$'+final_msg).decode('utf-8')
                     break
