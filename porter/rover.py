@@ -2,24 +2,36 @@ import queue
 import threading
 import time
 import pickle
-import configparser
-import ublox.ublox as ublox
+import yaml
 import telemetry.xbee as xbee
 import random
 import datetime
 import os
 
-import subprocess
-import shlex
-import signal
+import threads
+import utils
 
-import inclinometer as inc
+import sensors.ublox as ubx
+import sensors.KERNEL as KERNEL
+
+import signal
+import logging
+
 import valon
 
 try:
-    import ads1115 as ads
+    import sensors.ads1115 as ads
 except ModuleNotFoundError:
     pass
+
+logging.basicConfig(
+    filename='rover.log',
+    filemode='w',
+    format='%(asctime)s    %(levelname)s:%(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S',
+    level=logging.DEBUG
+    )
+
 
 class mySerial:
 
@@ -36,59 +48,7 @@ class mySerial:
         time.sleep(0.01)
         return val
 
-class receiver(threading.Thread):
 
-    def __init__(self, xbee_obj, conn_dict, xlock, flag, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-
-        self.xbee_obj = xbee_obj
-        self.conn_dict = conn_dict
-
-        self.xlock = xlock
-
-        self.shutdown_flag = flag
-
-    def run(self):
-
-        while not self.shutdown_flag.is_set():
-
-            self.xlock.acquire()
-            dest, msg = self.xbee_obj.poll_msg()
-            self.xlock.release()
-
-            if dest == 'UBX':
-                self.conn_dict['UBX'][1].acquire()
-                self.conn_dict['UBX'][0].conn.write(msg)
-                self.conn_dict['UBX'][1].release()
-            elif dest == 'ADC':
-                self.conn_dict['ADC'][1].acquire()
-                self.conn_dict['ADC'][0].set_gain(float(msg.decode()))
-                self.conn_dict['ADC'][1].release()
-
-class transmitter(threading.Thread):
-
-    def __init__(self, xbee_obj, tx_queue, qlock, xlock, flag, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-
-        self.xbee_obj = xbee_obj
-        self.tx_queue = tx_queue
-        
-        self.qlock = qlock
-        self.xlock = xlock
-
-        self.shutdown_flag = flag
-
-    def run(self):
-
-        while not self.shutdown_flag.is_set():
-            while not self.tx_queue.empty():
-                self.qlock.acquire()
-                self.xlock.acquire()
-                self.xbee_obj.send_msg(self.tx_queue.get())
-                self.qlock.release()
-                self.xlock.release()
 
 class ubx_device(threading.Thread):
 
@@ -187,7 +147,7 @@ class inc_device(threading.Thread):
             pickle.dump(msg, self.pck)
 
 '''
-Classes and Function to deal with interrupting the code 
+Classes and Function to deal with interrupting the code
 '''
 
 class ServiceExit(Exception):
@@ -211,111 +171,114 @@ def main():
 
     flag = threading.Event()
 
-    cfg = configparser.ConfigParser()
-    cfg.read('/home/pi/Documents/GitHub/porter/porter/config/rover_config.cfg')
+    cfg_path = path+'/config/rover_config.yml'
+
+    with open(cfg_path, 'r') as cfg:
+        config = yaml.safe_open(cfg)
     
-    valon_port = cfg.get('VALON', 'port')
-    valon_baud = int(cfg.get('VALON', 'baud'))
-    synt=valon.valon(valon_port, valon_baud)
-    
-    valon_freq = float(cfg.get('VALON', 'freq'))
-    valon_mod_amp = float(cfg.get('VALON', 'mod_amp'))
-    valon_mod_freq = float(cfg.get('VALON', 'mod_freq'))
-    
-    synt.set_freq(valon_freq/6)
-    synt.set_pwr(4)
-    if valon_mod_freq > 0:
-        synt.set_amd(valon_mod_amp,valon_mod_freq)
+    with utils.InterruptHandler as handler:
+        if config['local_development']:
+            pass
         
-    
-        
-    time.sleep(30)
-    
-    date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-
-    ubx_port = cfg.get('UBX', 'port')
-    ubx_baud = int(cfg.get('UBX', 'baud'))
-
-    xbee_port = cfg.get('XBEE', 'port')
-    xbee_baud = int(cfg.get('XBEE', 'baud'))
-    xbee_remote = cfg.get('XBEE', 'remote')
-    xbee_use = cfg.get('XBEE', 'use')
-
-    inc_port = cfg.get('INC', 'port')
-    inc_baud = int(cfg.get('INC', 'baud'))
-    inc_address = int(cfg.get('INC', 'address'))
-
-    local = cfg.get('LOCAL', 'local_dev')
-
-    try:
-        # cmd = 'gphoto2 --wait-event=4s --interval=1 --frames=100 --capture-image-and-download --filename=%Y%m%d-%H%M%S-%03n.%C'
-        # cmds = shlex.split(cmd)
-
-        # p = subprocess.Popen(cmds, close_fds=True)
-        
-        cmd = '/home/pi/Documents/SonyRemoteSDK/build/shooting 1 100'
-        cmds = shlex.split(cmd)
-        p = subprocess.Popen(cmds, close_fds=True)
-
-        if local == 'True':
-
-            ubx_conn = mySerial(ubx_port, ubx_baud, dev='UBX')
-            inc_conn = mySerial(inc_port, inc_baud, dev='INC')
-            adc_conn = None #Due to the ads library for local development no ADC connection is created
         else:
-            try:
-                ubx_conn = ublox.UBXio(ubx_port, ubx_baud)
-            except OSError:
-                ubx_conn = None
-            inc_conn = inc.inclinometer(inc_port, inc_address, inc_baud)
-            adc_conn = ads.ads1115([0,1], mode='differential')
+            synt=valon.valon(config['source']['port'], config['source']['baud'])
 
-        qlock = threading.Lock()
-        alock = threading.Lock()
-        ilock = threading.Lock()
-        xlock = threading.Lock()
-        
-        if ubx_conn is not None:
-            ulock = threading.Lock()
-        else:
-            ulock = None
+            synt.set_freq(config['source']['freq']/6)
+            synt.set_pwr(config['source']['power'])
+            if config['source']['mod_freq'] > 0:
+                synt.set_amd(config['source']['mod_amp'],config['source']['mod_freq'])
 
-        sensors = {
-            'UBX': [ubx_conn, ulock],
-            'ADC': [adc_conn, alock],
-            'INC': [inc_conn, ilock]
-        }
-        
-        if xbee_use == 'True':
-            xbee_conn = xbee.comms(xbee_port, xbee_baud, xbee_remote)
-            tx_queue = queue.Queue()
-        else:
+            time.sleep(15)
+
+            sensor_locks = {}
+            sensor_names = {}
+            sensor_connections = {}
+
+            for i in config['sensors'].keys():
+                
+                if config['sensors'][i]['type'] == 'GPS':
+                    
+                    ubx_conn = ubx.UBX(
+                        config['sensors'][i]['port'],
+                        config['sensors'][i]['baudrate'], \
+                        name = config['sensors'][i]['name']
+                        )
+
+                    conn = ubx_conn.conn
+
+                    if 'configuration' in config['sensors'][i].keys():
+                        ubx_config = ubx.UBXconfig(
+                            serial_connection=conn,
+                            name = config['sensors'][i]['name']
+                            )
+                        
+                        ubx_config.configure(config['sensors'][i]['configuration'])
+                
+                elif config['sensors'][i]['type'] == 'Inclinometer':
+                    
+                    kernel_conn = KERNEL.KernelInertial(
+                        config['sensors'][i]['port'],
+                        config['sensors'][i]['baudrate'], \
+                        name = config['sensors'][i]['name']
+                        )
+
+                    conn = kernel_conn.conn
+                    
+                    if 'configuration' in config['sensors'][i].keys():
+                        conn.configure(config['sensors'][i]['configuration'])
+                
+                elif config['sensors'][i]['type'] == 'ADC':
+
+                    conn = ads.ads1115(
+                        config['sensors'][i]['channels'],
+                        mode = config['sensors'][i]['mode'],
+                        name = config['sensors'][i]['name'],
+                        output_mode = config['sensors'][i]['output']
+                    )
+
+                    if 'configuration' in config['sensors'][i].keys():
+                        conn.configure(config['sensors'][i]['configuration'])
+
+                sensor_connections[config['sensors'][i]['name']] = conn
+                sensor_locks[config['sensors'][i]['name']] = threading.Lock()
+                sensor_names[config['sensors'][i]['name']] = config['sensors'][i]['name']
+
+        date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+
+        if not config['Telemetry']['in_use']:
             tx_queue = None
+            tx_lock = None
         
-        if ubx_conn is not None:
-            ubx_device(ubx_conn, tx_queue, qlock, ulock, flag, date, path, daemon=True).start()
-        inc_device(inc_conn, tx_queue, qlock, ilock, flag, date, path, daemon=True).start()
+        else:
+            tx_queue = queue.Queue()
+            tx_lock = threading.Lock()
 
-        if adc_conn is not None:
-            adc_device(adc_conn, tx_queue, qlock, alock, flag, date, path, daemon=True).start()
+            xbee_conn = xbee.comms(
+                config['Telemetry']['antenna']['port'],
+                config['Telemetry']['antenna']['baudrate'],
+                config['Telemetry']['antenna']['remote']
+                )
+            xbee_lock = threading.Lock()
+            
+
+        for i in sensor_connections.keys():
+            threads.Sensors(
+                tx_queue = tx_queue,
+                tx_lock = tx_lock,
+                sensor_lock = sensor_locks[i],
+                flag = flag,
+                date = date,
+                path = path,
+                sensor_name = sensor_names[i]
+            ).start()
 
         if tx_queue is not None:
-            transmitter(xbee_conn, tx_queue, qlock, xlock, flag, daemon=True).start()
-            receiver(xbee_conn, sensors, xlock, flag, daemon=True).start()
+            threads.Transmitter(xbee_conn, tx_queue, tx_lock, xbee_lock, flag, daemon=True).start()
+            threads.Receiver(xbee_conn, sensor_connections, sensor_locks, xbee_lock, flag, daemon=True).start()
 
-        while True:
-            pass
-
-    except ServiceExit:
-        # Terminate the running threads.
-        # Set the shutdown flag on each thread to trigger a clean shutdown of each thread.
-        flag.set()
+        
+        if handler.interrupted:
+            flag.set()
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-

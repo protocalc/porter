@@ -4,7 +4,7 @@ from digi.xbee.serial import XBeeSerialPort
 class antenna:
 
     '''
-    Class to configure parameters of a xbee antenna 
+    Class to configure parameters of a xbee antenna
     '''
 
     def __init__(self, port, baudrate=9600):
@@ -34,7 +34,7 @@ class antenna:
     def set_role(self, role):
 
         '''
-        Set the role for the xbee antenna. 
+        Set the role for the xbee antenna.
         Parameter:
         - role: str. Possible to choose between 'join' or 'form'
         '''
@@ -94,8 +94,3 @@ class comms:
                     break
 
         return dest, msg
-
-    
-
-        
-

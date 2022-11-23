@@ -1,0 +1,42 @@
+local_developement: True
+
+sensors:
+    Serial_1:
+      name: ZED-F9R
+      type: GPS
+      port: /dev/UBLox
+      baudrate: 38400
+    
+    Serial_2:
+      name: Kernel-100
+      type: Inclinometer
+      port: /dev/Inclinometer
+      baudrate: 115200
+    
+    I2C_1:
+      name: ADS115
+      type: ADC
+      mode: differential
+      channels: [0,1]
+      output: value
+      configuration: 
+        gain: 8
+        data_rate: 128
+
+source:
+  name: VALON-5019
+  port: /dev/VALON
+  baudrate: 9600
+  freq: 90
+  power: 4
+  mod_amp: 15
+  mod_freq: 0
+
+telemetry:
+  in_use: False
+  antenna:
+    name: XBEE3
+    type: XBEE
+    port: /dev/XBEE
+    baudrate: 38400
+    remote: OBI
