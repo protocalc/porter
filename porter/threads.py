@@ -1,12 +1,14 @@
 import threading
 import pickle
 import logging
+#import signal
 
 logger = logging.getLogger()
 
 class Sensors(threading.Thread):
 
-    def __init__(self, conn, tx_queue, tx_lock, sensor_lock, flag, date, path, *args, **kwargs):
+    def __init__(self, conn, tx_queue, tx_lock, sensor_lock, flag, date, path, \
+                 sensor_name=None, chunk_size=250, *args, **kwargs):
 
         """Class to create a thread for each sensor
 
@@ -28,8 +30,8 @@ class Sensors(threading.Thread):
         self.tx_lock = tx_lock
         self.sensor_lock = sensor_lock
 
-        self.sensor_name = kwargs.get('sensor_name')
-        self.chunk_size = kwargs.get('chunk_size', 250)
+        self.sensor_name = sensor_name
+        self.chunk_size = chunk_size
 
         name = path+'/sensors_data/'+self.sensor_name+'_'+date+'.pck'
         self.pck = open(name, 'ab')
@@ -38,7 +40,7 @@ class Sensors(threading.Thread):
 
     def run(self):
 
-        logger.info(f'Sensor {self.sensor_name} started')
+        logging.info(f'Sensor {self.sensor_name} started')
 
         while not self.shutdown_flag.is_set():
             self.sensor_lock.acquire()
@@ -51,7 +53,8 @@ class Sensors(threading.Thread):
                 msg.append(temp)
                 self.tx_queue.put(msg)
                 self.tx_lock.release()
-            pickle.dump(msg, self.pck)
+            pickle.dump(temp, self.pck)
+
 
 class Receiver(threading.Thread):
 

@@ -1,24 +1,39 @@
-local_developement: True
+local_development: True
 
 sensors:
-    Serial_1:
+    GPS_1:
       name: ZED-F9R
-      type: GPS
-      port: /dev/UBLox
-      baudrate: 38400
+      connection:
+        type: serial
+        parameters:
+          port: /dev/UBLox
+          baudrate: 38400
+        sensor_info:
+          type: GPS
+          manufacturer: UBlox
     
-    Serial_2:
+    Inclinometer_1:
       name: Kernel-100
-      type: Inclinometer
-      port: /dev/Inclinometer
-      baudrate: 115200
+      connection:
+        type: serial
+        parameters:
+          port: /dev/Inclinometer
+          baudrate: 115200
+        sensor_info:
+          type: Inclinometer
+          manufacturer: Inertial_Labs
     
-    I2C_1:
-      name: ADS115
-      type: ADC
-      mode: differential
-      channels: [0,1]
-      output: value
+    ADC_1:
+      name: ADS1115
+      connection:
+        type: I2C
+        parameters:
+          mode: differential
+          channels: [0,1]
+          output: value
+      sensor_info:
+          type: ADC
+          manufacturer: ADS
       configuration: 
         gain: 8
         data_rate: 128
@@ -33,7 +48,7 @@ source:
   mod_freq: 0
 
 telemetry:
-  in_use: False
+  enabled: False
   antenna:
     name: XBEE3
     type: XBEE

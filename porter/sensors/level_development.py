@@ -1,4 +1,4 @@
-import minimalmodbus as mm 
+import minimalmodbus as mm
 import struct
 import time
 
@@ -25,7 +25,7 @@ class inclinometer:
     def get_angle(self, axis):
 
         if axis.lower() == 'x':
-            start_reg = 0 
+            start_reg = 0
         elif axis.lower() == 'y':
             start_reg = 2
 
@@ -89,7 +89,3 @@ class inclinometer:
 
     def close_connection(self):
         self.instrument.serial.close()
-
-
-        
-        
