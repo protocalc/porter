@@ -22,7 +22,7 @@ logging.basicConfig(
     filename=path+'/rover_'+date+'.log',
     filemode='w',
     format='%(asctime)s    [%(threadName)s]    %(levelname)s:%(message)s',
-    datefmt='%m/%d/%Y %I:%M:%S',
+    datefmt='%m/%d/%Y %H:%M:%S',
     level=logging.DEBUG
     )
 
