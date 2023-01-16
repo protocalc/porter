@@ -7,6 +7,8 @@ try:
 except ModuleNotFoundError:
     pass
 
+import sensors.mcp4725 as mcp
+
 
 
 class Handler:
@@ -29,7 +31,7 @@ class Handler:
             self.conn = fake.FakeConnection(self.sensor_params['name'])
         
         else:
-            if self.sensor_params['sensor_info']['manufacturer'].lower() == 'ublox':
+            if self.sensor_params['sensor_info']['type'].lower() == 'gps':
 
                 temp = ubx.UBX(
                     port = self.sensor_params['connection']['paramters']['port'],
@@ -39,7 +41,7 @@ class Handler:
 
                 self.conn = temp
             
-            elif self.sensor_params['sensor_info']['manufacturer'].lower() == 'ads':
+            elif self.sensor_params['sensor_info']['type'].lower() == 'ADC':
 
                 self.conn = ads.ads1115(
                     self.sensor_params['connection']['paramters']['channels'],
@@ -48,19 +50,26 @@ class Handler:
                     output_mode = self.sensor_params['connection']['paramters']['output']
                     )
 
-            elif self.sensor_params['sensor_info']['manufacturer'].lower() == 'inertial_labs':
+            elif self.sensor_params['sensor_info']['type'].lower() == 'DAC':
 
-                temp = KERNEL.KernelInertial(
-                    self.sensor_params['connection']['paramters']['port'],
-                    self.sensor_params['connection']['paramters']['baudrate'], \
-                    name = self.sensor_params['name']
+                self.conn = mcp.MCP4725(
+                    self.sensor_params['connection']['paramters']['address'],
                     )
 
-                self.conn = temp.conn
+            elif self.sensor_params['sensor_info']['type'].lower() == 'inclinometer':
+                if self.sensor_params['sensor_info']['manufacturer'].lower() == 'intertial_labs':
+
+                    temp = KERNEL.KernelInertial(
+                        self.sensor_params['connection']['paramters']['port'],
+                        self.sensor_params['connection']['paramters']['baudrate'], \
+                        name = self.sensor_params['name']
+                        )
+
+                    self.conn = temp.conn
 
     def _configuration(self):
 
-        if self.sensor_params['sensor_info']['manufacturer'].lower() == 'ublox':
+        if self.sensor_params['sensor_info']['type'].lower() == 'gps':
 
             config = ubx.UBXconfig(
                 serial_connection=self.conn,
@@ -69,10 +78,5 @@ class Handler:
             
             config.configure(self.sensor_params['configuration'])
         
-        elif self.sensor_params['sensor_info']['manufacturer'].lower() == 'ads':
-
+        else:
             self.conn.configure(self.sensor_param['configuration'])
-
-        elif self.sensor_params['sensor_info']['manufacturer'].lower() == 'inertial_labs':
-
-            self.conn.configure(self.sensor_params['configuration'])
