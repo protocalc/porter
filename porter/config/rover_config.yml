@@ -1,5 +1,12 @@
 local_development: True
 
+camera:
+  name: Sony
+  mode: video
+  ISO: 200
+  shutter_speed: 0.01
+  focus_infinity: True
+
 sensors:
     GPS_1:
       name: ZED-F9R
@@ -8,10 +15,29 @@ sensors:
         parameters:
           port: /dev/UBLox
           baudrate: 38400
-        sensor_info:
-          type: GPS
-          manufacturer: UBlox
-    
+      sensor_info:
+        type: GPS
+        manufacturer: UBlox
+      configuration:
+        RTCM:
+          output:
+            uart_port: 2
+            usb: False
+        NMEA:
+          output:
+            port: UART2
+            set: False
+        UBX:
+          output:
+            port: UART2
+            set: True
+        UBX_MSG:
+          output_port: ['uart', 2]
+          NAV: [
+            'POSECEF',
+            'POSLLH'
+            ]
+
     Inclinometer_1:
       name: Kernel-100
       connection:

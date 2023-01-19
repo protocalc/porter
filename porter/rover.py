@@ -10,6 +10,7 @@ import signal
 import threads as threads
 
 import sensors.sensors_handler as sh
+import camera.PTPUsb as cam
 
 import logging
 
@@ -80,6 +81,40 @@ def main():
 
             time.sleep(15)
 
+            if 'camera' in config.keys():
+
+                camera = cam.PTPusb()
+                camera.initialize_camera()
+
+                camera.set_datetime()
+
+                if config['camera']['mode'] == 'photo':
+                    mode = 'Photo_M'
+                    if 'fps' in config['camera'].keys():
+                        fps = config['camera']['fps']
+                    else:
+                        fps = 2
+                elif config['camera']['mode'] == 'video':
+                    mode = 'MovieM'
+                    fps = None
+
+                camera.set_camera_mode(mode=mode)
+
+                camera.set_iso(value=config['camera']['ISO'])
+                camera.set_shutter_speed(value=config['camera']['shutter_speed'])
+
+                if 'focus_distance' in config['camera'].keys():
+                    if config['camera']['focus_distance'] == 'infinity':
+                        camera.set_focus_infinity()
+
+                threads.Camera(
+                    camera=camera,
+                    mode =config['camera']['mode'],
+                    camera_name=config['camera']['name'],
+                    fps = fps,
+                    daemon=True
+                ).start()
+
         sensor_locks = {}
         sensor_names = {}
         sensor_connections = {}
@@ -109,7 +144,6 @@ def main():
                 )
             xbee_lock = threading.Lock()
             
-
         for i in sensor_connections.keys():
             threads.Sensors(
                 conn = sensor_connections[i],
@@ -131,6 +165,7 @@ def main():
 
     except ServiceExit:
         flag.set()
+        camera.video_control()
 
 if __name__ == '__main__':
     main()

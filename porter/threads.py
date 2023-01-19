@@ -1,6 +1,7 @@
 import threading
 import pickle
 import logging
+import time
 #import signal
 
 logger = logging.getLogger()
@@ -55,6 +56,44 @@ class Sensors(threading.Thread):
                 self.tx_lock.release()
             pickle.dump(temp, self.pck)
 
+class Camera(threading.Thread):
+
+    def __init__(self, camera, flag, mode, \
+                 camera_name=None, fps=2, *args, **kwargs):
+
+        """Class to create a thread for each sensor
+
+        Parameters:
+            camera (Object): camera object
+            flag (threading.Event): flag to communicate to the thread a particular event happened
+            camera_mode (str): camera mode
+            fps (float): number of fps in case of photo mode
+        """
+
+        super().__init__(*args, **kwargs)
+
+        self.camera = camera
+
+        self.camera_name = camera_name
+        self.timing = 1/fps
+
+        self.mode = mode
+
+        self.shutdown_flag = flag
+
+    def run(self):
+
+        logging.info(f'Camera {self.camera_name} started')
+
+
+        if self.mode == 'video':
+            while not self.shutdown_flag.is_set():
+                self.camera.video_control()
+        elif self.mode == 'photo':
+            while not self.shutdown_flag.is_set():
+                t = time.time()
+                self.camera.capture_photo()
+                time.sleep(self.timing-(time.time()-t))
 
 class Receiver(threading.Thread):
 

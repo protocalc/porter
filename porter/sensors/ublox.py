@@ -407,9 +407,84 @@ class UBXconfig:
             elif i.lower() == 'rtcm':
                 for j in config['RTCM'].keys():
                     if config['RTCM'][j].lower() == 'output':
-                        self.confRTCMmsg_output(config['RTCM'][j][0], config['RTCM'][j][1])
+                        self.confRTCMmsg_output(config['RTCM'][j]['uart_port'], config['RTCM'][j][1])
                     elif config['RTCM'][j].lower() == 'input':
-                        self.confRTCMmsg_output(config['RTCM'][j])
+                        self.confRTCMmsg_input(config['RTCM'][j])
+            elif i.lower() == 'ubx_msg':
+
+                output_port = config['UBX_MSG']['output_port']
+
+                if output_port[0].lower() == 'uart':
+                    port_string = 'UART'+str(int(output_port[1]))
+                else:
+                    port_string = output_port[0]
+
+                string = 'CFG_MSGOUT_UBX_'
+                
+                for j in config['UBX_MSG'].keys():
+                    if j.lower() == 'output_port':
+                        pass
+                    else:
+                        group = []
+                        for k in config['UBX_MSG'][j]:
+                            string = (
+                                string
+                                + j
+                                + '_'
+                                + k
+                                + '_'
+                                + port_string
+                            )
+
+                            group.append(
+                                (string, 1)
+                            )
+
+                        msg_dict = {
+                            "version": 0,
+                            "layers": {
+                                'ram': 1,
+                                'bbr': 0,
+                                'flash': 0
+                            },
+                            "transaction": {
+                                'action': 1,
+                            },
+                            "reserved0": 0,
+                            "group": group
+                        }
+
+                        self.conn.write_msg('CFG', 'VALSET', msg_dict, True)
+            
+            elif i.lower() == 'nmea' or i.lower() == 'ubx':
+
+                if config[i]['output']['set']:
+                    output = 1
+                else:
+                    output = 0
+
+                string = (
+                    'CFG_'
+                    + config[i]['output']['port']
+                    + 'OUTPROT_'
+                    + i
+                )
+
+                msg_dict = {
+                    "version": 0,
+                    "layers": {
+                        'ram': 1,
+                        'bbr': 0,
+                        'flash': 0
+                    },
+                    "transaction": {
+                        'action': 1,
+                    },
+                    "reserved0": 0,
+                    "group": [(string, output)]
+                }
+
+                self.conn.write_msg('CFG', 'VALSET', msg_dict, True)
 
     def change_baudrate(self, baudrate_new, uart_num=1):
 
