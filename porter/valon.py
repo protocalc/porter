@@ -1,4 +1,4 @@
-import serial 
+import serial
 import time
 
 class valon:
@@ -15,7 +15,7 @@ class valon:
         - baud: baudrate for the serial connection
         '''
 
-        self.conn = serial.Serial(port, baud)
+        self.conn = serial.Serial(port, baud, timeout=1)
 
     def send_receive(self, msg, receive=True):
 
@@ -107,8 +107,7 @@ class valon:
         '''
 
         msg = 'pwr '+str(pwr)+'\r\n'
-        self.send_receive(msg, receive=True
-        )
+        self.send_receive(msg, receive=True)
         
     def get_pwr(self):
 
@@ -162,24 +161,20 @@ class valon:
     def stop_amd(self):
 
         '''
-        Stop the AM modulation mode 
+        Stop the AM modulation mode
         '''
 
         msg_db = 'amd '+str(0)+'\r\n'
         self.send_receive(msg_db, receive=True)
-
-
-    
-
     
     def mode_sweep(self, start_freq, stop_freq, step, rate, rtime, halt=False, halt_time=100):
 
         '''
-        Changes the mode: sweep mode 
+        Changes the mode: sweep mode
         - Sweep mode from a STARt frequency (in Mhz) to a STOP frequency (in Mhz)
-            with frequency step size (in Mhz), step rate (in ms) and retrace time (in ms) 
+            with frequency step size (in Mhz), step rate (in ms) and retrace time (in ms)
             (retrace time sets a dweel interval of 0ms overt 100 s before to start a new sweep )
-            halt= stops sweeping 
+            halt= stops sweeping
         '''
 
         msg_sweep = 'MOD SWE '+ '\r\n'
@@ -218,7 +213,7 @@ class valon:
         '''
         Close connection with a Valon
         Parameters:
-        - valon_off: If True, the synthetizer will be turned off before closing the connection 
+        - valon_off: If True, the synthetizer will be turned off before closing the connection
         '''
 
         if valon_off:
@@ -226,7 +221,3 @@ class valon:
             self.send_receive(msg, receive=False)
         
         self.conn.close()
-    
-
-
-

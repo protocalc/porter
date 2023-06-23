@@ -1,0 +1,6 @@
+v2.0: - Removed all the old GUI files to control the telemetry from the ground
+      - Removed all the ublox files, now everything is done through pyubx2
+      - Removed camera control from porter, now it is a separate library
+      - A single script is now used with different configuration for different scenarios
+      - Data from sensors are now saved as .bin file and like a unique string of bytes
+      

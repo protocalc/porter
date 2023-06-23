@@ -1,0 +1,20 @@
+local_development: False
+use_valon: False
+
+camera:
+  name: Sony
+  mode: video
+  program: Video_M
+  duration: 20
+  ISO: 400
+  shutter_speed: 0.05
+  focus_distance: infinity
+
+telemetry:
+  enabled: False
+  antenna:
+    name: XBEE3
+    type: XBEE
+    port: /dev/XBEE
+    baudrate: 38400
+    remote: OBI

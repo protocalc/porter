@@ -53,7 +53,9 @@ class KernelMsg:
             type_idx = 1
 
         msg_type = msg[type_idx].to_bytes(1, byteorder='little')
-        modes = Kdb.MODES.keys()
+        modes = list(Kdb.MODES.keys())
+
+        print('msg_type', msg_type)
 
         idx = self.msg_address.index(msg_type)
 
@@ -65,7 +67,7 @@ class KernelMsg:
         if return_dict:
             vals = dict(zip(
                 Kdb.MODES[modes[idx]]['Parameters'],
-                list( map( lambda x,y: x*y, vals, scale ) )
+                list( map( lambda x,y: x/y, vals, scale ) )
                 ))
 
         return vals

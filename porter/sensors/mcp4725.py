@@ -1,5 +1,6 @@
 import board
 import busio
+import time
 
 import adafruit_mcp4725
 
@@ -21,4 +22,9 @@ class MCP4725:
 
         bits = 4095
 
-        self.dac.raw_value = bits*config['voltage']*bits/config['max_voltage']
+        self.dac.raw_value = int(bits*config['voltage']/config['max_voltage'])
+
+    def read(self, chunk_size=10):
+
+        time.sleep(10)
+        return 1

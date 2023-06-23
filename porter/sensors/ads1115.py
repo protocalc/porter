@@ -74,7 +74,7 @@ class ads1115:
                     )
         else:
             try:
-                if max(sum(chan_input, [])) > len(CHANNELS):
+                if max(sum(chan_input,[])) > len(CHANNELS):
                     raise InputError(1001)
                 else:
                     pass
@@ -96,6 +96,8 @@ class ads1115:
                 self.chan.append(
                     AnalogIn(self.ads, CHANNELS[int(i[0])], CHANNELS[int(i[1])])
                 )
+
+        self.__time_sample = 1/self.ads.data_rate
         
         logging.info(f'Connected to ADC {name}')
 
@@ -108,16 +110,16 @@ class ads1115:
         else:
             msg = []
 
-        _bytes_per_msg = 8
+        bytes_per_msg = 16
 
         if not chunk_size:
-            chunk_size = 0
+            chunk_size = bytes_per_msg
         
-        while count <= chunk_size/_bytes_per_msg:
+        while count <= chunk_size/bytes_per_msg:
             t = time.time()
 
             if return_binary:
-                t = struct.pack('<L', t)
+                t = struct.pack('<d', t)
             
             msg += t
 
@@ -125,6 +127,17 @@ class ads1115:
                 msg += self._get_value()
             else:
                 msg += self._get_voltage()
+
+            time_last_sample = time.time()
+
+            if time_last_sample-t < self.__time_sample:
+                time.sleep(
+                    self.__time_sample
+                    - (
+                        time.time()
+                        - t
+                    )
+                )
             
             count += 1
 
@@ -144,9 +157,9 @@ class ads1115:
         for i in self.chan:
             
             if return_binary:
-                msg += struct.pack('<i',i.value)
+                msg += struct.pack('<Q', i.value)
             else:
-                msg += i.value
+                msg.append(i.value)
         
         return msg
   
@@ -164,9 +177,9 @@ class ads1115:
         for i in self.chan:
             
             if return_binary:
-                msg += struct.pack('<i',i.voltage)
+                msg += struct.pack('<d', i.voltage)
             else:
-                msg += i.voltage
+                msg.append(i.voltage)
         
         return msg
 
@@ -341,3 +354,5 @@ class ads1115:
         
         self.ads.mode = Mode.CONTINUOUS
         self.ads.data_rate = data_rate
+
+        self.__time_sample = 1/self.ads.data_rate

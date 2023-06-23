@@ -15,6 +15,7 @@ X2 = 'H'
 X4 = 'I'
 U7 = 'BBBBBBB'
 X8 = 'II'
+U8 = 'BBBBBBBB'
 U9 = 'BBBBBBBBB'
 
 E1 = U1
@@ -1018,31 +1019,28 @@ nav_dict = {
             "version": None,
             "numSigs": None,
             "reserved0": None,
-            "group": (
-                "numSigs",
-                {  # repeating group * numSigs
-                    "gnssId": None,
-                    "svId": None,
-                    "sigId": None,
-                    "freqId": None,
-                    "prRes": [0.1, 'm'],
-                    "cno": [1, 'dBHz'],
-                    "qualityInd": None,
-                    "corrSource": None,
-                    "ionoModel": None,
-                    "sigFlags": {
-                        'health': None,
-                        'prSmoothed': None,
-                        'prUsed': None,
-                        'crUsed': None,
-                        'doUsed': None,
-                        'prCorrUsed': None,
-                        'crCorrUsed': None,
-                        'doCorrUsed': None
-                    },
-                    "reserved1": None,
+            "group": {# repeating group * numSigs
+                "gnssId": None,
+                "svId": None,
+                "sigId": None,
+                "freqId": None,
+                "prRes": [0.1, 'm'],
+                "cno": [1, 'dBHz'],
+                "qualityInd": None,
+                "corrSource": None,
+                "ionoModel": None,
+                "sigFlags": {
+                    'health': None,
+                    'prSmoothed': None,
+                    'prUsed': None,
+                    'crUsed': None,
+                    'doUsed': None,
+                    'prCorrUsed': None,
+                    'crCorrUsed': None,
+                    'doCorrUsed': None
                 },
-            ),
+                "reserved1": None,
+            },
         }
     },
     'SLAS': {
@@ -1748,11 +1746,11 @@ esf_dict = {
         'type': POLL,
         'length': 'Variable',
         'payload':{
-            "timeTag": U4,
-            "flags": (X1, {
+            "timeTag"   : U4,
+            "flags"     : (X1, {
                 'timeMarkSent': {
-                    'type': 'unsigned',
-                    'start': 0,
+                    'type'  : 'unsigned',
+                    'start' : 0,
                     'length': 2
                 },
                 'timeMarkEdge': {
@@ -1938,6 +1936,316 @@ esf_dict = {
                     }
                 }
             )
+        }
+    }
+}
+
+rxm_dict = {
+    'char': b'\x02',
+    'COR': {
+        'name': 'RXM-COR',
+        'char': b'\x34',
+        'type': POLL,
+        'length': 12,
+        'payload': {
+            "version": U1,
+            "ebno": U1,
+            "reserved0": U2,
+            "statusInfo": (X4, {
+                'protocol': {
+                    'type': 'unsigned',
+                    'start': 0,
+                    'length': 5
+                },
+                'errStatus': {
+                    'type': 'unsigned',
+                    'start': 5,
+                    'length': 2
+                },
+                'msgUsed': {
+                    'type': 'unsigned',
+                    'start': 7,
+                    'length': 2
+                },
+                'correctionId': {
+                    'type': 'unsigned',
+                    'start': 9,
+                    'length': 16
+                },
+                'msgTypeValid': {
+                    'type': 'unsigned',
+                    'start': 25,
+                    'length': 1
+                },
+                'msgSubTypeValid': {
+                    'type': 'unsigned',
+                    'start': 26,
+                    'length': 1
+                },
+                'msgInputHandle': {
+                    'type': 'unsigned',
+                    'start': 27,
+                    'length': 1
+                },
+                'msgEncrypted': {
+                    'type': 'unsigned',
+                    'start': 28,
+                    'length': 2
+                },
+                'msgDencrypted': {
+                    'type': 'unsigned',
+                    'start': 30,
+                    'length': 2
+                }
+            }),
+            "msgType": U2,
+            "msgSubType": U2
+        },
+        'aux': {
+            "version": None,
+            "ebno" : [2e-3, "dB"],
+            "reserved0": None,
+            "statusInfo": {
+                'protocol': None,
+                'errStatus': None,
+                'msgUsed': None,
+                'correctionId': None,
+                'msgTypeValid': None,
+                'msgSubTypeValid': None,
+                'msgInputHandle': None,
+                'msgEncrypted': None,
+                'msgDencrypted': None
+            },
+            "MsgType": None,
+            "MsgSubType": None
+        }
+    },
+    'MEASX': {
+        'name': 'RXM-MEASX',
+        'char': b'\x14',
+        'type': POLL,
+        'length': 'Variable',
+        'payload': {
+            "version": U1,
+            "reserved0": U3,
+            "gpsTOW": U4,
+            "gloTOW": U4,
+            "bdsTOW": U4,
+            "reserved1": U4,
+            "qzssTOW": U4,
+            "gpsTOWacc": U2,
+            "gloTOWacc": U2,
+            "bdsTOWacc": U2,
+            "reserved2": U2,
+            "qzssTOWacc": U2,
+            "numSV": U1,
+            "flags": (X1, {
+                'towSet': {
+                    'type': 'unsigned',
+                    'start': 0,
+                    'length': 2
+                }
+            }),
+            "reserved3": U8,
+            "group": (None, {
+                "gnssId": U1,
+                "svId": U1,
+                "cNo": U1,
+                "mpathIndic": U1,
+                "dopplerMS": I4,
+                "dopplerHZ": I4,
+                "wholeChips": U2,
+                "fracChips": U2,
+                "codePhase": U4,
+                "intCodePhase": U1,
+                "pseuRangeRMSErr": U1,
+                "reserved4": U1,
+            })
+        },
+        'aux': {
+            "version": None,
+            "reserved0": None,
+            "gpsTOW": [1, 'ms'],
+            "gloTOW": [1, 'ms'],
+            "bdsTOW": [1, 'ms'],
+            "reserved1": None,
+            "qzssTOW": [1, 'ms'],
+            "gpsTOWacc": [2e-4, 'ms'],
+            "gloTOWacc": [2e-4, 'ms'],
+            "bdsTOWacc": [2e-4, 'ms'],
+            "reserved2": None,
+            "qzssTOWacc": [2e-4, 'ms'],
+            "numSV": None,
+            "flags": (None, {
+                'towSet': None
+            }),
+            "reserved3": None,
+            "group": (None, {
+                "gnssId": None,
+                "svId": None,
+                "cNo": None,
+                "mpathIndic": None,
+                "dopplerMS": [0.04, 'm/s'],
+                "dopplerHZ": [0.2, 'Hz'],
+                "wholeChips": None,
+                "fracChips": None,
+                "codePhase": [2e-21, 'ms'],
+                "intCodePhase": [1, 'ms'],
+                "pseuRangeRMSErr": None,
+                "reserved4": None,
+            })
+        }
+    },
+    'RAWXM': {
+        'name': 'RXM-RAWXM',
+        'char': b'\x15',
+        'type': POLL,
+        'length': 'Variable',
+        'payload': {
+            "rcvTOW": R8,
+            "week": U2,
+            "leapS": I1,
+            "numMeas": U1,
+            "recStat": (X1, {
+                'leapSec': {
+                    'type': 'unsigned',
+                    'start': 0,
+                    'length': 1
+                },
+                'clkReset': {
+                    'type': 'unsigned',
+                    'start': 1,
+                    'length': 1
+                }
+            }),
+            "version": U1,
+            "reserved0": U2,
+            "group": (None, {
+                "prMeas": R8,
+                "cpMeas": R8,
+                "doMeas": R4,
+                "gnssId": U1,
+                "svId": U1,
+                "sigId": U1,
+                "freqId": U1,
+                "lockTime": U2,
+                "cNo": U1,
+                "prStdev": (X1, {
+                    'prStd': {
+                        'type': 'unsigned',
+                        'start': 0,
+                        'length': 4
+                    }
+                }),
+                "cpStdev": (X1, {
+                    'cpStd': {
+                        'type': 'unsigned',
+                        'start': 0,
+                        'length': 4
+                    }
+                }),
+                "doStdev": (X1, {
+                    'doStd': {
+                        'type': 'unsigned',
+                        'start': 0,
+                        'length': 4
+                    }
+                }),
+                "trkStat": (X1, {
+                    'prValid': {
+                        'type': 'unsigned',
+                        'start': 0,
+                        'length': 1
+                    },
+                    'cpValid': {
+                        'type': 'unsigned',
+                        'start': 1,
+                        'length': 1
+                    },
+                    'halfCyc': {
+                        'type': 'unsigned',
+                        'start': 2,
+                        'length': 1
+                    },
+                    'subHalfCyc': {
+                        'type': 'unsigned',
+                        'start': 3,
+                        'length': 1
+                    }
+                }),
+                "reserved1": U1,
+            })
+        },
+        'aux': {
+            "rcvTOW": [1, 's'],
+            "week": [1, 'weeks'],
+            "leapS": [1, 's'],
+            "numMeas": None,
+            "recStat": (None, {
+                'leapSec': None,
+                'clkReset': None
+            }),
+            "version": None,
+            "reserved0": None,
+            "group": (None, {
+                "prMeas": [1, 'm'],
+                "cpMeas": [1, 'cycles'],
+                "doMeas": [1, 'Hz'],
+                "gnssId": None,
+                "svId": None,
+                "sigId": None,
+                "freqId": None,
+                "lockTime": [1, 'ms'],
+                "cNo": [1, 'dbHz'],
+                "prStdev": (None, {
+                    'prStd': [0.1*2, 'Hz']
+                }),
+                "cpStdev": (None, {
+                    'cpStd': [0.004, 'cycles']
+                }),
+                "doStdev": (None, {
+                    'doStd': [0.002*2, 'Hz']
+                }),
+                "trkStat": (None, {
+                    'prValid': None,
+                    'cpValid': None,
+                    'halfCyc': None,
+                    'subHalfCyc': None
+                }),
+                "reserved1": None
+            })
+        }
+    },
+    'SFRBX': {
+        'name': 'RXM-SFRBX',
+        'char': b'\x13',
+        'type': POLL,
+        'length': 'Variable',
+        'payload': {
+            "gnssId": U1,
+            "svId": U1,
+            "sigId": U1,
+            "freqId": U1,
+            "numWords": U1,
+            "chn": U1,
+            "version": U1,
+            "reserved0": U1,
+            "group": (None, {
+                "dWrd": U4,
+            })
+        },
+        'aux': {
+            "gnssId": None,
+            "svId": None,
+            "sigId": None,
+            "freqId": None,
+            "numWords": None,
+            "chn": None,
+            "version": None,
+            "reserved0": None,
+            "group": (None, {
+                "dWrd": None,
+            })
         }
     }
 }
@@ -2180,51 +2488,52 @@ ubx_dict = {
     'ACK': ack_dict,
     'CFG': cfg_dict,
     'ESF': esf_dict,
-    'NAV': nav_dict
+    'NAV': nav_dict,
+    'RXM': rxm_dict
 }
 
 UBX_CONFIG_DATABASE = {
     # CFG_ANA AssistNow Autonomous and Offline configuration
-    "CFG_ANA_USE_ANA": (0x10230001, L),
-    "CFG_ANA_ORBMAXERR": (0x30230002, U2),
+    "CFG_ANA_USE_ANA"           : (0x10230001, L),
+    "CFG_ANA_ORBMAXERR"         : (0x30230002, U2),
     # CFG_BATCH Batched output configuration
-    "CFG_BATCH_ENABLE": (0x10260013, L),
-    "CFG_BATCH_PIOENABLE": (0x10260014, L),
-    "CFG_BATCH_MAXENTRIES": (0x30260015, U2),
-    "CFG_BATCH_WARNTHRS": (0x30260016, U2),
-    "CFG_BATCH_PIOACTIVELOW": (0x10260018, L),
-    "CFG_BATCH_PIOID": (0x20260019, U1),
-    "CFG_BATCH_EXTRAPVT": (0x1026001A, L),
-    "CFG_BATCH_EXTRAODO": (0x1026001B, L),
+    "CFG_BATCH_ENABLE"          : (0x10260013, L),
+    "CFG_BATCH_PIOENABLE"       : (0x10260014, L),
+    "CFG_BATCH_MAXENTRIES"      : (0x30260015, U2),
+    "CFG_BATCH_WARNTHRS"        : (0x30260016, U2),
+    "CFG_BATCH_PIOACTIVELOW"    : (0x10260018, L),
+    "CFG_BATCH_PIOID"           : (0x20260019, U1),
+    "CFG_BATCH_EXTRAPVT"        : (0x1026001A, L),
+    "CFG_BATCH_EXTRAODO"        : (0x1026001B, L),
     # CFG_GEOFENCE Geofencing configuration
-    "CFG_GEOFENCE_CONFLVL": (0x20240011, E1),
-    "CFG_GEOFENCE_USE_PIO": (0x10240012, L),
-    "CFG_GEOFENCE_PINPOL": (0x20240013, E1),
-    "CFG_GEOFENCE_PIN": (0x20240014, U1),
-    "CFG_GEOFENCE_USE_FENCE1": (0x10240020, L),
-    "CFG_GEOFENCE_FENCE1_LAT": (0x40240021, I4),
-    "CFG_GEOFENCE_FENCE1_LON": (0x40240022, I4),
-    "CFG_GEOFENCE_FENCE1_RAD": (0x40240023, U4),
-    "CFG_GEOFENCE_USE_FENCE2": (0x10240030, L),
-    "CFG_GEOFENCE_FENCE2_LAT": (0x40240031, I4),
-    "CFG_GEOFENCE_FENCE2_LON": (0x40240032, I4),
-    "CFG_GEOFENCE_FENCE2_RAD": (0x40240033, U4),
-    "CFG_GEOFENCE_USE_FENCE3": (0x10240040, L),
-    "CFG_GEOFENCE_FENCE3_LAT": (0x40240041, I4),
-    "CFG_GEOFENCE_FENCE3_LON": (0x40240042, I4),
-    "CFG_GEOFENCE_FENCE3_RAD": (0x40240043, U4),
-    "CFG_GEOFENCE_USE_FENCE4": (0x10240050, L),
-    "CFG_GEOFENCE_FENCE4_LAT": (0x40240051, I4),
-    "CFG_GEOFENCE_FENCE4_LON": (0x40240052, I4),
-    "CFG_GEOFENCE_FENCE4_RAD": (0x40240053, U4),
+    "CFG_GEOFENCE_CONFLVL"      : (0x20240011, E1),
+    "CFG_GEOFENCE_USE_PIO"      : (0x10240012, L),
+    "CFG_GEOFENCE_PINPOL"       : (0x20240013, E1),
+    "CFG_GEOFENCE_PIN"          : (0x20240014, U1),
+    "CFG_GEOFENCE_USE_FENCE1"   : (0x10240020, L),
+    "CFG_GEOFENCE_FENCE1_LAT"   : (0x40240021, I4),
+    "CFG_GEOFENCE_FENCE1_LON"   : (0x40240022, I4),
+    "CFG_GEOFENCE_FENCE1_RAD"   : (0x40240023, U4),
+    "CFG_GEOFENCE_USE_FENCE2"   : (0x10240030, L),
+    "CFG_GEOFENCE_FENCE2_LAT"   : (0x40240031, I4),
+    "CFG_GEOFENCE_FENCE2_LON"   : (0x40240032, I4),
+    "CFG_GEOFENCE_FENCE2_RAD"   : (0x40240033, U4),
+    "CFG_GEOFENCE_USE_FENCE3"   : (0x10240040, L),
+    "CFG_GEOFENCE_FENCE3_LAT"   : (0x40240041, I4),
+    "CFG_GEOFENCE_FENCE3_LON"   : (0x40240042, I4),
+    "CFG_GEOFENCE_FENCE3_RAD"   : (0x40240043, U4),
+    "CFG_GEOFENCE_USE_FENCE4"   : (0x10240050, L),
+    "CFG_GEOFENCE_FENCE4_LAT"   : (0x40240051, I4),
+    "CFG_GEOFENCE_FENCE4_LON"   : (0x40240052, I4),
+    "CFG_GEOFENCE_FENCE4_RAD"   : (0x40240053, U4),
     # CFG_HW Hardware configuration
-    "CFG_HW_ANT_CFG_VOLTCTRL": (0x10A3002E, L),
-    "CFG_HW_ANT_CFG_SHORTDET": (0x10A3002F, L),
-    "CFG_HW_ANT_CFG_SHORTDET_POL": (0x10A30030, L),
-    "CFG_HW_ANT_CFG_OPENDET": (0x10A30031, L),
-    "CFG_HW_ANT_CFG_OPENDET_POL": (0x10A30032, L),
-    "CFG_HW_ANT_CFG_PWRDOWN": (0x10A30033, L),
-    "CFG_HW_ANT_CFG_PWRDOWN_POL": (0x10A30034, L),
+    "CFG_HW_ANT_CFG_VOLTCTRL"       : (0x10A3002E, L),
+    "CFG_HW_ANT_CFG_SHORTDET"       : (0x10A3002F, L),
+    "CFG_HW_ANT_CFG_SHORTDET_POL"   : (0x10A30030, L),
+    "CFG_HW_ANT_CFG_OPENDET"        : (0x10A30031, L),
+    "CFG_HW_ANT_CFG_OPENDET_POL"    : (0x10A30032, L),
+    "CFG_HW_ANT_CFG_PWRDOWN"        : (0x10A30033, L),
+    "CFG_HW_ANT_CFG_PWRDOWN_POL"    : (0x10A30034, L),
     "CFG_HW_ANT_CFG_RECOVER": (0x10A30035, L),
     "CFG_HW_ANT_SUP_SWITCH_PIN": (0x20A30036, U1),
     "CFG_HW_ANT_SUP_SHORT_PIN": (0x20A30037, U1),

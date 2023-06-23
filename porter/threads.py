@@ -1,8 +1,7 @@
 import threading
-import pickle
 import logging
 import time
-#import signal
+import copy
 
 logger = logging.getLogger()
 
@@ -34,8 +33,11 @@ class Sensors(threading.Thread):
         self.sensor_name = sensor_name
         self.chunk_size = chunk_size
 
-        name = path+'/sensors_data/'+self.sensor_name+'_'+date+'.pck'
-        self.pck = open(name, 'ab')
+        name = path+'/sensors_data/'+self.sensor_name+'_'+date+'.bin'
+        try:
+            self.datafile = open(name, 'r+b')
+        except FileNotFoundError:
+            self.datafile = open(name, 'x+b')
 
         self.shutdown_flag = flag
 
@@ -43,23 +45,26 @@ class Sensors(threading.Thread):
 
         logging.info(f'Sensor {self.sensor_name} started')
 
-        while not self.shutdown_flag.is_set():
-            self.sensor_lock.acquire()
-            temp = self.conn.read(self.chunk_size)
-            self.sensor_lock.release()
-            if self.tx_queue is not None:
-                self.tx_lock.acquire()
-                msg = []
-                msg.append(self.sensor_name)
-                msg.append(temp)
-                self.tx_queue.put(msg)
-                self.tx_lock.release()
-            pickle.dump(temp, self.pck)
+        with self.datafile as binary:
+            while not self.shutdown_flag.is_set():
+                self.sensor_lock.acquire()
+                temp = self.conn.read(self.chunk_size)
+                self.sensor_lock.release()
+                if self.tx_queue is not None:
+                    self.tx_lock.acquire()
+                    msg = []
+                    msg.append(self.sensor_name)
+                    msg.append(temp)
+                    self.tx_queue.put(msg)
+                    self.tx_lock.release()
+                binary.write(temp)
 
 class Camera(threading.Thread):
 
     def __init__(self, camera, flag, mode, \
-                 camera_name=None, fps=2, *args, **kwargs):
+                 camera_name=None, fps=2,
+                 frames=None, duration=None,
+                 *args, **kwargs):
 
         """Class to create a thread for each sensor
 
@@ -68,6 +73,8 @@ class Camera(threading.Thread):
             flag (threading.Event): flag to communicate to the thread a particular event happened
             camera_mode (str): camera mode
             fps (float): number of fps in case of photo mode
+            frames (int): number of photo in case of photo mode
+            duration (float): duration of the video in case of video mode
         """
 
         super().__init__(*args, **kwargs)
@@ -75,9 +82,22 @@ class Camera(threading.Thread):
         self.camera = camera
 
         self.camera_name = camera_name
-        self.timing = 1/fps
-
         self.mode = mode
+
+        if fps is not None:
+            self.timing = 1/fps
+        else:
+            self.timing = None
+        
+        if frames is not None:
+            self.frames = int(frames)
+        else:
+            self.frames = int(1e9)
+
+        if duration is not None:
+            self.duration = duration
+        else:
+            self.duration = 1e9
 
         self.shutdown_flag = flag
 
@@ -85,15 +105,35 @@ class Camera(threading.Thread):
 
         logging.info(f'Camera {self.camera_name} started')
 
-
         if self.mode == 'video':
+            flag = True
+            video_chunks = 10*60
+            secs_remaining = copy.copy(self.duration)
             while not self.shutdown_flag.is_set():
-                self.camera.video_control()
+                self.camera.messageHandler(['videocontrol'])
+                if flag:
+                    if secs_remaining < video_chunks:
+                        time.sleep(secs_remaining)
+                        self.camera.messageHandler(['videocontrol'])
+                        break
+                    else:
+                        time.sleep(video_chunks)
+                        secs_remaining -= video_chunks
+                    flag = not flag
+                else:
+                    flag = not flag
+
         elif self.mode == 'photo':
+            photo_count = 0
             while not self.shutdown_flag.is_set():
                 t = time.time()
-                self.camera.capture_photo()
+                self.camera.messageHandler(['capture'])
                 time.sleep(self.timing-(time.time()-t))
+                
+                photo_count += 1
+                if photo_count > self.frames:
+                    break
+
 
 class Receiver(threading.Thread):
 

@@ -1,11 +1,12 @@
-local_development: True
+local_development: False
+use_valon: True
 
 camera:
   name: Sony
   mode: video
-  ISO: 200
-  shutter_speed: 0.01
-  focus_infinity: True
+  ISO: 400
+  shutter_speed: 0.05
+  focus_distance: infinity
 
 sensors:
     GPS_1:
@@ -13,29 +14,31 @@ sensors:
       connection:
         type: serial
         parameters:
-          port: /dev/UBLox
-          baudrate: 38400
+          port: /dev/ttyAMA0
+          baudrate: 115200
       sensor_info:
         type: GPS
         manufacturer: UBlox
       configuration:
-        RTCM:
-          output:
-            uart_port: 2
-            usb: False
         NMEA:
           output:
-            port: UART2
+            port: UART1
             set: False
         UBX:
           output:
-            port: UART2
+            port: UART1
             set: True
+        RATE:
+          value: 5
         UBX_MSG:
-          output_port: ['uart', 2]
+          output_port: ['uart', 1]
           NAV: [
             'POSECEF',
             'POSLLH'
+            ]
+          RXM: [
+            'RAWX',
+            'SFRBX'
             ]
 
     Inclinometer_1:
@@ -43,11 +46,13 @@ sensors:
       connection:
         type: serial
         parameters:
-          port: /dev/Inclinometer
+          port: /dev/inclinometer
           baudrate: 115200
-        sensor_info:
-          type: Inclinometer
-          manufacturer: Inertial_Labs
+      sensor_info:
+        type: Inclinometer
+        manufacturer: Inertial_Labs
+      configuration:
+        mode: KERNEL_CalibHR
     
     ADC_1:
       name: ADS1115
@@ -55,7 +60,7 @@ sensors:
         type: I2C
         parameters:
           mode: differential
-          channels: [0,1]
+          channels: [[0,1]]
           output: value
       sensor_info:
           type: ADC
@@ -66,16 +71,16 @@ sensors:
     
     DAC_1:
       name: MCP4725
-        connection:
-          type: I2C
-          parameters:
-            address: 0x60
-        sensor_info:
-            type: DAC
-            manufacturer: ADS
-        configuration: 
-          voltage: 1.5
-          max_voltage: 3.3
+      connection:
+        type: I2C
+        parameters:
+          address: 0x60
+      sensor_info:
+          type: DAC
+          manufacturer: ADS
+      configuration: 
+        voltage: 0.8
+        max_voltage: 3.3
 
 source:
   name: VALON-5019

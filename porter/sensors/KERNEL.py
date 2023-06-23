@@ -1,5 +1,6 @@
 import serial
 import pickle
+import copy
 
 import sensors.sensors_db.KERNEL as Kdb
 import sensors.KERNEL_utils as utils
@@ -7,9 +8,6 @@ import sensors.KERNEL_utils as utils
 import logging
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
-
 
 class KernelInertial:
 
@@ -18,12 +16,14 @@ class KernelInertial:
         self.port = port
         self.baudrate = baudrate
 
+        self.__first_msg = True
+
         self.conn = serial.Serial(port, baudrate=baudrate, timeout=1)
 
         name = kwargs.get('name', 'Generic Kernel')
 
         if self.conn.is_open:
-            logging.info(f'Connected to KERNEL sensor {name}')
+            logger.info(f'Connected to KERNEL sensor {name}')
        
     def _check_rate(self, mode):
 
@@ -53,7 +53,7 @@ class KernelInertial:
 
         chk = utils._checksum(msg)
 
-        return msg + chk
+        return msg + chk, chk
 
     def payload_UDD(self, data):
 
@@ -76,17 +76,39 @@ class KernelInertial:
         self._INC_mode = mode
 
         if mode == 'USER_DEFINED_DATA':
-            msg_1 = self.payload_cmds(mode)
+            msg_1, chk = self.payload_cmds(mode)
             msg_2 = self.payload_UDD(config['UDD_data'])
 
             self.conn.write(msg_1)
             self.conn.write(msg_2)
         else:
-            self.conn.write(self.payload_cmds(mode))
+            msg, chk = self.payload_cmds(mode)
 
-        logging.info('Sent message to start collecting Inclinometer data')
-        logging.info(f'Mode Used: {mode}')
+            self.conn.write(msg)
 
+        ack = self.conn.read_until(expected=utils.HEADER)[:-2]
+
+        val = copy.copy(ack[5:7])
+
+        if val == chk:
+            logger.info('Sent message to start collecting Inclinometer data')
+            logger.info(f'Mode Used: {mode}')
+        else:
+            logger.info('Cannot connect to inclinometer')
+        
+
+    def read(self, chunk_size=None):
+
+        if self.__first_msg:
+            msg = self._find_msg()
+        else:
+            if chunk_size is None:
+                msg = self.conn.read(self.expected_length)
+            else:
+                msg = self.conn.read(chunk_size)
+
+        return msg
+    
     def _find_msg(self):
 
         """Find the first message available with output data
@@ -96,9 +118,13 @@ class KernelInertial:
         temp = self.conn.read_until(expected=utils.HEADER)[:-2]
         pre = self.conn.read(4)
 
-        length = int.from_bytes(pre[2], byteorder='little', signed=False)
+        length = int.from_bytes(pre[2:3], byteorder='little', signed=False)
 
-        payload = self.read(length-4)
+        if self.__first_msg:
+            self.expected_length = copy.copy(length)
+            self.__first_msg = False
+
+        payload = self.conn.read(length-4)
 
         if len(payload) > len(temp)-4:
             msg = pre + payload
@@ -107,7 +133,7 @@ class KernelInertial:
 
         return msg, length
 
-    def read_single(self, decode=False):
+    def read_single(self, decode=False, return_dict=False):
 
         """ Read the first single message available from a Kernel Device
         
@@ -117,7 +143,7 @@ class KernelInertial:
 
         if decode:
             msg_class = utils.KernelMsg()
-            msg = msg_class.decode_single(msg)
+            msg = msg_class.decode_single(msg, return_dict=return_dict)
         
         return msg
     
@@ -136,7 +162,7 @@ class KernelInertial:
                     break
             count += 1
 
-        logging.info('Stop Collecting Data')
+        logger.info('Stop Collecting Data')
     
     def stream_data(self, max_counter=None):
 
