@@ -8,6 +8,8 @@ logger = logging.getLogger()
 class FakeConnection:
 
     def __init__(self, name):
+        
+        self.name = name
 
         logger.info(f'Created fake sensor for {name}')
 
@@ -15,8 +17,12 @@ class FakeConnection:
 
         count = 0
         while count < chunk_size:
-            val = str(random.random())
+            val = bytes(int(random.random()))
             count += 1
 
         time.sleep(0.01)
         return val
+    
+    def close(self):
+        
+        logger.info(f'Closed fake sensor {self.name}')

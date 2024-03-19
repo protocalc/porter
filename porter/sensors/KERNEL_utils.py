@@ -1,7 +1,7 @@
 import struct
 import pickle
 
-import sensors.sensors_db.KERNEL as Kdb
+import porter.sensors.sensors_db.KERNEL as Kdb
 
 HEADER = b'\xAA\x55'
 

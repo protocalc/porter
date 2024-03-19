@@ -1,0 +1,10 @@
+local_development: True
+
+source:
+  name: VALON-5019
+  port: /dev/VALON
+  baudrate: 9600
+  freq: 90
+  power: 4
+  mod_amp: 15
+  mod_freq: 0

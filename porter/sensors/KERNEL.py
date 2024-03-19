@@ -2,8 +2,8 @@ import serial
 import pickle
 import copy
 
-import sensors.sensors_db.KERNEL as Kdb
-import sensors.KERNEL_utils as utils
+import porter.sensors.sensors_db.KERNEL as Kdb
+import porter.sensors.KERNEL_utils as utils
 
 import logging
 

@@ -1,13 +1,13 @@
-import sensors.ubx as ubx
-import sensors.KERNEL as KERNEL
-import sensors.FakeSensor as fake
+import porter.sensors.ubx as ubx
+import porter.sensors.KERNEL as KERNEL
+import porter.sensors.FakeSensor as fake
 
 try:
-    import sensors.ads1115 as ads
+    import porter.sensors.ads1115 as ads
 except ModuleNotFoundError:
     pass
 
-import sensors.mcp4725 as mcp
+import porter.sensors.mcp4725 as mcp
 
 
 class Handler:
@@ -26,8 +26,8 @@ class Handler:
     def _connection(self):
 
         if self.local:
-            self.conn = fake.FakeConnection(self.sensor_params['name'])
-        
+            self.obj = fake.FakeConnection(self.sensor_params['name'])
+
         else:
             if self.sensor_params['sensor_info']['type'].lower() == 'gps':
 

@@ -16,6 +16,7 @@ class valon:
         '''
 
         self.conn = serial.Serial(port, baud, timeout=1)
+        print(self.conn)
 
     def send_receive(self, msg, receive=True):
 

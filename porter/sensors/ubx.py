@@ -9,6 +9,8 @@ class UBX:
     def __init__(self, port, baudrate, name):
 
         self.conn = serial.Serial(port, baudrate, timeout = 1)
+        
+        print(self.conn)
 
         if self.conn.is_open:
             logging.info(f'Connected to ublox sensor {name}')

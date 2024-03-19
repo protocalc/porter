@@ -9,22 +9,22 @@ sensors:
         parameters:
           mode: differential
           channels: [[0,1]]
-          output: value
+          output: voltage
       sensor_info:
           type: ADC
           manufacturer: ADS
       configuration: 
-        gain: 8
-        data_rate: 128
+        gain: 16
+        data_rate: 250
 
 source:
   name: VALON-5019
   port: /dev/VALON
   baudrate: 9600
   freq: 90
-  power: 4
-  mod_amp: 15
-  mod_freq: 0
+  power: -4
+  mod_amp: 16
+  mod_freq: 47
 
 telemetry:
   enabled: False

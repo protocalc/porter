@@ -12,13 +12,24 @@ import porter.threads as threads
 
 import porter.sensors.sensors_handler as sh
 
-import sour_core.sony.SONYconn as cam
+try:
+    import sour_core.sony.SONYconn as cam
+except ModuleNotFoundError:
+    pass
 import logging
 
 import porter.valon as valon
 
-path = os.path.dirname(os.path.join(os.path.realpath(__file__)), '..')
+path = os.path.dirname(os.path.realpath(__file__))
 date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+
+logging.basicConfig(
+    filename=path+'/'+date+'.log',
+    filemode='w',
+    format='%(asctime)s  [%(threadName)s]  %(levelname)s:%(message)s',
+    datefmt='%Y/%m/%d %H:%M:%S',
+    level=logging.DEBUG
+    )
 
 logger = logging.getLogger('mainlogger')
 
@@ -58,6 +69,9 @@ def main():
 
     for sig in signal_to_catch:
         signal.signal(sig, handler)
+        
+    tx_queue = None
+    tx_lock = None
 
     try:
 
@@ -105,7 +119,7 @@ def main():
                     daemon=True
                 ).start()
 
-        if 'valon' in config.keys():
+        if 'source' in config.keys():
 
             synt=valon.valon(config['source']['port'], config['source']['baudrate'])
 
@@ -116,7 +130,7 @@ def main():
 
             time.sleep(2)
         
-        if 'camera' in config.keys():
+        if 'camera' in config.keys() and not config['local_development']:
 
             camera = cam(config['camera']['name'])
 
@@ -205,7 +219,7 @@ def main():
             sensor_connections[i].close()
             logging.info(f'Sensor {sensor_names[i]} closed')
 
-        if 'camera' in config.keys():
+        if 'camera' in config.keys() and not config['local_development']:
             if camera._recording_status():
                 camera.video_control()
 

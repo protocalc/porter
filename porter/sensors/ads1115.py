@@ -117,7 +117,7 @@ class ads1115:
         
         while count <= chunk_size/bytes_per_msg:
             t = time.time()
-
+            
             if return_binary:
                 t = struct.pack('<d', t)
             
@@ -129,6 +129,9 @@ class ads1115:
                 msg += self._get_voltage()
 
             time_last_sample = time.time()
+            
+            if return_binary:
+                t, = struct.unpack('<d', t)
 
             if time_last_sample-t < self.__time_sample:
                 time.sleep(
