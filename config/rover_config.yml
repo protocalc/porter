@@ -1,5 +1,4 @@
 local_development: True
-use_valon: False
 
 camera:
   name: Sony

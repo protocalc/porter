@@ -1,5 +1,4 @@
 local_development: False
-use_valon: True
 
 sensors:
     ADC_1:

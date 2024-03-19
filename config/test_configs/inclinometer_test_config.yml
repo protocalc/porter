@@ -1,4 +1,5 @@
 local_development: False
+
 sensors:
     Inclinometer_1:
       name: Kernel-100

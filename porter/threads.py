@@ -5,19 +5,35 @@ import copy
 
 logger = logging.getLogger()
 
+
 class Sensors(threading.Thread):
 
-    def __init__(self, conn, tx_queue, tx_lock, sensor_lock, flag, date, path, \
-                 sensor_name=None, chunk_size=250, *args, **kwargs):
-
+    def __init__(
+        self,
+        conn,
+        tx_queue,
+        tx_lock,
+        sensor_lock,
+        flag,
+        date,
+        path,
+        sensor_name=None,
+        chunk_size=250,
+        *args,
+        **kwargs,
+    ):
         """Class to create a thread for each sensor
 
         Parameters:
             conn (Object): object with the connection to a specific sensor
-            tx_queue (Queue.queue): queue to add the readings to a transmitting queue common to all sensors
-            tx_lock (threading.lock): lock to preserve multiple attempts to access the transmitting queue
-            sensor_lock (threading.lock): lock to preserve multiple attempts to access the sensor queue
-            flag (threading.Event): flag to communicate to the thread a particular event happened
+            tx_queue (Queue.queue): queue to add the readings to a transmitting
+                                    queue common to all sensors
+            tx_lock (threading.lock): lock to preserve multiple attempts to
+                                      access the transmitting queue
+            sensor_lock (threading.lock): lock to preserve multiple attempts to
+                                          access the sensor queue
+            flag (threading.Event): flag to communicate to the thread a
+                                    particular event happened
             date (str): string with the date and time at the program start
             path (str): path for file storage
         """
@@ -33,17 +49,17 @@ class Sensors(threading.Thread):
         self.sensor_name = sensor_name
         self.chunk_size = chunk_size
 
-        name = path+'/sensors_data/'+self.sensor_name+'_'+date+'.bin'
+        name = path + self.sensor_name + "_" + date + ".bin"
         try:
-            self.datafile = open(name, 'r+b')
+            self.datafile = open(name, "r+b")
         except FileNotFoundError:
-            self.datafile = open(name, 'x+b')
+            self.datafile = open(name, "x+b")
 
         self.shutdown_flag = flag
 
     def run(self):
 
-        logging.info(f'Sensor {self.sensor_name} started')
+        logging.info(f"Sensor {self.sensor_name} started")
 
         with self.datafile as binary:
             while not self.shutdown_flag.is_set():
@@ -59,18 +75,27 @@ class Sensors(threading.Thread):
                     self.tx_lock.release()
                 binary.write(temp)
 
+
 class Camera(threading.Thread):
 
-    def __init__(self, camera, flag, mode, \
-                 camera_name=None, fps=2,
-                 frames=None, duration=None,
-                 *args, **kwargs):
-
+    def __init__(
+        self,
+        camera,
+        flag,
+        mode,
+        camera_name=None,
+        fps=2,
+        frames=None,
+        duration=None,
+        *args,
+        **kwargs,
+    ):
         """Class to create a thread for each sensor
 
         Parameters:
             camera (Object): camera object
-            flag (threading.Event): flag to communicate to the thread a particular event happened
+            flag (threading.Event): flag to communicate to the thread a
+                                    particular  event happened
             camera_mode (str): camera mode
             fps (float): number of fps in case of photo mode
             frames (int): number of photo in case of photo mode
@@ -85,10 +110,10 @@ class Camera(threading.Thread):
         self.mode = mode
 
         if fps is not None:
-            self.timing = 1/fps
+            self.timing = 1 / fps
         else:
             self.timing = None
-        
+
         if frames is not None:
             self.frames = int(frames)
         else:
@@ -103,18 +128,18 @@ class Camera(threading.Thread):
 
     def run(self):
 
-        logging.info(f'Camera {self.camera_name} started')
+        logging.info(f"Camera {self.camera_name} started")
 
-        if self.mode == 'video':
+        if self.mode == "video":
             flag = True
-            video_chunks = 10*60
+            video_chunks = 10 * 60
             secs_remaining = copy.copy(self.duration)
             while not self.shutdown_flag.is_set():
-                self.camera.messageHandler(['videocontrol'])
+                self.camera.messageHandler(["videocontrol"])
                 if flag:
                     if secs_remaining < video_chunks:
                         time.sleep(secs_remaining)
-                        self.camera.messageHandler(['videocontrol'])
+                        self.camera.messageHandler(["videocontrol"])
                         break
                     else:
                         time.sleep(video_chunks)
@@ -123,13 +148,13 @@ class Camera(threading.Thread):
                 else:
                     flag = not flag
 
-        elif self.mode == 'photo':
+        elif self.mode == "photo":
             photo_count = 0
             while not self.shutdown_flag.is_set():
                 t = time.time()
-                self.camera.messageHandler(['capture'])
-                time.sleep(self.timing-(time.time()-t))
-                
+                self.camera.messageHandler(["capture"])
+                time.sleep(self.timing - (time.time() - t))
+
                 photo_count += 1
                 if photo_count > self.frames:
                     break
@@ -137,7 +162,16 @@ class Camera(threading.Thread):
 
 class Receiver(threading.Thread):
 
-    def __init__(self, xbee_obj, destination_connections, destination_locks, xlock, flag, *args, **kwargs):
+    def __init__(
+        self,
+        xbee_obj,
+        destination_connections,
+        destination_locks,
+        xlock,
+        flag,
+        *args,
+        **kwargs,
+    ):
 
         super().__init__(*args, **kwargs)
 
@@ -161,6 +195,7 @@ class Receiver(threading.Thread):
             self.destination_connections.write(msg)
             self.destination_locks[dest].release()
 
+
 class Transmitter(threading.Thread):
 
     def __init__(self, xbee_obj, tx_queue, qlock, xlock, flag, *args, **kwargs):
@@ -169,7 +204,7 @@ class Transmitter(threading.Thread):
 
         self.xbee_obj = xbee_obj
         self.tx_queue = tx_queue
-        
+
         self.qlock = qlock
         self.xlock = xlock
 
