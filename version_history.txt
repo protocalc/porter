@@ -1,24 +1,26 @@
-v2.3 : - Solved a bug in GPS configuration 
-       - Rewrote the configuration method in the handler
-       - Solved a bug in GPS reader
-       - Removed chunk_size from the option in threads. Each message is
-         read considiring its proper length
-       - Added time of the first inclinometer message
-v2.2 : - Explicitly stop the inclinometer
-       - Solved a bug in calculation of the length for the inclinometer 
-         payload
-       - Solved a bug in the ACK message from the inclinometer
-v2.1 : - Formatted all the code with black
-       - Added a close function to the different sensors
-       - Changed the path for saving data and log together
-v2.01: - Solved minor bugs throughout the code
-v2.0 : - Removed all the old GUI files to control the telemetry from the
-         ground
-       - Removed all the ublox files, now everything is done through
-         pyubx2
-       - Removed camera control from porter, now it is a separate library
-       - A single script is now used with different configuration for
-         different scenarios
-       - Data from sensors are now saved as .bin file and like a unique
-         string of bytes
+v2.4b : - Added first attempt to decoder scripts for inclinometera and
+          ublox (untested in beta)
+v2.3  : - Solved a bug in GPS configuration 
+        - Rewrote the configuration method in the handler
+        - Solved a bug in GPS reader
+        - Removed chunk_size from the option in threads. Each message is
+          read considiring its proper length
+        - Added time of the first inclinometer message
+v2.2  : - Explicitly stop the inclinometer
+        - Solved a bug in calculation of the length for the inclinometer 
+          payload
+        - Solved a bug in the ACK message from the inclinometer
+v2.1  : - Formatted all the code with black
+        - Added a close function to the different sensors
+        - Changed the path for saving data and log together
+v2.01 : - Solved minor bugs throughout the code
+v2.0  : - Removed all the old GUI files to control the telemetry from the
+          ground
+        - Removed all the ublox files, now everything is done through
+          pyubx2
+        - Removed camera control from porter, now it is a separate library
+        - A single script is now used with different configuration for
+          different scenarios
+        - Data from sensors are now saved as .bin file and like a unique
+          string of bytes
       

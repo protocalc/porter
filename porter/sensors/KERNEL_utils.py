@@ -3,11 +3,12 @@ import pickle
 
 import porter.sensors.sensors_db.KERNEL as Kdb
 
-HEADER = b'\xAA\x55'
+HEADER = b"\xAA\x55"
+
 
 def _checksum(msg):
     """Compute the checksum of a message
-    
+
     The checksum is the arithmetical sum of all the bytes in the message
     excluding the header. The resulting sum is an unsigned short integer
     whose Least Significant Byte is first
@@ -23,7 +24,7 @@ def _checksum(msg):
     if msg.startswith(HEADER):
         msg = msg[2:]
 
-    return sum(msg).to_bytes(2, byteorder='little', signed=False)
+    return sum(msg).to_bytes(2, byteorder="little", signed=False)
 
 
 class KernelMsg:
@@ -33,8 +34,7 @@ class KernelMsg:
         self.msg_address = []
 
         for i in Kdb.MODES.keys():
-            self.msg_address.append(Kdb.MODES[i]['Address'])
-
+            self.msg_address.append(Kdb.MODES[i]["Address"])
 
     def decode_single(self, msg, return_dict=False):
         """Decode a single message sent by the inclinometer
@@ -52,45 +52,46 @@ class KernelMsg:
         else:
             type_idx = 1
 
-        msg_type = msg[type_idx].to_bytes(1, byteorder='little')
+        msg_type = msg[type_idx].to_bytes(1, byteorder="little")
         modes = list(Kdb.MODES.keys())
-
-        print('msg_type', msg_type)
 
         idx = self.msg_address.index(msg_type)
 
-        struct_type = '<'+''.join(Kdb.MODES[modes[idx]]['Type'])
-        scale = Kdb.MODES[modes[idx]]['Scale']
+        struct_type = "<" + "".join(Kdb.MODES[modes[idx]]["Type"])
+        scale = Kdb.MODES[modes[idx]]["Scale"]
 
-        vals = struct.unpack(struct_type, msg[type_idx+3:-2])
+        vals = struct.unpack(struct_type, msg[type_idx + 3 : -2])
 
         if return_dict:
-            vals = dict(zip(
-                Kdb.MODES[modes[idx]]['Parameters'],
-                list( map( lambda x,y: x/y, vals, scale ) )
-                ))
+            vals = dict(
+                zip(
+                    Kdb.MODES[modes[idx]]["Parameters"],
+                    list(map(lambda x, y: x / y, vals, scale)),
+                )
+            )
 
         return vals
 
     def decode_multi(self, filename):
-
-        """Decode multiple messages saved in a binary file
-        """
+        """Decode multiple messages saved in a binary file"""
 
         count = 0
-        
-        with open(filename, 'rb') as pck:
-            data = pickle.load(pck)
+
+        with open(filename, "rb") as fd:
+            if filename[-3:].lower() == ".pck":
+                data = pickle.load(fd)
+            else:
+                data = fd.read()
 
         data = data.partition(HEADER)
 
         for i in data:
             if i == HEADER:
                 pass
-            
+
             else:
                 if count == 0:
-                    if len(data[count]) < len(data[count+2]):
+                    if len(data[count]) < len(data[count + 2]):
                         pass
                     else:
                         vals = self.decode_single(i, return_dict=True)
