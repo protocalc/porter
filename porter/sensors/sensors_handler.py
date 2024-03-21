@@ -71,14 +71,5 @@ class Handler:
                     self.conn = self.obj.conn
 
     def _configuration(self):
-
-        if self.sensor_params["sensor_info"]["type"].lower() == "gps":
-
-            config = ubx.UBXconfig(
-                serial_connection=self.obj, name=self.sensor_params["name"]
-            )
-
-            config.configure(self.sensor_params["configuration"])
-
-        else:
-            self.obj.configure(self.sensor_params["configuration"])
+        
+        self.obj.configure(self.sensor_params["configuration"])

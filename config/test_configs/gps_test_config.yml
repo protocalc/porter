@@ -6,7 +6,7 @@ sensors:
       connection:
         type: serial
         parameters:
-          port: /dev/AMA0
+          port: /dev/ttyAMA0
           baudrate: 115200
       sensor_info:
         type: GPS
@@ -23,7 +23,7 @@ sensors:
         RATE:
           value: 1
         UBX_MSG:
-          output_port: USB
+          output_port: UART1
           NAV: [
             'POSECEF',
             'POSLLH'

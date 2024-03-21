@@ -139,6 +139,7 @@ class KernelInertial:
         if self.__first_msg:
             self.expected_length = copy.copy(length+2)
             self.__first_msg = False
+            logger.info(f"Read First Message from {self.name}")
 
         payload = self.conn.read(length - 4)
 

@@ -18,7 +18,6 @@ class Sensors(threading.Thread):
         date,
         path,
         sensor_name=None,
-        chunk_size=250,
         *args,
         **kwargs,
     ):
@@ -47,7 +46,6 @@ class Sensors(threading.Thread):
         self.sensor_lock = sensor_lock
 
         self.sensor_name = sensor_name
-        self.chunk_size = chunk_size
 
         name = path + self.sensor_name + "_" + date + ".bin"
         try:
@@ -64,7 +62,7 @@ class Sensors(threading.Thread):
         with self.datafile as binary:
             while not self.shutdown_flag.is_set():
                 self.sensor_lock.acquire()
-                temp = self.conn.read(self.chunk_size)
+                temp = self.conn.read()
                 self.sensor_lock.release()
                 if self.tx_queue is not None:
                     self.tx_lock.acquire()

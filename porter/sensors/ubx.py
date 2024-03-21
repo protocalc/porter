@@ -10,9 +10,10 @@ class UBX:
     def __init__(self, port, baudrate, name):
 
         self.conn = serial.Serial(port, baudrate, timeout=1)
+        self.name = name
 
         if self.conn.is_open:
-            logging.info(f"Connected to ublox sensor {name}")
+            logging.info(f"Connected to ublox sensor {self.name}")
 
     def configure(self, config):
 
@@ -26,7 +27,7 @@ class UBX:
             if i.lower() == "rate":
 
                 time = int(1 / config["RATE"]["value"] * 1000)
-                keys.append([("CFG_RATE_MEAS", time)])
+                keys.append(("CFG_RATE_MEAS", time))
 
             elif i.lower() == "ubx_msg":
 
@@ -46,7 +47,7 @@ class UBX:
                         for k in config["UBX_MSG"][j]:
                             msg = string + j + "_" + k + "_" + port_string
 
-                            keys.append([msg, 1])
+                            keys.append((msg, 1))
 
             elif i.lower() == "nmea" or i.lower() == "ubx":
 
@@ -57,7 +58,7 @@ class UBX:
 
                 string = "CFG_" + config[i]["output"]["port"] + "OUTPROT_" + i
 
-                keys.append([(string, output)])
+                keys.append((string, output))
 
             else:
                 if isinstance(config[i], list):
@@ -74,7 +75,9 @@ class UBX:
 
     def read(self, parsing=False):
 
-        raw, parsed = ubx.UBXReader(self.conn, parsing=parsing)
+        reader = ubx.UBXReader(self.conn, parsing=parsing)
+        
+        raw, parsed = reader.read()
 
         if parsing:
             return parsed
