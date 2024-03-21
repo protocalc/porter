@@ -6,7 +6,7 @@ sensors:
       connection:
         type: serial
         parameters:
-          port: /dev/USB0
+          port: /dev/AMA0
           baudrate: 115200
       sensor_info:
         type: GPS

@@ -1,6 +1,7 @@
 import serial
 import pickle
 import copy
+import time
 
 import porter.sensors.sensors_db.KERNEL as Kdb
 import porter.sensors.KERNEL_utils as utils
@@ -21,10 +22,10 @@ class KernelInertial:
 
         self.conn = serial.Serial(port, baudrate=baudrate, timeout=1)
 
-        name = kwargs.get("name", "Generic Kernel")
+        self.name = kwargs.get("name", "Generic Kernel")
 
         if self.conn.is_open:
-            logger.info(f"Connected to KERNEL sensor {name}")
+            logger.info(f"Connected to KERNEL sensor {self.name}")
 
     def _check_rate(self, mode):
 
@@ -83,9 +84,9 @@ class KernelInertial:
 
             self.conn.write(msg)
 
-        ack = self.conn.read_until(expected=utils.HEADER)[:-2]
+        ack = self.conn.read(10)
 
-        val = copy.copy(ack[5:7])
+        val = copy.copy(ack[6:8])
 
         if val == chk:
             logger.info("Sent message to start collecting Inclinometer data")
@@ -96,9 +97,10 @@ class KernelInertial:
     def read(self, chunk_size=None):
 
         if self.__first_msg:
-            msg = self._find_msg()
+            msg, length = self._find_msg()
+        
         else:
-            if chunk_size is None:
+            if self.expected_length is not None:
                 msg = self.conn.read(self.expected_length)
             else:
                 msg = self.conn.read(chunk_size)
@@ -106,13 +108,28 @@ class KernelInertial:
         return msg
 
     def close(self):
+        
+        msg = (
+            utils.HEADER
+            + b"\x00"
+            + b"\x00"
+            + b"\x07"
+            + b"\x00"
+            + b"\xFE"
+        )
+
+        chk = utils._checksum(msg)
+        self.conn.write(msg + chk)
 
         self.conn.close()
 
         logging.info(f"Closed sensor {self.name}")
 
-    def _find_msg(self):
+    def _find_msg(self,waiting=2):
         """Find the first message available with output data"""
+        
+        if self.__first_msg:
+            time.sleep(waiting)
 
         temp = self.conn.read_until(expected=utils.HEADER)[:-2]
         pre = self.conn.read(4)
@@ -120,16 +137,16 @@ class KernelInertial:
         length = int.from_bytes(pre[2:3], byteorder="little", signed=False)
 
         if self.__first_msg:
-            self.expected_length = copy.copy(length)
+            self.expected_length = copy.copy(length+2)
             self.__first_msg = False
 
         payload = self.conn.read(length - 4)
 
         if len(payload) > len(temp) - 4:
-            msg = pre + payload
+            msg = utils.HEADER + pre + payload
         else:
             msg = temp
-
+        
         return msg, length
 
     def read_single(self, decode=False, return_dict=False):

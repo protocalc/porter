@@ -25,13 +25,13 @@ home_dir = os.environ["HOME"]
 
 date = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-if not os.path.exists(path + "/data"):
-    os.mkdir(path + "/data")
+if not os.path.exists(home_dir + "/data"):
+    os.mkdir(home_dir + "/data")
 if not os.path.exists(path + "/data/" + date):
-    os.mkdir(path + "/data/" + date)
+    os.mkdir(home_dir + "/data/" + date)
 
 logging.basicConfig(
-    filename=home_dir + "/data/" + date + "file.log",
+    filename=home_dir + "/data/" + date + "/file.log",
     filemode="w",
     format="%(asctime)s  [%(threadName)s]  %(levelname)s:%(message)s",
     datefmt="%Y/%m/%d %H:%M:%S",
