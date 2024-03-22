@@ -105,4 +105,6 @@ class KernelMsg:
                         vals = self.decode_single(i, return_dict=True)
                         keys = vals.keys()
 
+            count += 1
+
         return vals
