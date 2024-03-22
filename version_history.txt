@@ -1,3 +1,5 @@
+v2.4.1: - Correct minor bug in camera configuration and camera library
+          import
 v2.4  : - UBlox and Inclinometer decoders have been tested and worked
         - Changed the decoder of multiple messages for the inclinometer
 v2.4b : - Added first attempt to decoder scripts for inclinometera and
@@ -15,7 +17,7 @@ v2.2  : - Explicitly stop the inclinometer
 v2.1  : - Formatted all the code with black
         - Added a close function to the different sensors
         - Changed the path for saving data and log together
-v2.01 : - Solved minor bugs throughout the code
+v2.0.1: - Solved minor bugs throughout the code
 v2.0  : - Removed all the old GUI files to control the telemetry from the
           ground
         - Removed all the ublox files, now everything is done through

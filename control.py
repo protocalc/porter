@@ -13,7 +13,7 @@ import porter.threads as threads
 import porter.sensors.sensors_handler as sh
 
 try:
-    import sour_core.sony.SONYconn as cam
+    from sour_core import sony
 except ModuleNotFoundError:
     pass
 import logging
@@ -147,11 +147,11 @@ def main():
 
         if "camera" in config.keys() and not config["local_development"]:
 
-            camera = cam(config["camera"]["name"])
+            camera = sony.SONYconn(config["camera"]["name"])
 
             camera.initialize_camera()
 
-            camera.messageHandler(["datetime"])
+            camera.messageHandler(["datetime", 0.04, 1e-3])
 
             camera.messageHandler(["programmode", config["camera"]["program"]])
 
@@ -165,7 +165,7 @@ def main():
 
             if "focus_distance" in config["camera"].keys():
                 camera.messageHandler(
-                    ["focus_distance", config["camera"]["focus_distance"]]
+                    ["focusdistance", config["camera"]["focus_distance"]]
                 )
 
             if config["camera"]["mode"] == "photo":

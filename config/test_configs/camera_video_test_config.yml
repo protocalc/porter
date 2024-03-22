@@ -3,7 +3,7 @@ local_development: False
 camera:
   name: Sony
   mode: video
-  program: Video_M
+  program: MovieM
   duration: 20
   ISO: 400
   shutter_speed: 0.05
