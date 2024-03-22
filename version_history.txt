@@ -1,3 +1,5 @@
+v2.4  : - UBlox and Inclinometer decoders have been tested and worked
+        - Changed the decoder of multiple messages for the inclinometer
 v2.4b : - Added first attempt to decoder scripts for inclinometera and
           ublox (untested in beta)
 v2.3  : - Solved a bug in GPS configuration 

@@ -2,6 +2,7 @@ import sys
 import os
 import pandas as pd
 
+sys.path.append('/home/protocalc/Documents/porter')
 import porter.sensors.KERNEL_utils as utils
 
 
@@ -24,7 +25,7 @@ def main():
 
     dataframe = pd.DataFrame(dt)
 
-    dataframe.to_csv(filename)
+    dataframe.to_csv(filename, index=False)
 
 
 if __name__ == "__main__":

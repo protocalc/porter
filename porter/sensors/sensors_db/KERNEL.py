@@ -259,7 +259,7 @@ MODES = {
             'MagX',
             'MagY',
             'MagZ',
-            'Counter'
+            'Counter',
             'Reserved',
             'USW',
             'Vinp',

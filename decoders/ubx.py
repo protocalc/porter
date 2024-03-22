@@ -4,14 +4,6 @@ import pandas as pd
 
 from pyubx2.ubxreader import UBXReader
 
-
-def combine_dict(d1, d2):
-    return {
-        k: tuple(d[k] for d in (d1, d2) if k in d)
-        for k in set(d1.keys()) | set(d2.keys())
-    }
-
-
 def read(stream):
     """
     Reads and parses UBX message data from stream.
@@ -21,14 +13,31 @@ def read(stream):
 
     ubr = UBXReader(stream, parsing=True)
 
-    for _, parsed_data in ubr:
+    for raw_data, parsed_data in ubr:
+        
+        tmp = parsed_data.__dict__
 
         if parsed_data.identity in data.keys():
-            data[parsed_data.identity] = combine_dict(
-                data[parsed_data.identity], parsed_data._get_dict()
-            )
+            if parsed_data.identity[:3] == 'RXM':
+                data[parsed_data.identity] += raw_data
+            else:
+                for i in tmp.keys():
+                    if i[0] != "_":
+                        if i in data[parsed_data.identity].keys():
+                            data[parsed_data.identity][i].append(tmp[i])
+                        else:
+                            data[parsed_data.identity][i] = []
+                            data[parsed_data.identity][i].append(tmp[i]) 
         else:
-            data[parsed_data.identity] = parsed_data._get_dict()
+            data[parsed_data.identity] = {}
+            
+            if parsed_data.identity[:3] == 'RXM':
+                data[parsed_data.identity] = raw_data
+            else:
+                for i in tmp.keys():
+                    if i[0] != "_":
+                        data[parsed_data.identity][i] = []
+                        data[parsed_data.identity][i].append(tmp[i])
 
     return data
 
@@ -39,21 +48,26 @@ def main():
 
     string = file_to_decode.split("/")
 
-    filename = "/".join(string[:-1])
+    path = "/".join(string[:-1])
 
-    if not os.path.exists(filename + "/decoded"):
-        os.mkdir(filename + "/decoded")
+    if not os.path.exists(path + "/decoded"):
+        os.mkdir(path + "/decoded")
 
     with open(file_to_decode, "rb") as fstream:
         data = read(fstream)
 
     for key in data.keys():
+        
+        if key[:3] == 'RXM':
+            filename = path + "/decoded/" + str(key) + "_" + string[-1][:-4] + ".bin"
+            with open(filename, 'wb') as fd:
+                fd.write(data[key])
+        else:
+            filename = path + "/decoded/" + str(key) + "_" + string[-1][:-4] + ".csv"
 
-        filename = filename + "/decoded/" + str(key) + "_" + string[-1][:-4] + ".csv"
+            dataframe = pd.DataFrame(data[key])
 
-        dataframe = pd.DataFrame(data[key])
-
-        dataframe.to_csv(filename)
+            dataframe.to_csv(filename, index=False)
 
 
 if __name__ == "__main__":
