@@ -12,10 +12,6 @@ import porter.threads as threads
 
 import porter.sensors.sensors_handler as sh
 
-try:
-    from sour_core import sony
-except ModuleNotFoundError:
-    pass
 import logging
 
 import porter.valon as valon
@@ -39,6 +35,11 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("mainlogger")
+
+try:
+    from sour_core import sony
+except ModuleNotFoundError:
+    pass
 
 """
 Classes and Function to deal with interrupting the code
@@ -75,6 +76,7 @@ def main():
 
     with open(cfg_path, "r") as cfg:
         config = yaml.safe_load(cfg)
+        logging.info(f'Loaded configuration {cfg_name}')
 
     if not os.path.exists(home_dir + "/data/" + date + "/sensors_data"):
         os.mkdir(home_dir + "/data/" + date + "/sensors_data")
@@ -150,13 +152,15 @@ def main():
             camera = sony.SONYconn(config["camera"]["name"])
 
             camera.initialize_camera()
+            
+            time.sleep(0.2)
 
             camera.messageHandler(["datetime", 0.04, 1e-3])
 
             camera.messageHandler(["programmode", config["camera"]["program"]])
 
-            if "iso" in config["camera"].keys():
-                camera.messageHandler(["iso", config["camera"]["iso"]])
+            if "ISO" in config["camera"].keys():
+                camera.messageHandler(["iso", config["camera"]["ISO"]])
 
             if "shutter_speed" in config["camera"].keys():
                 camera.messageHandler(
@@ -221,14 +225,15 @@ def main():
 
     except ServiceExit:
         flag.set()
-
-        for i in sensor_connections.keys():
-            sensor_connections[i].close()
-            logging.info(f"Sensor {sensor_names[i]} closed")
+        
+        if "sensor" in config.keys():
+            for i in sensor_connections.keys():
+                sensor_connections[i].close()
+                logging.info(f"Sensor {sensor_names[i]} closed")
 
         if "camera" in config.keys() and not config["local_development"]:
-            if camera._recording_status():
-                camera.video_control()
+            if camera._recording_status:
+                camera._video_control()
 
 
 if __name__ == "__main__":

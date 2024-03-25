@@ -5,8 +5,8 @@ camera:
   mode: video
   program: MovieM
   duration: 20
-  ISO: 400
-  shutter_speed: 0.05
+  ISO: 1600
+  shutter_speed: 0.001
   focus_distance: infinity
 
 telemetry:
