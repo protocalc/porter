@@ -1,8 +1,9 @@
 import os
 import sys
-import pandas as pd
 
+import pandas as pd
 from pyubx2.ubxreader import UBXReader
+
 
 def read(stream):
     """
@@ -14,11 +15,11 @@ def read(stream):
     ubr = UBXReader(stream, parsing=True)
 
     for raw_data, parsed_data in ubr:
-        
+
         tmp = parsed_data.__dict__
 
         if parsed_data.identity in data.keys():
-            if parsed_data.identity[:3] == 'RXM':
+            if parsed_data.identity[:3] == "RXM":
                 data[parsed_data.identity] += raw_data
             else:
                 for i in tmp.keys():
@@ -27,11 +28,11 @@ def read(stream):
                             data[parsed_data.identity][i].append(tmp[i])
                         else:
                             data[parsed_data.identity][i] = []
-                            data[parsed_data.identity][i].append(tmp[i]) 
+                            data[parsed_data.identity][i].append(tmp[i])
         else:
             data[parsed_data.identity] = {}
-            
-            if parsed_data.identity[:3] == 'RXM':
+
+            if parsed_data.identity[:3] == "RXM":
                 data[parsed_data.identity] = raw_data
             else:
                 for i in tmp.keys():
@@ -57,10 +58,10 @@ def main():
         data = read(fstream)
 
     for key in data.keys():
-        
-        if key[:3] == 'RXM':
+
+        if key[:3] == "RXM":
             filename = path + "/decoded/" + str(key) + "_" + string[-1][:-4] + ".bin"
-            with open(filename, 'wb') as fd:
+            with open(filename, "wb") as fd:
                 fd.write(data[key])
         else:
             filename = path + "/decoded/" + str(key) + "_" + string[-1][:-4] + ".csv"

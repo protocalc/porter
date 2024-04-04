@@ -54,10 +54,14 @@ sensors:
         mode: KERNEL_CalibHR
     
     ADC_1:
-      name: ADS1115
+      name: ADS1015
       connection:
         type: I2C
         parameters:
+          pins:
+            SCL: 16
+            SDA: 15
+          address: 0x48
           mode: differential
           channels: [[0,1]]
           output: value
@@ -66,24 +70,11 @@ sensors:
           manufacturer: ADS
       configuration: 
         gain: 8
-        data_rate: 128
-    
-    DAC_1:
-      name: MCP4725
-      connection:
-        type: I2C
-        parameters:
-          address: 0x60
-      sensor_info:
-          type: DAC
-          manufacturer: ADS
-      configuration: 
-        voltage: 0.8
-        max_voltage: 3.3
+        data_rate: 1600
 
 source:
   name: VALON-5019
-  port: /dev/VALON
+  port: /dev/ttyAMA1
   baudrate: 9600
   freq: 90
   power: 4

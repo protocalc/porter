@@ -1,16 +1,16 @@
-import queue
-import threading
-import time
-import yaml
-import porter.telemetry.xbee as xbee
 import datetime
 import os
+import queue
 import signal
 import sys
+import threading
+import time
 
-import porter.threads as threads
+import yaml
 
 import porter.sensors.sensors_handler as sh
+import porter.telemetry.xbee as xbee
+import porter.threads as threads
 
 import logging
 
@@ -67,7 +67,6 @@ signal_to_catch = [
 
 
 def main():
-
     cfg_name = sys.argv[1]
 
     flag = threading.Event()
@@ -89,15 +88,12 @@ def main():
     tx_lock = None
 
     try:
-
         if "sensors" in config.keys():
-
             sensor_locks = {}
             sensor_names = {}
             sensor_connections = {}
 
             for i in config["sensors"].keys():
-
                 sensors_handler = sh.Handler(
                     config["sensors"][i], local=config["local_development"]
                 )
@@ -137,7 +133,6 @@ def main():
                 ).start()
 
         if "source" in config.keys():
-
             synt = valon.valon(config["source"]["port"], config["source"]["baudrate"])
 
             synt.set_freq(config["source"]["freq"] / 6)

@@ -1,3 +1,5 @@
+v2.6  : - Added option for ADC connection info
+        - Correct connection info for the valon and ADC
 v2.5  : - Solved bugs in camera parameters input
         - Added a time.sleep after camera inizialization
         - Correct position of the logger created

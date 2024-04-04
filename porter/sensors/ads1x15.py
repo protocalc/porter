@@ -2,16 +2,14 @@
 # https://github.com/adafruit/Adafruit_CircuitPython_ADS1x15
 # https://www.adafruit.com/product/1085
 
+import logging
+import struct
 import time
+
 import board
 import busio
 import numpy as np
-import logging
-import struct
-
-import adafruit_ads1x15.ads1115 as ADS
 from adafruit_ads1x15.analog_in import AnalogIn
-from adafruit_ads1x15.ads1x15 import Mode
 
 
 class Error(Exception):
@@ -26,13 +24,12 @@ class InputError(Error):
     errors = {1001: "Choosen input not available"}
 
 
-CHANNELS = [ADS.P0, ADS.P1, ADS.P2, ADS.P3]
 MODES = ["differential", "single"]
 
 
-class ads1115:
+class Ads1x15:
 
-    def __init__(self, chan_input, **kwargs):
+    def __init__(self, chan_input, pins=None, address=0x48, **kwargs):
         """Interface for the ADS1x15 series of analog-to-digital converters
 
         Create a connection using I2C protocol to the ADS1115. Requires: -
@@ -52,6 +49,8 @@ class ads1115:
         mode = kwargs.get("mode", "differential")
         name = kwargs.get("name", "Generic ADC")
 
+        model = kwargs.get("model", "ADS1015")
+
         self.output_mode = kwargs.get("output_mode", "value")
 
         try:
@@ -65,13 +64,30 @@ class ads1115:
                 % (err.args[0], err.errors[err.args[0]], MODES)
             )
 
+        if not pins:
+            scl = board.SCL
+            sda = board.SDA
+        else:
+            scl = pins["SCL"]
+            sda = pins["SCA"]
+
         ### Connect to the ADC
-        i2c = busio.I2C(board.SCL, board.SDA)
-        self.ads = ADS.ADS1115(i2c)
+        i2c = busio.I2C(scl, sda)
+
+        if model == "ADS1015":
+            import adafruit_ads1x15.ads1015 as adc
+
+            self.ads = adc.ADS1015(i2c, address)
+        else:
+            import adafruit_ads1x15.ads1115 as adc
+
+            self.ads = adc.ADS1115(i2c, address)
+
+        channels = [adc.P0, adc.P1, adc.P2, adc.P3]
 
         if isinstance(chan_input, int) or isinstance(chan_input, float):
             try:
-                if chan_input < len(CHANNELS):
+                if chan_input < len(channels):
                     chan_input = [int(chan_input)]
                     mode = "single"
                 else:
@@ -79,29 +95,29 @@ class ads1115:
             except InputError as err:
                 logging.error(
                     "Error %d: %s, Input channel in Single Mode higher than the max channel = %d"
-                    % (err.args[0], err.errors[err.args[0]], len(CHANNELS))
+                    % (err.args[0], err.errors[err.args[0]], len(channels))
                 )
         else:
             try:
-                if max(sum(chan_input, [])) > len(CHANNELS):
+                if max(sum(chan_input, [])) > len(channels):
                     raise InputError(1001)
                 else:
                     pass
             except InputError as err:
                 logging.error(
                     "Error %d: %s, At least a channel in Differential Mode higher than the max channel = %d"
-                    % (err.args[0], err.errors[err.args[0]], len(CHANNELS))
+                    % (err.args[0], err.errors[err.args[0]], len(channels))
                 )
 
         self.chan = []
 
         if mode == "single":
             for i in chan_input:
-                self.chan.append(AnalogIn(self.ads, CHANNELS[int(i)]))
+                self.chan.append(AnalogIn(self.ads, channels[int(i)]))
         else:
             for i in chan_input:
                 self.chan.append(
-                    AnalogIn(self.ads, CHANNELS[int(i[0])], CHANNELS[int(i[1])])
+                    AnalogIn(self.ads, channels[int(i[0])], channels[int(i[1])])
                 )
 
         self.__time_sample = 1 / self.ads.data_rate

@@ -1,24 +1,28 @@
 local_development: False
 
 sensors:   
-    ADC_1:
-      name: ADS1115
-      connection:
-        type: I2C
-        parameters:
-          mode: differential
-          channels: [[0,1]]
-          output: voltage
-      sensor_info:
-          type: ADC
-          manufacturer: ADS
-      configuration: 
-        gain: 16
-        data_rate: 250
+  ADC_1:
+    name: ADS1015
+    connection:
+      type: I2C
+      parameters:
+        pins:
+          SCL: 16
+          SDA: 15
+        address: 0x48
+        mode: differential
+        channels: [[0,1]]
+        output: value
+    sensor_info:
+        type: ADC
+        manufacturer: ADS
+    configuration: 
+      gain: 8
+      data_rate: 1600
 
 source:
   name: VALON-5019
-  port: /dev/VALON
+  port: /dev/ttyAMA1
   baudrate: 9600
   freq: 90
   power: -4

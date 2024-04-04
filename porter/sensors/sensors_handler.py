@@ -1,9 +1,9 @@
-import porter.sensors.ubx as ubx
-import porter.sensors.KERNEL as KERNEL
 import porter.sensors.FakeSensor as fake
+import porter.sensors.KERNEL as KERNEL
+import porter.sensors.ubx as ubx
 
 try:
-    import porter.sensors.ads1115 as ads
+    import porter.sensors.ads1x15 as ads
 except ModuleNotFoundError:
     pass
 
@@ -41,8 +41,10 @@ class Handler:
 
             elif self.sensor_params["sensor_info"]["type"].lower() == "adc":
 
-                self.obj = ads.ads1115(
+                self.obj = ads.Ads1x15(
                     self.sensor_params["connection"]["parameters"]["channels"],
+                    address=self.sensor_params["connection"]["parameters"]["address"],
+                    pins=self.sensor_params["connection"]["parameters"]["pins"],
                     mode=self.sensor_params["connection"]["parameters"]["mode"],
                     name=self.sensor_params["name"],
                     output_mode=self.sensor_params["connection"]["parameters"][
@@ -71,5 +73,5 @@ class Handler:
                     self.conn = self.obj.conn
 
     def _configuration(self):
-        
+
         self.obj.configure(self.sensor_params["configuration"])
