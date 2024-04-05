@@ -1,4 +1,5 @@
 import datetime
+import logging
 import os
 import queue
 import signal
@@ -11,10 +12,6 @@ import yaml
 import porter.sensors.sensors_handler as sh
 import porter.telemetry.xbee as xbee
 import porter.threads as threads
-
-import logging
-
-import porter.valon as valon
 
 path = os.path.dirname(os.path.realpath(__file__))
 home_dir = os.environ["HOME"]
@@ -46,7 +43,7 @@ Classes and Function to deal with interrupting the code
 """
 
 
-class ServiceExit(Exception):
+class ServiceExitError(Exception):
     """
     Custom exception which is used to trigger the clean exit
     of all running threads and the main program.
@@ -57,7 +54,7 @@ class ServiceExit(Exception):
 
 def handler(signum, frame):
     logger.info(f"Caught signal {signal.strsignal(signum)}")
-    raise ServiceExit
+    raise ServiceExitError
 
 
 signal_to_catch = [
@@ -75,7 +72,7 @@ def main():
 
     with open(cfg_path, "r") as cfg:
         config = yaml.safe_load(cfg)
-        logging.info(f'Loaded configuration {cfg_name}')
+        logging.info(f"Loaded configuration {cfg_name}")
 
     if not os.path.exists(home_dir + "/data/" + date + "/sensors_data"):
         os.mkdir(home_dir + "/data/" + date + "/sensors_data")
@@ -133,7 +130,7 @@ def main():
                 ).start()
 
         if "source" in config.keys():
-            synt = valon.valon(config["source"]["port"], config["source"]["baudrate"])
+            synt = valon.Valon(config["source"]["port"], config["source"]["baudrate"])
 
             synt.set_freq(config["source"]["freq"] / 6)
             synt.set_pwr(config["source"]["power"])
@@ -147,7 +144,7 @@ def main():
             camera = sony.SONYconn(config["camera"]["name"])
 
             camera.initialize_camera()
-            
+
             time.sleep(0.2)
 
             camera.messageHandler(["datetime", 0.04, 1e-3])
@@ -220,7 +217,7 @@ def main():
 
     except ServiceExit:
         flag.set()
-        
+
         if "sensor" in config.keys():
             for i in sensor_connections.keys():
                 sensor_connections[i].close()

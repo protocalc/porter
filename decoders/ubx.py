@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 
@@ -45,16 +46,20 @@ def read(stream):
 
 def main():
 
-    file_to_decode = sys.argv[1]
+    parser = argparse.ArgumentParser(description="Decode data from the UBLOX.")
 
-    string = file_to_decode.split("/")
+    parser.add_argument("path", type=str, help="Path with the data to be decoded")
+
+    args = parser.parse_args()
+
+    string = args.path.split("/")
 
     path = "/".join(string[:-1])
 
     if not os.path.exists(path + "/decoded"):
         os.mkdir(path + "/decoded")
 
-    with open(file_to_decode, "rb") as fstream:
+    with open(args.path, "rb") as fstream:
         data = read(fstream)
 
     for key in data.keys():

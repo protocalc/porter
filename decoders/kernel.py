@@ -1,5 +1,7 @@
-import sys
+import argparse
 import os
+import sys
+
 import pandas as pd
 
 sys.path.append("/home/protocalc/Documents/porter")
@@ -10,18 +12,24 @@ def main():
 
     file_to_decode = sys.argv[1]
 
-    string = file_to_decode.split("/")
+    parser = argparse.ArgumentParser(description="Decode data from the Inclinometer.")
 
-    filename = "/".join(string[:-1])
+    parser.add_argument("path", type=str, help="Path with the data to be decoded")
 
-    if not os.path.exists(filename + "/decoded"):
-        os.mkdir(filename + "/decoded")
+    args = parser.parse_args()
 
-    filename = filename + "/decoded/" + string[-1][:-4] + ".csv"
+    string = args.path.split("/")
+
+    filepath = "/".join(string[:-1])
+
+    if not os.path.exists(filepath + "/decoded"):
+        os.mkdir(filepath + "/decoded")
+
+    filename = filepath + "/decoded/" + string[-1][:-4] + ".csv"
 
     kmsg = utils.KernelMsg()
 
-    dt = kmsg.decode_multi(file_to_decode)
+    dt = kmsg.decode_multi(args.path)
 
     dataframe = pd.DataFrame(dt)
 

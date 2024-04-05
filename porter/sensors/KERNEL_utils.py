@@ -1,6 +1,6 @@
-import struct
 import copy
 import pickle
+import struct
 
 import porter.sensors.sensors_db.KERNEL as Kdb
 
@@ -26,7 +26,8 @@ def _checksum(msg):
         msg = msg[2:]
 
     return sum(msg).to_bytes(2, byteorder="little", signed=False)
-    
+
+
 class KernelMsg:
 
     def __init__(self):
@@ -82,22 +83,22 @@ class KernelMsg:
                 data = pickle.load(fd)
             else:
                 data = fd.read()
-                
+
         length = int.from_bytes(data[4:5], byteorder="little", signed=False)
-                
+
         length += 2
-        
+
         decoded = {}
 
-        for i in range(int(len(data)/length) - 1):
-            
-            tmp = copy.copy(data[i*length:(i+1)*length])
+        for i in range(int(len(data) / length) - 1):
+
+            tmp = copy.copy(data[i * length : (i + 1) * length])
             tmp = self.decode_single(tmp, return_dict=True)
-            
+
             for j in tmp.keys():
                 if i == 0:
                     decoded[j] = []
-                
-                decoded[j].append(tmp[j])                
+
+                decoded[j].append(tmp[j])
 
         return decoded

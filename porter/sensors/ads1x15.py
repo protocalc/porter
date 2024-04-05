@@ -9,8 +9,8 @@ import time
 import board
 import busio
 import numpy as np
-from adafruit_ads1x15.analog_in import AnalogIn
 from adafruit_ads1x15.ads1x15 import Mode
+from adafruit_ads1x15.analog_in import AnalogIn
 from adafruit_extended_bus import ExtendedI2C as I2C
 
 
@@ -27,6 +27,8 @@ class InputError(Error):
 
 
 MODES = ["differential", "single"]
+
+logger = logging.getLogger()
 
 
 class Ads1x15:
@@ -70,11 +72,8 @@ class Ads1x15:
             i2c = busio.I2C(scl, sda)
         else:
             i2c = I2C(bus)
-            
-        print('PINS', board.SCL, board.SDA)
 
         ### Connect to the ADC
-        
 
         if self.model == "ADS1015":
             import adafruit_ads1x15.ads1015 as adc
@@ -95,7 +94,7 @@ class Ads1x15:
                 else:
                     raise InputError(1001)
             except InputError as err:
-                logging.error(
+                logger.error(
                     "Error %d: %s, Input channel in Single Mode higher than the max channel = %d"
                     % (err.args[0], err.errors[err.args[0]], len(channels))
                 )
@@ -106,7 +105,7 @@ class Ads1x15:
                 else:
                     pass
             except InputError as err:
-                logging.error(
+                logger.error(
                     "Error %d: %s, At least a channel in Differential Mode higher than the max channel = %d"
                     % (err.args[0], err.errors[err.args[0]], len(channels))
                 )
@@ -124,7 +123,7 @@ class Ads1x15:
 
         self.__time_sample = 1 / self.ads.data_rate
 
-        logging.info(f"Connected to ADC {name}")
+        logger.info(f"Connected to ADC {name}")
 
     def read(self, chunk_size=None, return_binary=True):
 
@@ -180,7 +179,7 @@ class Ads1x15:
             msg = []
 
         for i in self.chan:
-            
+
             if return_binary:
                 msg += struct.pack("<i", i.value)
             else:
@@ -376,8 +375,8 @@ class Ads1x15:
                       If the choosen value is not available, the closest values
                       is automatically set
         """
-        
-        if self.model == 'ADS1115':
+
+        if self.model == "ADS1115":
             available_rates = np.array([8, 16, 32, 64, 128, 250, 475, 860])
         else:
             available_rates = np.array([128, 250, 490, 920, 1600, 2400, 3300])
