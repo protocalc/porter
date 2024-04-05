@@ -6,13 +6,11 @@ sensors:
     connection:
       type: I2C
       parameters:
-        pins:
-          SCL: 16
-          SDA: 15
+        bus: 6
         address: 0x48
         mode: differential
         channels: [[0,1]]
-        output: value
+        output: voltage
     sensor_info:
         type: ADC
         manufacturer: ADS
@@ -20,14 +18,6 @@ sensors:
       gain: 8
       data_rate: 1600
 
-source:
-  name: VALON-5019
-  port: /dev/ttyAMA1
-  baudrate: 9600
-  freq: 90
-  power: -4
-  mod_amp: 16
-  mod_freq: 47
 
 telemetry:
   enabled: False

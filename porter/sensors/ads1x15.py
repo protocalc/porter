@@ -10,6 +10,8 @@ import board
 import busio
 import numpy as np
 from adafruit_ads1x15.analog_in import AnalogIn
+from adafruit_ads1x15.ads1x15 import Mode
+from adafruit_extended_bus import ExtendedI2C as I2C
 
 
 class Error(Exception):
@@ -29,7 +31,7 @@ MODES = ["differential", "single"]
 
 class Ads1x15:
 
-    def __init__(self, chan_input, pins=None, address=0x48, **kwargs):
+    def __init__(self, chan_input, bus=None, address=0x48, **kwargs):
         """Interface for the ADS1x15 series of analog-to-digital converters
 
         Create a connection using I2C protocol to the ADS1115. Requires: -
@@ -49,7 +51,7 @@ class Ads1x15:
         mode = kwargs.get("mode", "differential")
         name = kwargs.get("name", "Generic ADC")
 
-        model = kwargs.get("model", "ADS1015")
+        self.model = kwargs.get("model", "ADS1015")
 
         self.output_mode = kwargs.get("output_mode", "value")
 
@@ -64,24 +66,24 @@ class Ads1x15:
                 % (err.args[0], err.errors[err.args[0]], MODES)
             )
 
-        if not pins:
-            scl = board.SCL
-            sda = board.SDA
+        if not bus:
+            i2c = busio.I2C(scl, sda)
         else:
-            scl = pins["SCL"]
-            sda = pins["SCA"]
+            i2c = I2C(bus)
+            
+        print('PINS', board.SCL, board.SDA)
 
         ### Connect to the ADC
-        i2c = busio.I2C(scl, sda)
+        
 
-        if model == "ADS1015":
+        if self.model == "ADS1015":
             import adafruit_ads1x15.ads1015 as adc
 
-            self.ads = adc.ADS1015(i2c, address)
+            self.ads = adc.ADS1015(i2c, address=address)
         else:
             import adafruit_ads1x15.ads1115 as adc
 
-            self.ads = adc.ADS1115(i2c, address)
+            self.ads = adc.ADS1115(i2c, address=address)
 
         channels = [adc.P0, adc.P1, adc.P2, adc.P3]
 
@@ -133,7 +135,7 @@ class Ads1x15:
         else:
             msg = []
 
-        bytes_per_msg = 16
+        bytes_per_msg = 12
 
         if not chunk_size:
             chunk_size = bytes_per_msg
@@ -178,9 +180,9 @@ class Ads1x15:
             msg = []
 
         for i in self.chan:
-
+            
             if return_binary:
-                msg += struct.pack("<Q", i.value)
+                msg += struct.pack("<i", i.value)
             else:
                 msg.append(i.value)
 
@@ -199,7 +201,7 @@ class Ads1x15:
         for i in self.chan:
 
             if return_binary:
-                msg += struct.pack("<d", i.voltage)
+                msg += struct.pack("<f", i.voltage)
             else:
                 msg.append(i.voltage)
 
@@ -374,8 +376,11 @@ class Ads1x15:
                       If the choosen value is not available, the closest values
                       is automatically set
         """
-
-        available_rates = [8, 16, 32, 64, 128, 250, 475, 860]
+        
+        if self.model == 'ADS1115':
+            available_rates = np.array([8, 16, 32, 64, 128, 250, 475, 860])
+        else:
+            available_rates = np.array([128, 250, 490, 920, 1600, 2400, 3300])
 
         data_rate = int(data_rate)
 

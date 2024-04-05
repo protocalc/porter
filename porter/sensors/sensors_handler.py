@@ -44,7 +44,7 @@ class Handler:
                 self.obj = ads.Ads1x15(
                     self.sensor_params["connection"]["parameters"]["channels"],
                     address=self.sensor_params["connection"]["parameters"]["address"],
-                    pins=self.sensor_params["connection"]["parameters"]["pins"],
+                    bus=self.sensor_params["connection"]["parameters"]["bus"],
                     mode=self.sensor_params["connection"]["parameters"]["mode"],
                     name=self.sensor_params["name"],
                     output_mode=self.sensor_params["connection"]["parameters"][

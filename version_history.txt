@@ -1,3 +1,6 @@
+v2.6.1: - Correct a bug in packing teh ADC value
+        - Correct a bug in connecting ADC to different bus
+        - Corrct valon baudrate in config
 v2.6  : - Added option for ADC connection info
         - Correct connection info for the valon and ADC
 v2.5  : - Solved bugs in camera parameters input

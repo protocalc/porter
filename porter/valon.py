@@ -52,7 +52,7 @@ class valon:
         Get id
         '''
 
-        msg = 'id\r\n'
+        msg = 'id\r'
         
         id_raw = self.send_receive(msg)
 
@@ -64,7 +64,7 @@ class valon:
         Get status (in order to see if there are firmware updates)
         '''
 
-        msg = 'stat\r\n'
+        msg = 'stat\r'
         
         stat_raw = self.send_receive(msg)
         stat_raw=stat_raw[1].split(',')
@@ -81,7 +81,7 @@ class valon:
         - f: frequency in MHz
         '''
 
-        msg = 'f '+str(f)+'\r\n'
+        msg = 'f '+str(f)+'\r'
         self.send_receive(msg, receive=True)
         
     def get_freq(self):
@@ -90,7 +90,7 @@ class valon:
         Get current frequency output of the Valon in MHz
         '''
 
-        msg = 'f?\r\n'
+        msg = 'f?\r'
         
         freq_raw = self.send_receive(msg)
      
@@ -107,7 +107,7 @@ class valon:
         - pwr: power in dBm
         '''
 
-        msg = 'pwr '+str(pwr)+'\r\n'
+        msg = 'pwr '+str(pwr)+'\r'
         self.send_receive(msg, receive=True)
         
     def get_pwr(self):
@@ -116,7 +116,7 @@ class valon:
         Get current power output of the Valon in dBm
         '''
 
-        msg = 'pwr?\r\n'
+        msg = 'pwr?\r'
         pwr_raw = self.send_receive(msg)
 
         #pwr_raw = pwr_raw[1].split(';')
@@ -133,10 +133,10 @@ class valon:
         - amd_f: AM modulation in Hz. the range is from 0.5 Hz and 10kHz
         '''
 
-        msg_db = 'amd '+str(amd_db)+'\r\n'
+        msg_db = 'amd '+str(amd_db)+'\r'
         self.send_receive(msg_db, receive=True)
 
-        msg_f= 'amf '+str(amd_f)+'\r\n'
+        msg_f= 'amf '+str(amd_f)+'\r'
         self.send_receive(msg_f, receive=True)
 
         
@@ -147,11 +147,11 @@ class valon:
         '''
         #time.sleep(5)
 
-        msg_db = 'amd?\r\n'
+        msg_db = 'amd?\r'
         amd_raw_db = self.send_receive(msg_db)
         #amd_raw_db = amd_raw_db[1]
 
-        msg_f = 'amf?\r\n'
+        msg_f = 'amf?\r'
         amd_raw_f = self.send_receive(msg_f)
         #amd_raw_f = amd_raw_f[1]
 
@@ -165,7 +165,7 @@ class valon:
         Stop the AM modulation mode
         '''
 
-        msg_db = 'amd '+str(0)+'\r\n'
+        msg_db = 'amd '+str(0)+'\r'
         self.send_receive(msg_db, receive=True)
     
     def mode_sweep(self, start_freq, stop_freq, step, rate, rtime, halt=False, halt_time=100):
@@ -178,34 +178,34 @@ class valon:
             halt= stops sweeping
         '''
 
-        msg_sweep = 'MOD SWE '+ '\r\n'
+        msg_sweep = 'MOD SWE '+ '\r'
         self.send_receive(msg_sweep, receive=False)
 
-        msg_start = 'START '+str(start_freq)+'\r\n'
+        msg_start = 'START '+str(start_freq)+'\r'
         self.send_receive(msg_start, receive=False)
 
-        msg_stop = 'STOP '+str(stop_freq)+'\r\n'
+        msg_stop = 'STOP '+str(stop_freq)+'\r'
         self.send_receive(msg_stop, receive=False)
 
-        msg_step = 'STEP '+str(step)+'\r\n'
+        msg_step = 'STEP '+str(step)+'\r'
         self.send_receive(msg_step, receive=False)
 
-        msg_rate = 'RATE '+str(rate)+'\r\n'
+        msg_rate = 'RATE '+str(rate)+'\r'
         self.send_receive(msg_rate, receive=False)
 
-        msg_rtime = 'RTIME '+str(time)+'\r\n'
+        msg_rtime = 'RTIME '+str(time)+'\r'
         self.send_receive(msg_rtime, receive=False)
 
         t=time.time()
 
-        msg_run = 'run '+'\r\n'
+        msg_run = 'run '+'\r'
         self.send_receive(msg_run, receive=False)
         if halt:
             while True:
                 if time.time()-t > halt_time:
-                    msg_halt = 'halt '+'\r\n'
+                    msg_halt = 'halt '+'\r'
                     self.send_receive(msg_halt, receive=False)
-                    msg_modecw = 'MOD CW '+'\r\n'
+                    msg_modecw = 'MOD CW '+'\r'
                     self.send_receive(msg_modecw, receive=False)
                     break
 
@@ -218,7 +218,7 @@ class valon:
         '''
 
         if valon_off:
-            msg = 'pdn OFF\r\n'
+            msg = 'pdn OFF\r'
             self.send_receive(msg, receive=False)
         
         self.conn.close()
