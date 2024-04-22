@@ -52,6 +52,8 @@ class Ads1x15:
 
         mode = kwargs.get("mode", "differential")
         name = kwargs.get("name", "Generic ADC")
+        
+        self.name = name
 
         self.model = kwargs.get("model", "ADS1015")
 
@@ -123,7 +125,7 @@ class Ads1x15:
 
         self.__time_sample = 1 / self.ads.data_rate
 
-        logger.info(f"Connected to ADC {name}")
+        logger.info(f"Connected to ADC {self.name}")
 
     def read(self, chunk_size=None, return_binary=True):
 
@@ -158,7 +160,7 @@ class Ads1x15:
                 (t,) = struct.unpack("<d", t)
 
             if time_last_sample - t < self.__time_sample:
-                time.sleep(self.__time_sample - (time.time() - t))
+                time.sleep(self.__time_sample - (time_last_sample-t))
 
             count += 1
 

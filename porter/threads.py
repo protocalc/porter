@@ -72,6 +72,8 @@ class Sensors(threading.Thread):
                     self.tx_queue.put(msg)
                     self.tx_lock.release()
                 binary.write(temp)
+                
+            self.conn.close()
 
 
 class Camera(threading.Thread):
@@ -130,19 +132,22 @@ class Camera(threading.Thread):
 
         if self.mode == "video":
             flag = True
-            video_chunks = 10 * 60
+            video_chunks = 20 * 60
             secs_remaining = copy.copy(self.duration)
             while not self.shutdown_flag.is_set():
+                time.sleep(0.1)
                 self.camera.messageHandler(["videocontrol"])
                 if flag:
                     if secs_remaining < video_chunks:
                         time.sleep(secs_remaining)
                         self.camera.messageHandler(["videocontrol"])
+                        flag = not flag
                         break
-                    else:
+                    else: 
                         time.sleep(video_chunks)
+                        self.camera.messageHandler(["videocontrol"])
+                        time.sleep(2)
                         secs_remaining -= video_chunks
-                    flag = not flag
                 else:
                     flag = not flag
 

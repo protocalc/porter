@@ -1,3 +1,19 @@
+V2.7.1: - Corrected name for ServiceExit
+        - Solved missing import Valon
+        - Solved logger error in valon.py
+        - Solved bugs in adc decoder
+        - Modified Video Chunks duration to 20 minutes
+        - Solved a Bug in Video Chunk recording with a pause between a 
+          chunks
+        - Added option to plot ADC data
+        - Solved chunk size issue in FakeSensor
+        - Added search for first message in Kernel decoder
+        - Correct a bug in closing sensors
+        - Added name attribute for the ADC
+        - Correct a bug where the Valon was started first with AM on and
+          then started again with AM off but AM stayed on
+        - Set sensors as non daemon threads
+        - Added check on ADC sleeps    
 v2.7  : - Added decoder for ADC data
         - Use of argparse for inclinometer and gps decoders
         - Add response of the valon to the logger

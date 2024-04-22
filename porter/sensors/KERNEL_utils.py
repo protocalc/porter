@@ -52,6 +52,8 @@ class KernelMsg:
             type_idx = 3
         else:
             type_idx = 1
+            
+        print(type_idx)
 
         msg_type = msg[type_idx].to_bytes(1, byteorder="little")
         modes = list(Kdb.MODES.keys())
@@ -83,6 +85,8 @@ class KernelMsg:
                 data = pickle.load(fd)
             else:
                 data = fd.read()
+        
+        data = data[data.find(HEADER):]
 
         length = int.from_bytes(data[4:5], byteorder="little", signed=False)
 

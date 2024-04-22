@@ -3,6 +3,8 @@ import time
 
 import serial
 
+logger = logging.getLogger()
+
 
 class Valon:
     """

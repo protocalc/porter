@@ -1,10 +1,11 @@
-local_development: True
+local_development: False
 
 camera:
   name: Sony
   mode: video
-  ISO: 400
-  shutter_speed: 0.05
+  program: MovieM
+  ISO: 800
+  shutter_speed: 0.01
   focus_distance: infinity
 
 sensors:
@@ -28,9 +29,9 @@ sensors:
             port: UART1
             set: True
         RATE:
-          value: 5
+          value: 2
         UBX_MSG:
-          output_port: ['uart', 1]
+          output_port: UART1
           NAV: [
             'POSECEF',
             'POSLLH'
@@ -45,7 +46,7 @@ sensors:
       connection:
         type: serial
         parameters:
-          port: /dev/inclinometer
+          port: /dev/ttyAMA3
           baudrate: 115200
       sensor_info:
         type: Inclinometer
@@ -58,13 +59,11 @@ sensors:
       connection:
         type: I2C
         parameters:
-          pins:
-            SCL: 16
-            SDA: 15
+          bus: 6
           address: 0x48
           mode: differential
           channels: [[0,1]]
-          output: value
+          output: voltage
       sensor_info:
           type: ADC
           manufacturer: ADS
@@ -74,11 +73,11 @@ sensors:
 
 source:
   name: VALON-5019
-  port: /dev/ttyAMA1
-  baudrate: 9600
+  port: /dev/ttyAMA2
+  baudrate: 115200
   freq: 90
   power: 4
-  mod_amp: 15
+  mod_amp: 0
   mod_freq: 0
 
 telemetry:

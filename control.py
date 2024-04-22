@@ -12,6 +12,7 @@ import yaml
 import porter.sensors.sensors_handler as sh
 import porter.telemetry.xbee as xbee
 import porter.threads as threads
+import porter.valon as valon
 
 path = os.path.dirname(os.path.realpath(__file__))
 home_dir = os.environ["HOME"]
@@ -126,7 +127,7 @@ def main():
                     date=date,
                     path=sensor_path,
                     sensor_name=sensor_names[i],
-                    daemon=True,
+                    daemon=False,
                 ).start()
 
         if "source" in config.keys():
@@ -136,7 +137,8 @@ def main():
             synt.set_pwr(config["source"]["power"])
             if config["source"]["mod_freq"] > 0:
                 synt.set_amd(config["source"]["mod_amp"], config["source"]["mod_freq"])
-
+            else:
+                synt.set_amd(0, 0)
             time.sleep(2)
 
         if "camera" in config.keys() and not config["local_development"]:
@@ -148,21 +150,28 @@ def main():
             time.sleep(0.2)
 
             camera.messageHandler(["datetime", 0.04, 1e-3])
+            
+            time.sleep(0.1)
 
             camera.messageHandler(["programmode", config["camera"]["program"]])
+            
+            time.sleep(0.1)
 
             if "ISO" in config["camera"].keys():
                 camera.messageHandler(["iso", config["camera"]["ISO"]])
+                time.sleep(0.1)
 
             if "shutter_speed" in config["camera"].keys():
                 camera.messageHandler(
                     ["shutterspeed", config["camera"]["shutter_speed"]]
                 )
+                time.sleep(0.1)
 
             if "focus_distance" in config["camera"].keys():
                 camera.messageHandler(
                     ["focusdistance", config["camera"]["focus_distance"]]
                 )
+                time.sleep(0.1)
 
             if config["camera"]["mode"] == "photo":
                 duration = None
@@ -209,21 +218,23 @@ def main():
                 sensor_locks,
                 xbee_lock,
                 flag,
-                daemon=True,
+                daemon=False,
             ).start()
 
         while True:
             pass
 
-    except ServiceExit:
+    except ServiceExitError:
         flag.set()
-
-        if "sensor" in config.keys():
-            for i in sensor_connections.keys():
-                sensor_connections[i].close()
-                logging.info(f"Sensor {sensor_names[i]} closed")
+        
+        time.sleep(0.1)
+        #if "sensors" in config.keys():
+        #    for i in sensor_connections.keys():
+        #        sensor_connections[i].close()
+        #        logging.info(f"Sensor {sensor_names[i]} closed")
 
         if "camera" in config.keys() and not config["local_development"]:
+            print('Test Final')
             if camera._recording_status:
                 camera._video_control()
 

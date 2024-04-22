@@ -69,6 +69,8 @@ class UBX:
         self.conn.write(cfgs.serialize())
 
         ack = self.read(parsing=True)
+        
+        print(ack)
 
         if ack.identity == "ACK-ACK":
             logging.info("UBLOX sensor configured correctly")

@@ -18,7 +18,7 @@ sensors:
             set: False
         UBX:
           output:
-            port: USB
+            port: UART1
             set: True
         RATE:
           value: 1

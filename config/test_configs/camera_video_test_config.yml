@@ -4,9 +4,9 @@ camera:
   name: Sony
   mode: video
   program: MovieM
-  duration: 20
-  ISO: 1600
-  shutter_speed: 0.001
+  duration: 60
+  ISO: 800
+  shutter_speed: 0.01
   focus_distance: infinity
 
 telemetry:

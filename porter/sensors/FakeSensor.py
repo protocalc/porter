@@ -14,7 +14,7 @@ class FakeConnection:
 
         logger.info(f"Created fake sensor for {name}")
 
-    def read(self, chunk_size):
+    def read(self, chunk_size=100):
 
         count = 0
         while count < chunk_size:
