@@ -133,13 +133,13 @@ class Ads1x15:
         while not flag.is_set():
             msg = struct.pack("<d", time.time())
 
-            tstart = time.perf_counter_ns()
+            tstart = time.perf_counter()
 
             msg += self._get_voltage(return_binary=return_binary)
 
             fs.write(msg)
 
-            while time.perf_counter_ns() - tstart < self.__time_sample:
+            while time.perf_counter() - tstart < self.__time_sample:
                 pass
 
     def read(self, chunk_size=None, return_binary=True):
@@ -150,27 +150,27 @@ class Ads1x15:
         if return_binary:
             msg = struct.pack("<d", time.time())
 
-            tstart = time.perf_counter_ns()
+            tstart = time.perf_counter()
 
             if self.output_mode == "value":
                 msg += self._get_value(return_binary=return_binary)
             else:
                 msg += self._get_voltage(return_binary=return_binary)
 
-            while time.perf_counter_ns() - tstart < self.__time_sample:
+            while time.perf_counter() - tstart < self.__time_sample:
                 pass
 
         else:
             msg = [time.time()]
 
-            tstart = time.perf_counter_ns()
+            tstart = time.perf_counter()
 
             if self.output_mode == "value":
                 msg += self._get_value(return_binary=return_binary)
             else:
                 msg += self._get_voltage(return_binary=return_binary)
 
-            while time.perf_counter_ns() - tstart < self.__time_sample:
+            while time.perf_counter() - tstart < self.__time_sample:
                 pass
 
         return msg

@@ -20,11 +20,11 @@ class FakeConnection:
         while not flag.is_set():
             msg = struct.pack("<d", time.time())
 
-            tstart = time.perf_counter_ns()
+            tstart = time.perf_counter()
 
             msg += bytes(int(random.random()))
 
-            while time.perf_counter_ns() - tstart < (sampling - delta):
+            while time.perf_counter() - tstart < (sampling - delta):
                 pass
 
     def read(self, chunk_size=100):
