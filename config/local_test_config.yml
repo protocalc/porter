@@ -1,12 +1,4 @@
-local_development: False
-
-camera:
-  name: Sony
-  mode: video
-  program: MovieM
-  ISO: 800
-  shutter_speed: 0.01
-  focus_distance: infinity
+local_development: True
 
 sensors:
     GPS_1:
@@ -70,13 +62,4 @@ sensors:
       configuration: 
         gain: 8
         data_rate: 1600
-
-source:
-  name: VALON-5019
-  port: /dev/ttyAMA2
-  baudrate: 115200
-  freq: 90
-  power: 4
-  mod_amp: 0
-  mod_freq: 0
 

@@ -10,7 +10,6 @@ import time
 import yaml
 
 import porter.sensors.sensors_handler as sh
-import porter.telemetry.xbee as xbee
 import porter.threads as threads
 import porter.valon as valon
 
@@ -102,26 +101,9 @@ def main():
                 sensor_locks[name] = threading.Lock()
                 sensor_names[name] = name
 
-            if not config["telemetry"]["enabled"]:
-                tx_queue = None
-                tx_lock = None
-
-            else:
-                tx_queue = queue.Queue()
-                tx_lock = threading.Lock()
-
-                xbee_conn = xbee.comms(
-                    config["Telemetry"]["antenna"]["port"],
-                    config["Telemetry"]["antenna"]["baudrate"],
-                    config["Telemetry"]["antenna"]["remote"],
-                )
-                xbee_lock = threading.Lock()
-
             for i in sensor_connections.keys():
                 threads.Sensors(
                     conn=sensor_connections[i],
-                    tx_queue=tx_queue,
-                    tx_lock=tx_lock,
                     sensor_lock=sensor_locks[i],
                     flag=flag,
                     date=date,
@@ -150,11 +132,11 @@ def main():
             time.sleep(0.2)
 
             camera.messageHandler(["datetime", 0.04, 1e-3])
-            
+
             time.sleep(0.1)
 
             camera.messageHandler(["programmode", config["camera"]["program"]])
-            
+
             time.sleep(0.1)
 
             if "ISO" in config["camera"].keys():
@@ -208,33 +190,20 @@ def main():
 
             time.sleep(2)
 
-        if tx_queue is not None:
-            threads.Transmitter(
-                xbee_conn, tx_queue, tx_lock, xbee_lock, flag, daemon=True
-            ).start()
-            threads.Receiver(
-                xbee_conn,
-                sensor_connections,
-                sensor_locks,
-                xbee_lock,
-                flag,
-                daemon=False,
-            ).start()
-
         while True:
             pass
 
     except ServiceExitError:
         flag.set()
-        
+
         time.sleep(0.1)
-        #if "sensors" in config.keys():
+        # if "sensors" in config.keys():
         #    for i in sensor_connections.keys():
         #        sensor_connections[i].close()
         #        logging.info(f"Sensor {sensor_names[i]} closed")
 
         if "camera" in config.keys() and not config["local_development"]:
-            print('Test Final')
+            print("Test Final")
             if camera._recording_status:
                 camera._video_control()
 

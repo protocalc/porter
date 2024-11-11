@@ -1,3 +1,8 @@
+V3.0  : - Removed all the transmitting/receiving related code
+        - Modified Readout code for the ADC
+        - Added output of the current ADC rate
+        - Changed the logic of the readout, now everything is read in a continous loop within the sensor code
+        - Correct Gyro and Acc Scales in Kernel
 V2.7.1: - Corrected name for ServiceExit
         - Solved missing import Valon
         - Solved logger error in valon.py

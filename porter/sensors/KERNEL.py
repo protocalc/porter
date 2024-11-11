@@ -1,12 +1,12 @@
-import serial
-import pickle
 import copy
+import logging
+import pickle
 import time
 
-import porter.sensors.sensors_db.KERNEL as Kdb
-import porter.sensors.KERNEL_utils as utils
+import serial
 
-import logging
+import porter.sensors.KERNEL_utils as utils
+import porter.sensors.sensors_db.KERNEL as Kdb
 
 logger = logging.getLogger()
 
@@ -94,11 +94,17 @@ class KernelInertial:
         else:
             logger.info("Cannot connect to inclinometer")
 
+    def read_continous_binary(self, fs, flag):
+
+        while not flag.is_set():
+
+            fs.write(self.read())
+
     def read(self, chunk_size=None):
 
         if self.__first_msg:
             msg, length = self._find_msg()
-        
+
         else:
             if self.expected_length is not None:
                 msg = self.conn.read(self.expected_length)
@@ -108,15 +114,8 @@ class KernelInertial:
         return msg
 
     def close(self):
-        
-        msg = (
-            utils.HEADER
-            + b"\x00"
-            + b"\x00"
-            + b"\x07"
-            + b"\x00"
-            + b"\xFE"
-        )
+
+        msg = utils.HEADER + b"\x00" + b"\x00" + b"\x07" + b"\x00" + b"\xFE"
 
         chk = utils._checksum(msg)
         self.conn.write(msg + chk)
@@ -125,9 +124,9 @@ class KernelInertial:
 
         logging.info(f"Closed sensor {self.name}")
 
-    def _find_msg(self,waiting=2):
+    def _find_msg(self, waiting=2):
         """Find the first message available with output data"""
-        
+
         if self.__first_msg:
             time.sleep(waiting)
 
@@ -137,7 +136,7 @@ class KernelInertial:
         length = int.from_bytes(pre[2:3], byteorder="little", signed=False)
 
         if self.__first_msg:
-            self.expected_length = copy.copy(length+2)
+            self.expected_length = copy.copy(length + 2)
             self.__first_msg = False
             logger.info(f"Read First Message from {self.name}")
 
@@ -147,7 +146,7 @@ class KernelInertial:
             msg = utils.HEADER + pre + payload
         else:
             msg = temp
-        
+
         return msg, length
 
     def read_single(self, decode=False, return_dict=False):
@@ -186,14 +185,10 @@ class KernelInertial:
 
         msg = msg_class.decode_single(first_msg, return_dict=True)
 
-        print(msg.keys())
-        print(list(msg.values()))
-
         counter = 0
 
         while True:
             temp = self.conn.read(length)
-            print(msg_class.decode_single(temp))
             if counter > max_counter:
                 break
             counter += 1

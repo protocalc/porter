@@ -1,6 +1,7 @@
+import logging
+
 import pyubx2 as ubx
 import serial
-import logging
 
 logger = logging.getLogger()
 
@@ -69,16 +70,23 @@ class UBX:
         self.conn.write(cfgs.serialize())
 
         ack = self.read(parsing=True)
-        
+
         print(ack)
 
         if ack.identity == "ACK-ACK":
             logging.info("UBLOX sensor configured correctly")
 
+    def read_continous_binary(self, fs, flag):
+
+        while not flag.is_set():
+            reader = ubx.UBXReader(self.conn, parsing=False)
+
+            fs.write(reader.read()[0])
+
     def read(self, parsing=False):
 
         reader = ubx.UBXReader(self.conn, parsing=parsing)
-        
+
         raw, parsed = reader.read()
 
         if parsing:
@@ -90,4 +98,5 @@ class UBX:
 
         self.conn.close()
 
+        logging.info(f"Closed ublox sensor {self.name}")
         logging.info(f"Closed ublox sensor {self.name}")

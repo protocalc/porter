@@ -1,6 +1,6 @@
 import argparse
-import struct
 import os
+import struct
 
 import numpy as np
 
@@ -16,7 +16,7 @@ def main():
         default=False,
         help="Flag to indicate that the ADC data are saved as voltage",
     )
-    
+
     parser.add_argument(
         "--plot",
         default=False,
@@ -24,7 +24,6 @@ def main():
     )
 
     args = parser.parse_args()
-    print(args)
 
     string = args.path.split("/")
 
@@ -41,20 +40,23 @@ def main():
     with open(args.path, "rb") as fstream:
         data = fstream.read()
 
+    vals = struct.unpack("<" + pattern, data[:12])
+
     reps = int(len(data) / 12)
 
-    vals = struct.unpack("<" + pattern * reps, data)
+    vals = struct.unpack("<" + pattern * reps, data[:-4])
 
     final = np.reshape(np.array(vals), (reps, 2))
 
     decoded_filename = filepath + "/decoded/" + string[-1][:-4] + ".csv"
-    
+
     if args.plot:
         import matplotlib.pyplot as plt
-        
-        plt.plot(final[:,0]-final[0,0], final[:,1])
+
+        plt.plot(final[:, 0] - final[0, 0], final[:, 1])
+        plt.xlabel("Time [s]")
         plt.show()
-        
+
     np.savetxt(decoded_filename, final)
 
 
