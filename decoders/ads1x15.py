@@ -55,6 +55,9 @@ def main():
         plt.plot(final[:, 0] - final[0, 0], final[:, 1])
         plt.show()
 
+        plt.hist(final[:, -1])
+        plt.show()
+
     np.savetxt(decoded_filename, final)
 
 
