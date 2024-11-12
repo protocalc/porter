@@ -1,3 +1,11 @@
+v2.8  : - Removed a debug print in Kernel Decoder
+        - Removed a debug print in ubx sensor
+        - camera stop video is now happening on thread
+        - Added a proper close of the camera (this happens on the main 
+          thread since the camera is opened in the main thread)
+        - Solved a possible connection error on the ublox if the baudrate
+          is reverted back to the default one
+        - Solved a bug for configuration setting
 V2.7.1: - Corrected name for ServiceExit
         - Solved missing import Valon
         - Solved logger error in valon.py

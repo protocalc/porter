@@ -12,9 +12,13 @@ sensors:
         type: GPS
         manufacturer: UBlox
       configuration:
-        NMEA:
+        NMEA1:
           output:
             port: UART1
+            set: False
+        NMEA2:
+          output:
+            port: UART2
             set: False
         UBX:
           output:

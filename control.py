@@ -51,11 +51,22 @@ class ServiceExitError(Exception):
     """
 
     pass
+    
+class FlagSetError(Exception):
+    
+    pass
 
 
 def handler(signum, frame):
+    print('Signal Sent')
     logger.info(f"Caught signal {signal.strsignal(signum)}")
     raise ServiceExitError
+    
+def capture_flag(flag):
+    print('Flag has been captured')
+    logger.info(f"Flag has been set in a Thread")
+    if flag.is_set():
+        raise FlagSetError
 
 
 signal_to_catch = [
@@ -84,6 +95,8 @@ def main():
 
     tx_queue = None
     tx_lock = None
+    
+    time.sleep(2)
 
     try:
         if "sensors" in config.keys():
@@ -116,19 +129,6 @@ def main():
                     config["Telemetry"]["antenna"]["remote"],
                 )
                 xbee_lock = threading.Lock()
-
-            for i in sensor_connections.keys():
-                threads.Sensors(
-                    conn=sensor_connections[i],
-                    tx_queue=tx_queue,
-                    tx_lock=tx_lock,
-                    sensor_lock=sensor_locks[i],
-                    flag=flag,
-                    date=date,
-                    path=sensor_path,
-                    sensor_name=sensor_names[i],
-                    daemon=False,
-                ).start()
 
         if "source" in config.keys():
             synt = valon.Valon(config["source"]["port"], config["source"]["baudrate"])
@@ -207,6 +207,20 @@ def main():
             ).start()
 
             time.sleep(2)
+            
+        if "sensors" in config.keys():
+            for i in sensor_connections.keys():
+                threads.Sensors(
+                    conn=sensor_connections[i],
+                    tx_queue=tx_queue,
+                    tx_lock=tx_lock,
+                    sensor_lock=sensor_locks[i],
+                    flag=flag,
+                    date=date,
+                    path=sensor_path,
+                    sensor_name=sensor_names[i],
+                    daemon=True,
+                ).start()
 
         if tx_queue is not None:
             threads.Transmitter(
@@ -221,23 +235,20 @@ def main():
                 daemon=False,
             ).start()
 
-        while True:
+        while not flag.is_set():
             pass
-
-    except ServiceExitError:
-        flag.set()
         
-        time.sleep(0.1)
-        #if "sensors" in config.keys():
-        #    for i in sensor_connections.keys():
-        #        sensor_connections[i].close()
-        #        logging.info(f"Sensor {sensor_names[i]} closed")
+        capture_flag(flag)
 
-        if "camera" in config.keys() and not config["local_development"]:
-            print('Test Final')
-            if camera._recording_status:
-                camera._video_control()
-
+    except (ServiceExitError, FlagSetError) as err:
+        logger.info(f"Flag has been raise")
+        if flag.is_set():
+            if "camera" in config.keys() and not config["local_development"]:
+                camera.close_usb_connection()
+        else:
+            flag.set()
+            if "camera" in config.keys() and not config["local_development"]:
+                camera.close_usb_connection()
 
 if __name__ == "__main__":
     main()
