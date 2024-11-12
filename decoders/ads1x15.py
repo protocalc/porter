@@ -24,6 +24,7 @@ def main():
     )
 
     args = parser.parse_args()
+    print(args)
 
     string = args.path.split("/")
 
@@ -33,20 +34,18 @@ def main():
         os.mkdir(filepath + "/decoded")
 
     if args.voltage:
-        pattern = "df"
+        pattern = "dff"
     else:
         pattern = "di"
 
     with open(args.path, "rb") as fstream:
         data = fstream.read()
 
-    vals = struct.unpack("<" + pattern, data[:12])
+    reps = int(len(data) / 20)
 
-    reps = int(len(data) / 12)
+    vals = struct.unpack("<" + pattern * reps, data)
 
-    vals = struct.unpack("<" + pattern * reps, data[:-4])
-
-    final = np.reshape(np.array(vals), (reps, 2))
+    final = np.reshape(np.array(vals), (reps, 3))
 
     decoded_filename = filepath + "/decoded/" + string[-1][:-4] + ".csv"
 
@@ -54,7 +53,6 @@ def main():
         import matplotlib.pyplot as plt
 
         plt.plot(final[:, 0] - final[0, 0], final[:, 1])
-        plt.xlabel("Time [s]")
         plt.show()
 
     np.savetxt(decoded_filename, final)
