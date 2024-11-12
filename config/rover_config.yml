@@ -44,6 +44,16 @@ sensors:
             'RAWX',
             'SFRBX'
             ]
+        NMEA_MSG:
+          output_port: UART2
+          ID : [
+            'GGA',
+            'GSV',
+            'GSA',
+            'GST',
+            'GNS',
+            'ZDA'
+          ]
 
     Inclinometer_1:
       name: Kernel-100

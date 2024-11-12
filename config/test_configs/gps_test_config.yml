@@ -15,7 +15,7 @@ sensors:
         NMEA1:
           output:
             port: UART1
-            set: False
+            set: True
         NMEA2:
           output:
             port: UART2
@@ -36,6 +36,16 @@ sensors:
             'RAWX',
             'SFRBX'
             ]
+        NMEA_MSG:
+          output_port: UART2
+          ID : [
+            'GGA',
+            'GSV',
+            'GSA',
+            'GST',
+            'GNS',
+            'ZDA'
+          ]
 
 telemetry:
   enabled: False

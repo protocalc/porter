@@ -1,7 +1,8 @@
-import pyubx2 as ubx
-import serial
 import logging
 import time
+
+import pyubx2 as ubx
+import serial
 
 logger = logging.getLogger()
 
@@ -12,7 +13,7 @@ class UBX:
 
         self.conn = serial.Serial(port, 38400, timeout=1)
         self.name = name
-        
+
         layer = 1
         transaction = 0
         key = [("CFG_UART1_BAUDRATE", int(baudrate))]
@@ -62,8 +63,28 @@ class UBX:
 
                             keys.append((msg, 1))
 
+            elif i.lower() == "nmea_msg":
+
+                output_port = config["NMEA_MSG"]["output_port"]
+
+                if output_port[0].lower() == "uart":
+                    port_string = "UART" + str(int(output_port[1]))
+                else:
+                    port_string = output_port
+
+                string = "CFG_MSGOUT_NMEA_ID_"
+
+                for j in config["NMEA_MSG"].keys():
+                    if j.lower() == "output_port":
+                        pass
+                    else:
+                        for k in config["NMEA_MSG"][j]:
+                            msg = string + "_" + k + "_" + port_string
+
+                            keys.append((msg, 1))
+
             elif i[:4].lower() == "nmea" or i[:3].lower() == "ubx":
-                
+
                 if i[:4].lower() == "nmea":
                     p = i[:4]
                 else:
@@ -81,12 +102,12 @@ class UBX:
             else:
                 if isinstance(config[i], list):
                     keys.append((config[i][0], config[i][1]))
-                    
+
         cfgs = ubx.UBXMessage.config_set(layers, transaction, keys)
         self.conn.write(cfgs.serialize())
-        
+
         count = 0
-        
+
         for i in range(100):
             ack = self.read(parsing=True)
             print(ack)
@@ -98,9 +119,9 @@ class UBX:
     def read(self, parsing=False):
 
         reader = ubx.UBXReader(self.conn, parsing=True)
-        
+
         raw, parsed = reader.read()
-       
+
         if parsing:
             return parsed
         else:
@@ -110,4 +131,5 @@ class UBX:
 
         self.conn.close()
 
+        logging.info(f"Closed ublox sensor {self.name}")
         logging.info(f"Closed ublox sensor {self.name}")

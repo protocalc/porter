@@ -1,3 +1,4 @@
+v2.9  : - Added configuration for NMEA messages
 v2.8  : - Removed a debug print in Kernel Decoder
         - Removed a debug print in ubx sensor
         - camera stop video is now happening on thread
