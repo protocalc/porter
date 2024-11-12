@@ -72,7 +72,7 @@ class UBX:
                 else:
                     port_string = output_port
 
-                string = "CFG_MSGOUT_NMEA_ID_"
+                string = "CFG_MSGOUT_NMEA_ID"
 
                 for j in config["NMEA_MSG"].keys():
                     if j.lower() == "output_port":
