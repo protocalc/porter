@@ -76,7 +76,7 @@ sensors:
           manufacturer: ADS
       configuration: 
         gain: 8
-        data_rate: 920
+        data_rate: 490
 
 source:
   name: VALON-5019
@@ -85,7 +85,7 @@ source:
   freq: 90
   power: -3.5
   mod_amp: 15
-  mod_freq: 47
+  mod_freq: 37
 
 telemetry:
   enabled: False

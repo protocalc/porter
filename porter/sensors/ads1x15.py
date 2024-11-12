@@ -136,11 +136,17 @@ class Ads1x15:
             tstart = time.perf_counter()
 
             msg += self._get_voltage()
-
+            
+            delta = time.perf_counter() - tstart
+            
+            msg += struct.pack("<d", delta)
+            
             fs.write(msg)
-
-            while time.perf_counter() - tstart < self.__time_sample:
-                pass
+			
+            while delta < self.__time_sample:
+                delta = time.perf_counter() - tstart               
+            print(delta, self.__time_sample)
+            
 
     def read(self, chunk_size=None, return_binary=True):
 
