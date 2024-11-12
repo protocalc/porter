@@ -135,7 +135,7 @@ class Ads1x15:
 
             tstart = time.perf_counter()
 
-            msg += self._get_voltage(return_binary=return_binary)
+            msg += self._get_voltage()
 
             fs.write(msg)
 
