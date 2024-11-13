@@ -9,13 +9,13 @@ sensors:
         bus: 6
         address: 0x48
         mode: differential
-        channels: [[0,1]]
+        channels: [0,1]
         output: voltage
     sensor_info:
         type: ADC
         manufacturer: ADS
     configuration: 
-      gain: 8
+      gain: 1.024V
       data_rate: 1600
       
 source:

@@ -44,6 +44,7 @@ ADS1015_CONFIG_RATE = {
     "3300": 0b111,
 }
 
+logger = logging.getLogger()
 
 class ADS1015:
 
@@ -63,7 +64,7 @@ class ADS1015:
         mode = kwargs.get("mode", "differential")
 
         if mode.lower() == "differential":
-            string = "DIFF_" + str(int(channel[0])) + "_" + str(int(channel[0]))
+            string = "DIFF_" + str(int(channel[0])) + "_" + str(int(channel[1]))
         else:
             string = "SINGLE_" + str(int(channel))
 
@@ -83,19 +84,19 @@ class ADS1015:
 
         logger.info(f"Connected to ADC {self.name}")
         logger.info(f"Current Data Rate in s: {self.__time_sample}")
-        logger.info(f"Current Gain: {self.__gain}")
+        logger.info(f"Current Gain: {self._gain}")
 
     def read_continous_binary(self,  fs, flag):
 
         # Write the config register
-        bus.write_word_data(self.address, ADS1015_REG_CONFIG, self.__config_register)
+        self.bus.write_word_data(self.address, ADS1015_REG_CONFIG, self.__config_register)
 
         while not flag.is_set():
             msg = struct.pack("<d", time.time())
 
             tstart = time.perf_counter()
 
-            raw_value = bus.read_word_data(self.address, ADS1015_REG_CONVERSION)
+            raw_value = self.bus.read_word_data(self.address, ADS1015_REG_CONVERSION)
 
             raw_value = ((raw_value << 8) & 0xFF00) | (raw_value >> 8)
             raw_value = (raw_value >> 4) & 0xFFF
@@ -110,7 +111,7 @@ class ADS1015:
 
             while delta < self.__time_sample:
                 delta = time.perf_counter() - tstart
-            print(delta, self.__time_sample)
+            print(delta, self.__time_sample, self._rate)
 
     def configure(self, config):
 
