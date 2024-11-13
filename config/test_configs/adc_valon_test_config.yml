@@ -15,7 +15,7 @@ sensors:
         type: ADC
         manufacturer: ADS
     configuration: 
-      gain: 1.024V
+      gain: 8
       data_rate: 1600
       
 source:

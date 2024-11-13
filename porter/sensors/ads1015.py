@@ -83,7 +83,7 @@ class ADS1015:
             | ADS1015_REG_CONFIG_CLAT_NONLAT
             | ADS1015_REG_CONFIG_CPOL_ACTVLOW
             | ADS1015_REG_CONFIG_CMODE_TRAD
-            | read_mode
+            | self.__read_mode
             | self._rate
             | self._gain
             | self.__mux_channels
@@ -108,9 +108,11 @@ class ADS1015:
 
             tstart = time.perf_counter()
 
-            raw_value = self.bus.read_word_data(self.address, ADS1015_REG_CONVERSION, 2)
+            raw_value = self.bus.read_block_data(self.address, ADS1015_REG_CONVERSION, 2)
+            
+            print(raw_value)
 
-            raw_value = ((result[0] << 8) | (result[1] & 0xFF)) >> 4
+            raw_value = ((raw_value[0] << 8) | (raw_value[1] & 0xFF)) >> 4
 
             msg += struct.pack("<f", (raw_value * self._gain) / 2048)
 
@@ -131,7 +133,7 @@ class ADS1015:
         for i in config.keys():
 
             if i.lower() == "gain":
-                self._gain = ADS1015_CONFIG_GAIN[config[i]]
+                self._gain = ADS1015_CONFIG_GAIN[str(config[i])]
                 logger.info(f"Current Gain: {self._gain}")
             elif i.lower() == "rate":
                 self._rate = ADS1015_CONFIG_RATE[config[i]]
@@ -143,7 +145,7 @@ class ADS1015:
             | ADS1015_REG_CONFIG_CLAT_NONLAT
             | ADS1015_REG_CONFIG_CPOL_ACTVLOW
             | ADS1015_REG_CONFIG_CMODE_TRAD
-            | read_mode
+            | self.__read_mode
             | self._rate
             | self._gain
             | self.__mux_channels
