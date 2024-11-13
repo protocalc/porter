@@ -146,7 +146,7 @@ class Ads1x15:
             msg += struct.pack("<f", delta)
 
             fs.write(msg)
-            #print('NEW', delta, self.__time_sample)
+            print('NEW', delta, self.__time_sample)
 
     def read(self, chunk_size=None, return_binary=True):
 

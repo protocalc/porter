@@ -2,6 +2,7 @@ import logging
 
 import pyubx2 as ubx
 import serial
+import time
 
 logger = logging.getLogger()
 
@@ -10,8 +11,20 @@ class UBX:
 
     def __init__(self, port, baudrate, name):
 
-        self.conn = serial.Serial(port, baudrate, timeout=1)
+        self.conn = serial.Serial(port, 38400, timeout=1)
         self.name = name
+
+        layer = 1
+        transaction = 0
+        key = [("CFG_UART1_BAUDRATE", int(baudrate))]
+        cfgs = ubx.UBXMessage.config_set(layer, transaction, key)
+        print(cfgs)
+        self.conn.write(cfgs.serialize())
+        print(self.read(parsing=True))
+        time.sleep(0.1)
+        self.conn.close()
+        time.sleep(0.2)
+        self.conn = serial.Serial(port, baudrate, timeout=1)
 
         if self.conn.is_open:
             logging.info(f"Connected to ublox sensor {self.name}")
