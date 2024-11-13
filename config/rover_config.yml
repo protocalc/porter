@@ -63,7 +63,6 @@ sensors:
           address: 0x48
           mode: differential
           channels: [[0,1]]
-          output: voltage
       sensor_info:
           type: ADC
           manufacturer: ADS

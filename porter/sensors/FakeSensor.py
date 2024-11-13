@@ -15,6 +15,8 @@ class FakeConnection:
 
         logger.info(f"Created fake sensor for {name}")
 
+        self._time_sample = 0.001
+
     def read_continous_binary(self, fs, flag, sampling=1.0 / 100.0, delta=1e-8):
 
         while not flag.is_set():
@@ -34,7 +36,6 @@ class FakeConnection:
             val = bytes(int(random.random()))
             count += 1
 
-        time.sleep(0.01)
         return val
 
     def close(self):

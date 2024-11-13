@@ -3,7 +3,7 @@ import porter.sensors.KERNEL as KERNEL
 import porter.sensors.ubx as ubx
 
 try:
-    import porter.sensors.ads1x15 as ads
+    import porter.sensors.ads1015 as ads
 except ModuleNotFoundError:
     pass
 
@@ -47,9 +47,6 @@ class Handler:
                     bus=self.sensor_params["connection"]["parameters"]["bus"],
                     mode=self.sensor_params["connection"]["parameters"]["mode"],
                     name=self.sensor_params["name"],
-                    output_mode=self.sensor_params["connection"]["parameters"][
-                        "output"
-                    ],
                 )
 
             elif self.sensor_params["sensor_info"]["type"].lower() == "dac":
