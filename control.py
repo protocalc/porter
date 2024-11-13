@@ -96,6 +96,7 @@ def main():
                 )
 
                 name = config["sensors"][i]["name"]
+               
 
                 sensor_connections[name] = sensors_handler.obj
                 sensor_locks[name] = threading.Lock()

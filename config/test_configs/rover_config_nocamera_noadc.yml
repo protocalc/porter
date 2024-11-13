@@ -60,23 +60,6 @@ sensors:
         manufacturer: Inertial_Labs
       configuration:
         mode: KERNEL_CalibHR
-    
-    ADC_1:
-      name: ADS1015
-      connection:
-        type: I2C
-        parameters:
-          bus: 6
-          address: 0x48
-          mode: differential
-          channels: [[0,1]]
-          output: voltage
-      sensor_info:
-          type: ADC
-          manufacturer: ADS
-      configuration: 
-        gain: 2
-        data_rate: 490
 
 source:
   name: VALON-5019
