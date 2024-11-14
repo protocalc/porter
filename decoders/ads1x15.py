@@ -41,7 +41,7 @@ def main():
     with open(args.path, "rb") as fstream:
         data = fstream.read()
 
-    reps = int(len(data) / 20)
+    reps = int(len(data) / 16)
 
     vals = struct.unpack("<" + pattern * reps, data)
 
