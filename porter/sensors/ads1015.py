@@ -4,7 +4,7 @@ import struct
 import time
 
 import lgpio
-import smbus2
+#import smbus2
 
 # ADS1015 registers
 ADS1015_REG_CONVERSION = 0x00
@@ -103,7 +103,7 @@ class ADS1015:
         string = [(self.__config_register >> 8) & 0xFF, self.__config_register & 0xFF]
         # Write the config register
 
-        lgpio.i2c_write_i2c_block_data(self.bus, ADS1015_REG_CONFIG, config_bytes)
+        lgpio.i2c_write_i2c_block_data(self.bus, ADS1015_REG_CONFIG, string)
 
         tmsg = time.perf_counter()
 
@@ -117,11 +117,10 @@ class ADS1015:
 
             # while time.perf_counter()- tmsg < (self.__time_sample+5e-4):
             #    pass
-            raw_value = self.bus.i2c_read_i2c_block_data(
-                self.address, ADS1015_REG_CONVERSION, 2
+            _, raw_value = lgpio.i2c_read_i2c_block_data(
+                self.bus, ADS1015_REG_CONVERSION, 2
             )
             delta0 = time.perf_counter() - tstart
-            # raw_value = random.random()
 
             raw_value = ((raw_value[0] << 8) | (raw_value[1] & 0xFF)) >> 4
 
@@ -131,9 +130,9 @@ class ADS1015:
 
             msg += struct.pack("<f", delta)
 
-            # fs.write(msg)
+            fs.write(msg)
 
-            while delta < 1e-3:
+            while delta < self.__time_sample:
                 delta = time.perf_counter() - tstart
             counter += 1
             t += delta
