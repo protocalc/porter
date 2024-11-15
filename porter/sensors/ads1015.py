@@ -4,7 +4,6 @@ import struct
 import time
 
 import lgpio
-#import smbus2
 
 # ADS1015 registers
 ADS1015_REG_CONVERSION = 0x00
@@ -37,6 +36,15 @@ ADS1015_CONFIG_GAIN = {
     "16": 0x0A00,
 }
 
+ADS1015_VALUE_GAIN = {
+    "2/3": 6.144,
+    "1": 4.096,
+    "2": 2.048,
+    "4": 1.024,
+    "8": 0.512,
+    "16": 0.256,
+}
+
 ADS1015_CONFIG_MODE = {"Continuous": 0x0000, "Single-Shot": 0x0100}
 
 ADS1015_CONFIG_RATE = {
@@ -63,6 +71,7 @@ class ADS1015:
         self.address = address
 
         self._gain = ADS1015_CONFIG_GAIN["8"]
+        self._gain_value = ADS1015_VALUE_GAIN["8"]
         self._rate = ADS1015_CONFIG_RATE["1600"]
 
         self.__read_mode = kwargs.get("read mode", ADS1015_CONFIG_MODE["Continuous"])
@@ -78,6 +87,7 @@ class ADS1015:
 
         self.bus = lgpio.i2c_open(bus, address)
 
+        self.__adc_sample = 1 / 1600.0
         self.__time_sample = 1 / 1600.0
 
         self.__config_register = (
@@ -95,67 +105,76 @@ class ADS1015:
         self.__read_buffer = bytearray(2)
 
         logger.info(f"Connected to ADC {self.name}")
-        logger.info(f"Current Data Rate in s: {self.__time_sample}")
-        logger.info(f"Current Gain: {self._gain}")
+        logger.info(f"Current ADC Data Rate in s: {self.__adc_sample}")
+        logger.info(f"Current Reading Data Rate in s: {self.__time_sample}")
+        logger.info(f"Current Gain: {self._gain_value}")
 
     def read_continous_binary(self, fs, flag):
 
-        string = [(self.__config_register >> 8) & 0xFF, self.__config_register & 0xFF]
-        # Write the config register
+        config_bytes = [
+            (self.__config_register >> 8) & 0xFF,
+            self.__config_register & 0xFF,
+        ]
+        lgpio.i2c_write_i2c_block_data(self.bus, ADS1015_REG_CONFIG, config_bytes)
 
-        lgpio.i2c_write_i2c_block_data(self.bus, ADS1015_REG_CONFIG, string)
+        msg_buffer = bytearray(20)
 
-        tmsg = time.perf_counter()
+        count = 0
+        avg_read_time = 0
 
-        counter = 0
-        t = 0
+        next_sample_time = time.perf_counter_ns()
 
         while not flag.is_set():
-            msg = struct.pack("<d", time.time())
 
-            tstart = time.perf_counter()
+            t_start = time.perf_counter_ns()
 
-            # while time.perf_counter()- tmsg < (self.__time_sample+5e-4):
-            #    pass
             _, raw_value = lgpio.i2c_read_i2c_block_data(
                 self.bus, ADS1015_REG_CONVERSION, 2
             )
-            delta0 = time.perf_counter() - tstart
 
             raw_value = ((raw_value[0] << 8) | (raw_value[1] & 0xFF)) >> 4
 
-            msg += struct.pack("<f", (raw_value * 6.144) / 2048.0)
+            read_time = time.perf_counter_ns() - t_start
 
-            delta = time.perf_counter() - tstart
+            struct.pack_into("<d", msg_buffer, 0, time.time())
+            struct.pack_into("<q", msg_buffer, 8, read_time)
+            struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 2048)
 
-            msg += struct.pack("<f", delta)
+            next_sample_time = next_sample_time + self.__time_sample * (
+                1 + int(read_time / self.__time_sample)
+            )
 
-            fs.write(msg)
+            fs.write(msg_buffer)
 
-            while delta < self.__time_sample:
-                delta = time.perf_counter() - tstart
-            counter += 1
-            t += delta
-            print(delta, self.__time_sample, self._rate, counter, t, tstart, delta0)
+            while time.perf_counter_ns() < next_sample_time:
+                pass
 
     def configure(self, config):
 
-        keys = ["gain", "rate"]
+        keys = ["gain", "ADC_rate", ""]
 
         for i in config.keys():
 
             if i.lower() == "gain":
-                print(config[i])
                 self._gain = ADS1015_CONFIG_GAIN[str(config[i])]
-                logger.info(f"Current Gain: {self._gain}")
-            elif i.lower() == "data_rate":
-                print("RATE", config[i], i)
+                self._gain_value = ADS1015_VALUE_GAIN[str(config[i])]
+
+                logger.info(f"Current Gain: {self._gain_value}")
+            elif i.lower() == "adc_rate":
+                self._rate = ADS1015_CONFIG_RATE[str(config[i])]
+                self.__adc_sample = 1 / config[i]
+
+                logger.info(f"Current ADC Data Rate in s: {self.__adc_sample}")
+
+            elif i.lower() == "reading_rate":
                 self._rate = ADS1015_CONFIG_RATE[str(config[i])]
                 self.__time_sample = 1 / config[i]
-                print(self.__time_sample)
-                logger.info(f"Current Data Rate in s: {self.__time_sample}")
 
-        print("Gain", self._gain)
+                if self.__time_sample < self.__adc_sample:
+                    self.__time_sample = self.__adc_sample * 1.5
+                    logger.info(f"Set Reading Data Rate in s: {self.__time_sample}")
+                else:
+                    logger.info(f"Current Reading Data Rate in s: {self.__time_sample}")
 
         self.__config_register = (
             ADS1015_REG_CONFIG_CQUE_NONE
@@ -164,17 +183,11 @@ class ADS1015:
             | ADS1015_REG_CONFIG_CMODE_TRAD
             | self.__read_mode
         )
-        print("Config 1", self.__config_register, self._rate)
-        self.__config_register |= self._rate
-        print("Config 2", self.__config_register, self._rate)
-        self.__config_register |= self._gain
-        print("Config 3", self.__config_register, self.__mux_channels)
-        self.__config_register |= self.__mux_channels
-        print("Config 4", self.__config_register)
-        self.__config_register |= ADS1015_REG_CONFIG_OS_SINGLE
-        print("Config 5", self.__config_register)
 
-        print("Config", self.__config_register)
+        self.__config_register |= self._rate
+        self.__config_register |= self._gain
+        self.__config_register |= self.__mux_channels
+        self.__config_register |= ADS1015_REG_CONFIG_OS_SINGLE
 
     def close(self):
 
