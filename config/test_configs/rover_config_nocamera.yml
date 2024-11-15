@@ -78,6 +78,7 @@ sensors:
         gain: 2
         data_rate: 490
 
+
 source:
   name: VALON-5019
   port: /dev/ttyAMA2
@@ -86,6 +87,8 @@ source:
   power: -3.5
   mod_amp: 15
   mod_freq: 37
+
+
 
 telemetry:
   enabled: False

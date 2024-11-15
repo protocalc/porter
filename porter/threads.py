@@ -5,7 +5,6 @@ import time
 
 logger = logging.getLogger()
 
-
 class Sensors(threading.Thread):
 
     def __init__(
@@ -52,6 +51,7 @@ class Sensors(threading.Thread):
         logging.info(f"Sensor {self.sensor_name} started")
 
         with self.datafile as binary:
+
             self.sensor_lock.acquire()
             temp = self.conn.read_continous_binary(binary, self.shutdown_flag)
             self.sensor_lock.release()
@@ -115,24 +115,26 @@ class Camera(threading.Thread):
 
         if self.mode == "video":
             flag = True
-            video_chunks = 20 * 60
+            video_chunks = 20 * 60 
             secs_remaining = copy.copy(self.duration)
             while not self.shutdown_flag.is_set():
                 time.sleep(0.1)
                 self.camera.messageHandler(["videocontrol"])
                 if flag:
                     if secs_remaining < video_chunks:
-                        time.sleep(secs_remaining)
+                        self.shutdown_flag.wait(secs_remaining)
                         self.camera.messageHandler(["videocontrol"])
+                        self.shutdown_flag.set()
                         flag = not flag
                         break
-                    else:
-                        time.sleep(video_chunks)
+                    else: 
+                        self.shutdown_flag.wait(video_chunks)
                         self.camera.messageHandler(["videocontrol"])
                         time.sleep(2)
                         secs_remaining -= video_chunks
                 else:
                     flag = not flag
+            self.camera.messageHandler(["videocontrol"])
 
         elif self.mode == "photo":
             photo_count = 0

@@ -1,0 +1,38 @@
+local_development: False
+
+sensors:   
+  ADC_1:
+    name: ADS1015
+    connection:
+      type: I2C
+      parameters:
+        bus: 6
+        address: 0x48
+        mode: differential
+        channels: [[0,1]]
+        output: voltage
+    sensor_info:
+        type: ADC
+        manufacturer: ADS
+    configuration: 
+      gain: 8
+      data_rate: 1600
+      
+source:
+  name: VALON-5019
+  port: /dev/ttyAMA2
+  baudrate: 115200
+  freq: 90
+  power: -3.5
+  mod_amp: 15
+  mod_freq: 47
+
+
+telemetry:
+  enabled: False
+  antenna:
+    name: XBEE3
+    type: XBEE
+    port: /dev/XBEE
+    baudrate: 38400
+    remote: OBI

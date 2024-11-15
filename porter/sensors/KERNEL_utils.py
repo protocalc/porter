@@ -52,8 +52,6 @@ class KernelMsg:
             type_idx = 3
         else:
             type_idx = 1
-            
-        print(type_idx)
 
         msg_type = msg[type_idx].to_bytes(1, byteorder="little")
         modes = list(Kdb.MODES.keys())
