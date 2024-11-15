@@ -139,13 +139,14 @@ class Ads1x15:
 
             delta = time.perf_counter() - tstart
 
+            
+            #print('OLD', delta, self.__time_sample)	
+            while delta < self.__time_sample:
+                delta = time.perf_counter() - tstart
             msg += struct.pack("<f", delta)
 
             fs.write(msg)
-
-            while delta < self.__time_sample:
-                delta = time.perf_counter() - tstart
-            print(delta, self.__time_sample)
+            print('NEW', delta, self.__time_sample)
 
     def read(self, chunk_size=None, return_binary=True):
 

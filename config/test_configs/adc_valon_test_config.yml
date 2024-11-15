@@ -23,7 +23,7 @@ source:
   port: /dev/ttyAMA2
   baudrate: 115200
   freq: 90
-  power: -3.5
+  power: -6.5
   mod_amp: 15
   mod_freq: 37
 
