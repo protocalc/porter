@@ -52,7 +52,7 @@ class Ads1x15:
 
         mode = kwargs.get("mode", "differential")
         name = kwargs.get("name", "Generic ADC")
-        
+
         self.name = name
 
         self.model = kwargs.get("model", "ADS1015")
@@ -126,43 +126,58 @@ class Ads1x15:
         self.__time_sample = 1 / self.ads.data_rate
 
         logger.info(f"Connected to ADC {self.name}")
+        logger.info(f"Current Data Rate in s: {self.__time_sample}")
+
+    def read_continous_binary(self, fs, flag):
+
+        while not flag.is_set():
+            msg = struct.pack("<d", time.time())
+
+            tstart = time.perf_counter()
+
+            msg += self._get_voltage()
+
+            delta = time.perf_counter() - tstart
+
+            
+            #print('OLD', delta, self.__time_sample)	
+            while delta < self.__time_sample:
+                delta = time.perf_counter() - tstart
+            msg += struct.pack("<f", delta)
+
+            fs.write(msg)
+            print('NEW', delta, self.__time_sample)
 
     def read(self, chunk_size=None, return_binary=True):
 
         count = 0
+        self.__read_count = 0
 
         if return_binary:
-            msg = b""
-        else:
-            msg = []
+            msg = struct.pack("<d", time.time())
 
-        bytes_per_msg = 12
-
-        if not chunk_size:
-            chunk_size = bytes_per_msg
-
-        while count <= chunk_size / bytes_per_msg:
-            t = time.time()
-
-            if return_binary:
-                t = struct.pack("<d", t)
-
-            msg += t
+            tstart = time.perf_counter()
 
             if self.output_mode == "value":
-                msg += self._get_value()
+                msg += self._get_value(return_binary=return_binary)
             else:
-                msg += self._get_voltage()
+                msg += self._get_voltage(return_binary=return_binary)
 
-            time_last_sample = time.time()
+            while time.perf_counter() - tstart < self.__time_sample:
+                pass
 
-            if return_binary:
-                (t,) = struct.unpack("<d", t)
+        else:
+            msg = [time.time()]
 
-            if time_last_sample - t < self.__time_sample:
-                time.sleep(self.__time_sample - (time_last_sample-t))
+            tstart = time.perf_counter()
 
-            count += 1
+            if self.output_mode == "value":
+                msg += self._get_value(return_binary=return_binary)
+            else:
+                msg += self._get_voltage(return_binary=return_binary)
+
+            while time.perf_counter() - tstart < self.__time_sample:
+                pass
 
         return msg
 
@@ -397,3 +412,5 @@ class Ads1x15:
         self.ads.data_rate = data_rate
 
         self.__time_sample = 1 / self.ads.data_rate
+
+        logger.info(f"Current Data Rate in s: {self.__time_sample}")

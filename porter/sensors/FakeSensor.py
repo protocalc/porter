@@ -1,6 +1,7 @@
 import logging
-import time
 import random
+import struct
+import time
 
 logger = logging.getLogger()
 # logger.setLevel(logging.INFO)
@@ -14,6 +15,20 @@ class FakeConnection:
 
         logger.info(f"Created fake sensor for {name}")
 
+        self._time_sample = 0.001
+
+    def read_continous_binary(self, fs, flag, sampling=1.0 / 100.0, delta=1e-8):
+
+        while not flag.is_set():
+            msg = struct.pack("<d", time.time())
+
+            tstart = time.perf_counter()
+
+            msg += bytes(int(random.random()))
+
+            while time.perf_counter() - tstart < (sampling - delta):
+                pass
+
     def read(self, chunk_size=100):
 
         count = 0
@@ -21,7 +36,6 @@ class FakeConnection:
             val = bytes(int(random.random()))
             count += 1
 
-        time.sleep(0.01)
         return val
 
     def close(self):

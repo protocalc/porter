@@ -37,6 +37,8 @@ class UBX:
         keys = []
 
         for i in config.keys():
+			
+            print(i)
 
             if i.lower() == "rate":
 
@@ -100,6 +102,7 @@ class UBX:
                 keys.append((string, output))
 
             else:
+                print('ok', i)
                 if isinstance(config[i], list):
                     keys.append((config[i][0], config[i][1]))
 
@@ -116,9 +119,15 @@ class UBX:
                     logging.info("UBLOX sensor configured correctly")
                     break
 
-    def read(self, parsing=False):
+    def read_continous_binary(self, fs, flag):
 
-        reader = ubx.UBXReader(self.conn, parsing=True)
+        while not flag.is_set():
+            reader = ubx.UBXReader(self.conn, parsing=False)
+
+            fs.write(reader.read()[0])
+
+    def read(self, parsing=False):
+        reader = ubx.UBXReader(self.conn, parsing=parsing)
 
         raw, parsed = reader.read()
 

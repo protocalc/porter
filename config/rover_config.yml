@@ -77,7 +77,6 @@ sensors:
           address: 0x48
           mode: differential
           channels: [[0,1]]
-          output: voltage
       sensor_info:
           type: ADC
           manufacturer: ADS
@@ -94,11 +93,3 @@ source:
   mod_amp: 15
   mod_freq: 47
 
-telemetry:
-  enabled: False
-  antenna:
-    name: XBEE3
-    type: XBEE
-    port: /dev/XBEE
-    baudrate: 38400
-    remote: OBI

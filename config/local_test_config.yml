@@ -1,9 +1,8 @@
-local_development: False
-
+local_development: True
 
 sensors:
     GPS_1:
-      name: ZED-F9P
+      name: ZED-F9R
       connection:
         type: serial
         parameters:
@@ -13,14 +12,10 @@ sensors:
         type: GPS
         manufacturer: UBlox
       configuration:
-        NMEA1:
+        NMEA:
           output:
             port: UART1
             set: False
-        NMEA2:
-          output:
-            port: UART2
-            set: True
         UBX:
           output:
             port: UART1
@@ -37,16 +32,6 @@ sensors:
             'RAWX',
             'SFRBX'
             ]
-        NMEA_MSG:
-          output_port: UART2
-          ID : [
-            'GGA',
-            'GSV',
-            'GSA',
-            'GST',
-            'GNS',
-            'ZDA'
-          ]
 
     Inclinometer_1:
       name: Kernel-100
@@ -75,26 +60,6 @@ sensors:
           type: ADC
           manufacturer: ADS
       configuration: 
-        gain: 2
-        data_rate: 490
+        gain: 8
+        data_rate: 1600
 
-
-source:
-  name: VALON-5019
-  port: /dev/ttyAMA2
-  baudrate: 115200
-  freq: 90
-  power: -3.5
-  mod_amp: 15
-  mod_freq: 37
-
-
-
-telemetry:
-  enabled: False
-  antenna:
-    name: XBEE3
-    type: XBEE
-    port: /dev/XBEE
-    baudrate: 38400
-    remote: OBI

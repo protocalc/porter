@@ -1,7 +1,7 @@
-import threading
-import logging
-import time
 import copy
+import logging
+import threading
+import time
 
 logger = logging.getLogger()
 
@@ -10,8 +10,6 @@ class Sensors(threading.Thread):
     def __init__(
         self,
         conn,
-        tx_queue,
-        tx_lock,
         sensor_lock,
         flag,
         date,
@@ -24,10 +22,6 @@ class Sensors(threading.Thread):
 
         Parameters:
             conn (Object): object with the connection to a specific sensor
-            tx_queue (Queue.queue): queue to add the readings to a transmitting
-                                    queue common to all sensors
-            tx_lock (threading.lock): lock to preserve multiple attempts to
-                                      access the transmitting queue
             sensor_lock (threading.lock): lock to preserve multiple attempts to
                                           access the sensor queue
             flag (threading.Event): flag to communicate to the thread a
@@ -39,9 +33,7 @@ class Sensors(threading.Thread):
         super().__init__(*args, **kwargs)
 
         self.conn = conn
-        self.tx_queue = tx_queue
 
-        self.tx_lock = tx_lock
         self.sensor_lock = sensor_lock
 
         self.sensor_name = sensor_name
@@ -59,20 +51,11 @@ class Sensors(threading.Thread):
         logging.info(f"Sensor {self.sensor_name} started")
 
         with self.datafile as binary:
-            while not self.shutdown_flag.is_set():
-                self.sensor_lock.acquire()
-                temp = self.conn.read()
-                self.sensor_lock.release()
-                if self.tx_queue is not None:
-                    self.tx_lock.acquire()
-                    msg = []
-                    msg.append(self.sensor_name)
-                    msg.append(temp)
-                    self.tx_queue.put(msg)
-                    self.tx_lock.release()
-                binary.write(temp)
-                binary.flush()
-            print('Sensor Closing')                
+
+            self.sensor_lock.acquire()
+            temp = self.conn.read_continous_binary(binary, self.shutdown_flag)
+            self.sensor_lock.release()
+
             self.conn.close()
 
 
@@ -163,64 +146,3 @@ class Camera(threading.Thread):
                 photo_count += 1
                 if photo_count > self.frames:
                     break
-
-
-class Receiver(threading.Thread):
-
-    def __init__(
-        self,
-        xbee_obj,
-        destination_connections,
-        destination_locks,
-        xlock,
-        flag,
-        *args,
-        **kwargs,
-    ):
-
-        super().__init__(*args, **kwargs)
-
-        self.xbee_obj = xbee_obj
-        self.destination_connections = destination_connections
-        self.destination_locks = destination_locks
-
-        self.xlock = xlock
-
-        self.shutdown_flag = flag
-
-    def run(self):
-
-        while not self.shutdown_flag.is_set():
-
-            self.xlock.acquire()
-            dest, msg = self.xbee_obj.poll_msg()
-            self.xlock.release()
-
-            self.destination_locks[dest].acquire()
-            self.destination_connections.write(msg)
-            self.destination_locks[dest].release()
-
-
-class Transmitter(threading.Thread):
-
-    def __init__(self, xbee_obj, tx_queue, qlock, xlock, flag, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-
-        self.xbee_obj = xbee_obj
-        self.tx_queue = tx_queue
-
-        self.qlock = qlock
-        self.xlock = xlock
-
-        self.shutdown_flag = flag
-
-    def run(self):
-
-        while not self.shutdown_flag.is_set():
-            while not self.tx_queue.empty():
-                self.qlock.acquire()
-                self.xlock.acquire()
-                self.xbee_obj.send_msg(self.tx_queue.get())
-                self.qlock.release()
-                self.xlock.release()

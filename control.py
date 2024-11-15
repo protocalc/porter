@@ -10,7 +10,6 @@ import time
 import yaml
 
 import porter.sensors.sensors_handler as sh
-import porter.telemetry.xbee as xbee
 import porter.threads as threads
 import porter.valon as valon
 
@@ -110,25 +109,23 @@ def main():
                 )
 
                 name = config["sensors"][i]["name"]
+               
 
                 sensor_connections[name] = sensors_handler.obj
                 sensor_locks[name] = threading.Lock()
                 sensor_names[name] = name
 
-            if not config["telemetry"]["enabled"]:
-                tx_queue = None
-                tx_lock = None
+            for i in sensor_connections.keys():
+                threads.Sensors(
+                    conn=sensor_connections[i],
+                    sensor_lock=sensor_locks[i],
+                    flag=flag,
+                    date=date,
+                    path=sensor_path,
+                    sensor_name=sensor_names[i],
+                    daemon=False,
+                ).start()
 
-            else:
-                tx_queue = queue.Queue()
-                tx_lock = threading.Lock()
-
-                xbee_conn = xbee.comms(
-                    config["Telemetry"]["antenna"]["port"],
-                    config["Telemetry"]["antenna"]["baudrate"],
-                    config["Telemetry"]["antenna"]["remote"],
-                )
-                xbee_lock = threading.Lock()
 
         if "source" in config.keys():
             synt = valon.Valon(config["source"]["port"], config["source"]["baudrate"])
@@ -150,11 +147,11 @@ def main():
             time.sleep(0.2)
 
             camera.messageHandler(["datetime", 0.04, 1e-3])
-            
+
             time.sleep(0.1)
 
             camera.messageHandler(["programmode", config["camera"]["program"]])
-            
+
             time.sleep(0.1)
 
             if "ISO" in config["camera"].keys():
@@ -222,18 +219,7 @@ def main():
                     daemon=True,
                 ).start()
 
-        if tx_queue is not None:
-            threads.Transmitter(
-                xbee_conn, tx_queue, tx_lock, xbee_lock, flag, daemon=True
-            ).start()
-            threads.Receiver(
-                xbee_conn,
-                sensor_connections,
-                sensor_locks,
-                xbee_lock,
-                flag,
-                daemon=False,
-            ).start()
+
 
         while not flag.is_set():
             pass
@@ -249,6 +235,7 @@ def main():
             flag.set()
             if "camera" in config.keys() and not config["local_development"]:
                 camera.close_usb_connection()
+
 
 if __name__ == "__main__":
     main()

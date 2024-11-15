@@ -1,7 +1,7 @@
 g = 9.8106
 
-GYRO_SCALE = 10
-ACC_SCALE = 2000 * g
+GYRO_SCALE = 1e5
+ACC_SCALE = 1e6 * g
 
 WORD = 'H'
 SWORD = 'h'
@@ -104,12 +104,12 @@ MODES = {
             100,
             100,
             100,
-            GYRO_SCALE,
-            GYRO_SCALE,
-            GYRO_SCALE,
-            ACC_SCALE,
-            ACC_SCALE,
-            ACC_SCALE,
+            10,
+            10,
+            10,
+            2000 * g,
+            2000 * g,
+            2000 * g,
             0,
             0,
             0,
