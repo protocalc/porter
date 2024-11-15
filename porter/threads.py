@@ -56,9 +56,6 @@ class Sensors(threading.Thread):
             temp = self.conn.read_continous_binary(binary, self.shutdown_flag)
             self.sensor_lock.release()
 
-            self.conn.close()
-
-
 class Camera(threading.Thread):
 
     def __init__(

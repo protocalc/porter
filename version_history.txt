@@ -1,3 +1,4 @@
+V3.0.1: - Added close sensor in the reading file
 V3.0  : - Removed all the transmitting/receiving related code
         - Modified Readout code for the ADC
         - Added output of the current ADC rate

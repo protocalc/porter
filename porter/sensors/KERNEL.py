@@ -100,6 +100,8 @@ class KernelInertial:
 
             fs.write(self.read())
 
+        self.close()
+
     def read(self, chunk_size=None):
 
         if self.__first_msg:

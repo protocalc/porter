@@ -18,9 +18,9 @@ class UBX:
         transaction = 0
         key = [("CFG_UART1_BAUDRATE", int(baudrate))]
         cfgs = ubx.UBXMessage.config_set(layer, transaction, key)
-        print(cfgs)
+
         self.conn.write(cfgs.serialize())
-        print(self.read(parsing=True))
+
         time.sleep(0.1)
         self.conn.close()
         time.sleep(0.2)
@@ -126,6 +126,8 @@ class UBX:
 
             fs.write(reader.read()[0])
 
+        self.close()
+
     def read(self, parsing=False):
         reader = ubx.UBXReader(self.conn, parsing=parsing)
 
@@ -140,5 +142,4 @@ class UBX:
 
         self.conn.close()
 
-        logging.info(f"Closed ublox sensor {self.name}")
         logging.info(f"Closed ublox sensor {self.name}")

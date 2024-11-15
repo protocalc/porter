@@ -40,7 +40,7 @@ class KernelMsg:
     def decode_single(self, msg, return_dict=False):
         """Decode a single message sent by the inclinometer
 
-        The structure of the message is presented in the KERNEL IMU ICD v1.21
+        The structure of the message is presented in the KERNEL IMU ICD v1.27
 
         Args:
             msg (bytes): message to be decoded
@@ -83,8 +83,8 @@ class KernelMsg:
                 data = pickle.load(fd)
             else:
                 data = fd.read()
-        
-        data = data[data.find(HEADER):]
+
+        data = data[data.find(HEADER) :]
 
         length = int.from_bytes(data[4:5], byteorder="little", signed=False)
 

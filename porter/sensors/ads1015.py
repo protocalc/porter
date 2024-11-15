@@ -149,6 +149,8 @@ class ADS1015:
             while time.perf_counter_ns() < next_sample_time:
                 pass
 
+        self.close()
+
     def configure(self, config):
 
         keys = ["gain", "ADC_rate", ""]
