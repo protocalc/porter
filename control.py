@@ -82,6 +82,8 @@ def main():
 
     cfg_path = path + "/" + cfg_name
 
+    status = True
+
     with open(cfg_path, "r") as cfg:
         config = yaml.safe_load(cfg)
         logging.info(f"Loaded configuration {cfg_name}")
@@ -92,9 +94,6 @@ def main():
 
     for sig in signal_to_catch:
         signal.signal(sig, handler)
-
-    tx_queue = None
-    tx_lock = None
 
     time.sleep(2)
 
@@ -110,7 +109,6 @@ def main():
                 )
 
                 name = config["sensors"][i]["name"]
-               
 
                 sensor_connections[name] = sensors_handler.obj
                 sensor_locks[name] = threading.Lock()
@@ -127,7 +125,6 @@ def main():
                     daemon=False,
                 ).start()
 
-
         if "source" in config.keys():
             synt = valon.Valon(config["source"]["port"], config["source"]["baudrate"])
 
@@ -141,86 +138,93 @@ def main():
 
         if "camera" in config.keys() and not config["local_development"]:
 
-            camera = sony.SONYconn(config["camera"]["name"])
+            try:
+                camera = sony.SONYconn(config["camera"]["name"])
 
-            camera.initialize_camera()
+                camera.initialize_camera()
 
-            time.sleep(0.2)
+                time.sleep(0.2)
 
-            camera.messageHandler(["datetime", 0.04, 1e-3])
+                camera.messageHandler(["datetime", 0.04, 1e-3])
 
-            time.sleep(0.1)
-
-            camera.messageHandler(["programmode", config["camera"]["program"]])
-
-            time.sleep(0.1)
-
-            if "ISO" in config["camera"].keys():
-                camera.messageHandler(["iso", config["camera"]["ISO"]])
                 time.sleep(0.1)
 
-            if "shutter_speed" in config["camera"].keys():
-                camera.messageHandler(
-                    ["shutterspeed", config["camera"]["shutter_speed"]]
-                )
+                camera.messageHandler(["programmode", config["camera"]["program"]])
+
                 time.sleep(0.1)
 
-            if "focus_distance" in config["camera"].keys():
-                camera.messageHandler(
-                    ["focusdistance", config["camera"]["focus_distance"]]
-                )
-                time.sleep(0.1)
+                if "ISO" in config["camera"].keys():
+                    camera.messageHandler(["iso", config["camera"]["ISO"]])
+                    time.sleep(0.1)
 
-            if config["camera"]["mode"] == "photo":
-                duration = None
+                if "shutter_speed" in config["camera"].keys():
+                    camera.messageHandler(
+                        ["shutterspeed", config["camera"]["shutter_speed"]]
+                    )
+                    time.sleep(0.1)
 
-                if "fps" in config["camera"].keys():
-                    fps = config["camera"]["fps"]
-                else:
-                    fps = 1
+                if "focus_distance" in config["camera"].keys():
+                    camera.messageHandler(
+                        ["focusdistance", config["camera"]["focus_distance"]]
+                    )
+                    time.sleep(0.1)
 
-                if "frames" in config["camera"].keys():
-                    frames = config["camera"]["frames"]
-                else:
-                    frames = None
-
-            else:
-                if "duration" in config["camera"].keys():
-                    duration = config["camera"]["duration"]
-                else:
+                if config["camera"]["mode"] == "photo":
                     duration = None
 
-                fps = None
-                frames = None
+                    if "fps" in config["camera"].keys():
+                        fps = config["camera"]["fps"]
+                    else:
+                        fps = 1
 
-            threads.Camera(
-                camera=camera,
-                flag=flag,
-                mode=config["camera"]["mode"],
-                camera_name=config["camera"]["name"],
-                fps=fps,
-                frames=frames,
-                duration=duration,
-                daemon=True,
-            ).start()
+                    if "frames" in config["camera"].keys():
+                        frames = config["camera"]["frames"]
+                    else:
+                        frames = None
 
-            time.sleep(2)
+                else:
+                    if "duration" in config["camera"].keys():
+                        duration = config["camera"]["duration"]
+                    else:
+                        duration = None
 
-        while True:
+                    fps = None
+                    frames = None
+
+                threads.Camera(
+                    camera=camera,
+                    flag=flag,
+                    mode=config["camera"]["mode"],
+                    camera_name=config["camera"]["name"],
+                    fps=fps,
+                    frames=frames,
+                    duration=duration,
+                    daemon=True,
+                ).start()
+
+                time.sleep(2)
+
+            except IndexError:
+                status = False
+                logger.info("Camera not Found, deleting data folder")
+                logger.info("This command is sent so that when the code")
+                logger.info("run at startup, we do not fill the data directory")
+
+                original_log_name = home_dir + "/data/" + date + "/file.log"
+
+                new_log_name = home_dir + "/data/file_" + date + ".log"
+
+                os.popen(f"cp {original_log_name} {new_log_name}")
+                time.sleep(2)
+
+                import shutil
+
+                shutil.rmtree(home_dir + "/data/" + date)
+
+        while status:
             pass
 
-    except ServiceExitError:
-        flag.set()
-
-        time.sleep(0.1)
-        if "sensors" in config.keys():
-            for i in sensor_connections.keys():
-                sensor_connections[i].close()
-                logging.info(f"Sensor {sensor_names[i]} closed")
-
-        if "camera" in config.keys() and not config["local_development"]:
-            if camera._recording_status:
-                camera._video_control()
+        capture_flag(flag)
 
     except (ServiceExitError, FlagSetError) as err:
         logger.info(f"Flag has been raise")
