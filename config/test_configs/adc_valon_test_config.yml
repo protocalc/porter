@@ -20,19 +20,10 @@ sensors:
       
 source:
   name: VALON-5019
-  port: /dev/ttyAMA2
+  port: /dev/ttyAMA4
   baudrate: 115200
   freq: 90
   power: -6.5
   mod_amp: 15
   mod_freq: 37
 
-
-telemetry:
-  enabled: False
-  antenna:
-    name: XBEE3
-    type: XBEE
-    port: /dev/XBEE
-    baudrate: 38400
-    remote: OBI

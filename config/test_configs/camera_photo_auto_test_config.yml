@@ -5,12 +5,3 @@ camera:
   mode: photo
   program: Photo_Auto
   focus_distance: infinity
-
-telemetry:
-  enabled: False
-  antenna:
-    name: XBEE3
-    type: XBEE
-    port: /dev/XBEE
-    baudrate: 38400
-    remote: OBI

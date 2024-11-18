@@ -9,7 +9,7 @@ sensors:
         bus: 6
         address: 0x48
         mode: differential
-        channels: [[0,1]]
+        channels: [0,1]
         output: voltage
     sensor_info:
         type: ADC
@@ -17,13 +17,3 @@ sensors:
     configuration: 
       gain: 2/3
       data_rate: 1600
-
-
-telemetry:
-  enabled: False
-  antenna:
-    name: XBEE3
-    type: XBEE
-    port: /dev/XBEE
-    baudrate: 38400
-    remote: OBI

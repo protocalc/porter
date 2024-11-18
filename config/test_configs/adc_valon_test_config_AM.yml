@@ -9,7 +9,7 @@ sensors:
         bus: 6
         address: 0x48
         mode: differential
-        channels: [[0,1]]
+        channels: [0,1]
         output: voltage
     sensor_info:
         type: ADC
@@ -20,19 +20,9 @@ sensors:
       
 source:
   name: VALON-5019
-  port: /dev/ttyAMA2
+  port: /dev/ttyAMA4
   baudrate: 115200
   freq: 90
   power: -3.5
   mod_amp: 15
   mod_freq: 47
-
-
-telemetry:
-  enabled: False
-  antenna:
-    name: XBEE3
-    type: XBEE
-    port: /dev/XBEE
-    baudrate: 38400
-    remote: OBI

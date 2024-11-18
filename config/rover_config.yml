@@ -27,7 +27,7 @@ sensors:
         NMEA2:
           output:
             port: UART2
-            set: False
+            set: True
         UBX:
           output:
             port: UART1
@@ -60,7 +60,7 @@ sensors:
       connection:
         type: serial
         parameters:
-          port: /dev/ttyAMA3
+          port: /dev/ttyAMA5
           baudrate: 115200
       sensor_info:
         type: Inclinometer
@@ -76,7 +76,7 @@ sensors:
           bus: 6
           address: 0x48
           mode: differential
-          channels: [[0,1]]
+          channels: [0,1]
       sensor_info:
           type: ADC
           manufacturer: ADS
@@ -86,7 +86,7 @@ sensors:
 
 source:
   name: VALON-5019
-  port: /dev/ttyAMA2
+  port: /dev/ttyAMA4
   baudrate: 115200
   freq: 90
   power: -3.5

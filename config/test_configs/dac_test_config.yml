@@ -7,7 +7,7 @@ sensors:
         type: I2C
         parameters:
           mode: differential
-          channels: [[0,1]]
+          channels: [0,1]
           output: value
       sensor_info:
           type: ADC
@@ -31,18 +31,9 @@ sensors:
 
 source:
   name: VALON-5019
-  port: /dev/VALON
+  port: /dev/ttyAMA4
   baudrate: 9600
   freq: 90
   power: 4
   mod_amp: 15
   mod_freq: 0
-
-telemetry:
-  enabled: False
-  antenna:
-    name: XBEE3
-    type: XBEE
-    port: /dev/XBEE
-    baudrate: 38400
-    remote: OBI

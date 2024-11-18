@@ -37,8 +37,6 @@ class UBX:
         keys = []
 
         for i in config.keys():
-			
-            print(i)
 
             if i.lower() == "rate":
 
@@ -102,7 +100,6 @@ class UBX:
                 keys.append((string, output))
 
             else:
-                print('ok', i)
                 if isinstance(config[i], list):
                     keys.append((config[i][0], config[i][1]))
 
@@ -113,7 +110,6 @@ class UBX:
 
         for i in range(100):
             ack = self.read(parsing=True)
-            print(ack)
             if not isinstance(ack, str):
                 if ack.identity == "ACK-ACK":
                     logging.info("UBLOX sensor configured correctly")

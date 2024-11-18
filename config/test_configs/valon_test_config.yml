@@ -2,7 +2,7 @@ local_development: True
 
 source:
   name: VALON-5019
-  port: /dev/ttyAMA2
+  port: /dev/ttyAMA4
   baudrate: 115200
   freq: 90
   power: 4
