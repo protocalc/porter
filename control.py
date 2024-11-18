@@ -206,6 +206,7 @@ def main():
 
             except IndexError:
                 status = False
+                flag.set()
                 logger.info("Camera not Found, deleting data folder")
                 logger.info("This command is sent so that when the code")
                 logger.info("run at startup, we do not fill the data directory")
