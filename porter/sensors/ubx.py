@@ -104,6 +104,7 @@ class UBX:
                     keys.append((config[i][0], config[i][1]))
 
         cfgs = ubx.UBXMessage.config_set(layers, transaction, keys)
+        logging.info(f"Sent UBLOX configuration message {cfgs}")
         self.conn.write(cfgs.serialize())
 
         count = 0
