@@ -214,7 +214,7 @@ def main():
                 original_log_name = home_dir + "/data/" + date + "/file.log"
 
                 new_log_name = home_dir + "/data/file_" + date + ".log"
-
+                time.sleep(1)
                 os.popen(f"cp {original_log_name} {new_log_name}")
                 time.sleep(2)
 
