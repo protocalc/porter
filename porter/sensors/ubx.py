@@ -117,6 +117,12 @@ class UBX:
                     break
 
         for i in range(2):
+            if i == 1:
+                self.conn.close()
+
+                time.sleep(0.2)
+
+                self.conn = serial.Serial(self.__port, self.__baudrate, timeout=1)
             if len(nmea_keys) > 0:
                 time.sleep(0.05)
                 cfgs = ubx.UBXMessage.config_set(layers, transaction, nmea_keys)
