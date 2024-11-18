@@ -42,8 +42,8 @@ class UBX:
 
             if i.lower() == "rate":
 
-                time = int(1 / config["RATE"]["value"] * 1000)
-                keys.append(("CFG_RATE_MEAS", time))
+                rate = int(1 / config["RATE"]["value"] * 1000)
+                keys.append(("CFG_RATE_MEAS", rate))
 
             elif i.lower() == "ubx_msg":
 
