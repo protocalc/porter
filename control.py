@@ -231,7 +231,10 @@ def main():
         logger.info(f"Flag has been raise")
         if flag.is_set():
             if "camera" in config.keys() and not config["local_development"]:
-                camera.close_usb_connection()
+                try:
+                    camera.close_usb_connection()
+                except UnboundLocalError:
+                    pass
         else:
             flag.set()
             if "camera" in config.keys() and not config["local_development"]:
