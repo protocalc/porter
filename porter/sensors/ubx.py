@@ -35,6 +35,8 @@ class UBX:
         transaction = 0
 
         keys = []
+        nmea_keys = []
+        ubx_keys = []
 
         for i in config.keys():
 
@@ -61,7 +63,7 @@ class UBX:
                         for k in config["UBX_MSG"][j]:
                             msg = string + j + "_" + k + "_" + port_string
 
-                            keys.append((msg, 1))
+                            ubx_keys.append((msg, 1))
 
             elif i.lower() == "nmea_msg":
 
@@ -81,7 +83,7 @@ class UBX:
                         for k in config["NMEA_MSG"][j]:
                             msg = string + "_" + k + "_" + port_string
 
-                            keys.append((msg, 1))
+                            nmea_keys.append((msg, 1))
 
             elif i[:4].lower() == "nmea" or i[:3].lower() == "ubx":
 
@@ -107,14 +109,38 @@ class UBX:
         logging.info(f"Sent UBLOX configuration message {cfgs}")
         self.conn.write(cfgs.serialize())
 
-        count = 0
-
         for i in range(100):
             ack = self.read(parsing=True)
             if not isinstance(ack, str):
                 if ack.identity == "ACK-ACK":
                     logging.info("UBLOX sensor configured correctly")
                     break
+
+        if len(nmea_keys) > 0:
+            time.sleep(0.05)
+            cfgs = ubx.UBXMessage.config_set(layers, transaction, nmea_keys)
+            logging.info(f"Sent UBLOX configuration message {cfgs}")
+            self.conn.write(cfgs.serialize())
+
+            for i in range(100):
+                ack = self.read(parsing=True)
+                if not isinstance(ack, str):
+                    if ack.identity == "ACK-ACK":
+                        logging.info("UBLOX NMEA output configured correctly")
+                        break
+
+        if len(ubx_keys) > 0:
+            time.sleep(0.05)
+            cfgs = ubx.UBXMessage.config_set(layers, transaction, ubx_keys)
+            logging.info(f"Sent UBLOX configuration message {cfgs}")
+            self.conn.write(cfgs.serialize())
+
+            for i in range(100):
+                ack = self.read(parsing=True)
+                if not isinstance(ack, str):
+                    if ack.identity == "ACK-ACK":
+                        logging.info("UBLOX ubx output configured correctly")
+                        break
 
     def read_continous_binary(self, fs, flag):
 
