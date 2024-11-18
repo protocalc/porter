@@ -26,6 +26,9 @@ class UBX:
         time.sleep(0.2)
         self.conn = serial.Serial(port, baudrate, timeout=1)
 
+        self.__port = port
+        self.__baudrate = baudrate
+
         if self.conn.is_open:
             logging.info(f"Connected to ublox sensor {self.name}")
 
