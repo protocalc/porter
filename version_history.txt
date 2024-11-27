@@ -1,3 +1,5 @@
+V3.1	- New UBlox configuration Method
+	- Different handling of the sensors and configuration
 V3.0.2: - Added option that delete the data folder and stops the code when camera is not found at startup
           This option is useful to not fill the data folder
 V3.0.1: - Added close sensor in the reading file

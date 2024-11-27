@@ -9,7 +9,7 @@ class Sensors(threading.Thread):
 
     def __init__(
         self,
-        conn,
+        handler,
         sensor_lock,
         flag,
         date,
@@ -32,12 +32,12 @@ class Sensors(threading.Thread):
 
         super().__init__(*args, **kwargs)
 
-        self.conn = conn
-
         self.sensor_lock = sensor_lock
-
+        
+        self.sensor_handler = handler
+        
         self.sensor_name = sensor_name
-
+        
         name = path + self.sensor_name + "_" + date + ".bin"
         try:
             self.datafile = open(name, "r+b")
@@ -47,14 +47,17 @@ class Sensors(threading.Thread):
         self.shutdown_flag = flag
 
     def run(self):
+        
+        self.sensor_handler._connection()
+
+        logging.info(f'Configuring {self.sensor_name}')
+        
+        self.sensor_handler._configuration()
 
         logging.info(f"Sensor {self.sensor_name} started")
-
+        
         with self.datafile as binary:
-
-            self.sensor_lock.acquire()
-            temp = self.conn.read_continous_binary(binary, self.shutdown_flag)
-            self.sensor_lock.release()
+            self.sensor_handler.obj.read_continous_binary(binary, self.shutdown_flag, self.sensor_lock)
 
 class Camera(threading.Thread):
 
@@ -102,7 +105,7 @@ class Camera(threading.Thread):
         if duration is not None:
             self.duration = duration
         else:
-            self.duration = 1e9
+            self.duration = 20 * 60
 
         self.shutdown_flag = flag
 
@@ -112,17 +115,19 @@ class Camera(threading.Thread):
 
         if self.mode == "video":
             flag = True
-            video_chunks = 20 * 60 
+            video_chunks = 30 * 60 
             secs_remaining = copy.copy(self.duration)
             while not self.shutdown_flag.is_set():
                 time.sleep(0.1)
                 self.camera.messageHandler(["videocontrol"])
                 if flag:
                     if secs_remaining < video_chunks:
+                        logging.info(f"RECORDING {secs_remaining}")
                         self.shutdown_flag.wait(secs_remaining)
                         self.camera.messageHandler(["videocontrol"])
                         self.shutdown_flag.set()
                         flag = not flag
+                        logging.info(f"STOPPING")
                         break
                     else: 
                         self.shutdown_flag.wait(video_chunks)

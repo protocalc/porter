@@ -109,7 +109,7 @@ class ADS1015:
         logger.info(f"Current Reading Data Rate in s: {self.__time_sample}")
         logger.info(f"Current Gain: {self._gain_value}")
 
-    def read_continous_binary(self, fs, flag):
+    def read_continous_binary(self, fs, flag, sensor_lock):
 
         config_bytes = [
             (self.__config_register >> 8) & 0xFF,
@@ -125,7 +125,7 @@ class ADS1015:
         next_sample_time = time.perf_counter_ns()
 
         while not flag.is_set():
-
+            sensor_lock.acquire()
             t_start = time.perf_counter_ns()
 
             _, raw_value = lgpio.i2c_read_i2c_block_data(
@@ -145,7 +145,7 @@ class ADS1015:
             )
 
             fs.write(msg_buffer)
-
+            sensor_lock.release()
             while time.perf_counter_ns() < next_sample_time:
                 pass
 

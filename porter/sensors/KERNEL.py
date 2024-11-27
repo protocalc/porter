@@ -94,24 +94,26 @@ class KernelInertial:
         else:
             logger.info("Cannot connect to inclinometer")
 
-    def read_continous_binary(self, fs, flag):
+    def read_continous_binary(self, fs, flag, sensor_lock):
 
         while not flag.is_set():
-
-            fs.write(self.read())
+            
+            fs.write(self.read(sensor_lock))
 
         self.close()
 
-    def read(self, chunk_size=None):
+    def read(self, sensor_lock, chunk_size=None):
 
         if self.__first_msg:
             msg, length = self._find_msg()
 
         else:
+            sensor_lock.acquire()
             if self.expected_length is not None:
                 msg = self.conn.read(self.expected_length)
             else:
                 msg = self.conn.read(chunk_size)
+            sensor_lock.release()
 
         return msg
 

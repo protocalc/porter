@@ -19,12 +19,6 @@ class Handler:
         self.sensor_params = sensor_params
         self.local = local
 
-        self._connection()
-
-        if not local:
-            if "configuration" in self.sensor_params.keys():
-                self._configuration()
-
     def _connection(self):
 
         if self.local:
@@ -38,8 +32,6 @@ class Handler:
                     baudrate=self.sensor_params["connection"]["parameters"]["baudrate"],
                     name=self.sensor_params["name"],
                 )
-
-                self.conn = self.obj.conn
 
             elif self.sensor_params["sensor_info"]["type"].lower() == "adc":
 
@@ -68,8 +60,6 @@ class Handler:
                         self.sensor_params["connection"]["parameters"]["baudrate"],
                         name=self.sensor_params["name"],
                     )
-
-                    self.conn = self.obj.conn
 
     def _configuration(self):
 

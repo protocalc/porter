@@ -24,7 +24,7 @@ class MCP4725:
 
         self.dac.raw_value = int(bits*config['voltage']/config['max_voltage'])
 
-    def read(self, chunk_size=10):
-
+    def read_continous_binary(self, fs, flag, sensor_lock):
+        
         time.sleep(10)
-        return 1
+        
