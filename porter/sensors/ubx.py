@@ -13,9 +13,9 @@ class UBX:
 
         self.conn = serial.Serial(port, 38400, timeout=1)
         self.name = name
-        
+
         self.__new_baudrate = False
-        
+
         if baudrate != 38400:
             self.__new_baudrate = True
             self.__port = port
@@ -100,66 +100,72 @@ class UBX:
                     keys.append((config[i][0], config[i][1]))
 
         cfgs = ubx.UBXMessage.config_set(layers, transaction, keys)
-        
+
         msg_count = 0
         ack_count = 0
-        
+
         for i in range(2):
             count = 0
             t0 = time.perf_counter()
             if self.conn.inWaiting() == 0 and i == 0:
                 self.conn.write(cfgs.serialize())
                 msg_count += 1
-                logging.info(f"Sent UBLOX configuration message {cfgs} - Count: {msg_count}")
-                
+                logging.info(
+                    f"Sent UBLOX configuration message {cfgs} - Count: {msg_count}"
+                )
+
             parsed_data = self.read(parsing=True)
-            
+
             if parsed_data.identity == "ACK-ACK":
                 ack_count += 1
-            
+
             while parsed_data.identity != "ACK-ACK":
                 parsed_data = self.read(parsing=True)
-                logging.info(f'Count: {count} - {parsed_data}')
+                logging.info(f"Count: {count} - {parsed_data}")
                 if self.conn.inWaiting() == 0 and parsed_data.identity != "ACK-ACK":
                     self.conn.write(cfgs.serialize())
                     msg_count += 1
-                    logging.info(f"Sent UBLOX configuration message {cfgs} - Count: {msg_count}")
-                    
+                    logging.info(
+                        f"Sent UBLOX configuration message {cfgs} - Count: {msg_count}"
+                    )
+
                 if parsed_data.identity == "ACK-ACK":
                     ack_count += 1
-                    
+
                 if count >= 100:
                     break
                 count += 1
-                
-            while time.perf_counter() - t0 <= 1.:
+
+            while time.perf_counter() - t0 <= 1.0:
                 pass
-        
+
         if ack_count == 2:
-            logging.info('UBlox Sensor Configured Correctly')
-            
+            logging.info("UBlox Sensor Configured Correctly")
+
         if self.__new_baudrate:
-            msg_baud = ubx.UBXMessage.config_set(1, 0, [('CFG_UART1_BAUDRATE', self.__brate)])
+            msg_baud = ubx.UBXMessage.config_set(
+                1, 0, [("CFG_UART1_BAUDRATE", self.__brate)]
+            )
             self.conn.write(msg_baud.serialize())
-            
-            while time.perf_counter() - t0 <= 1.:
+
+            while time.perf_counter() - t0 <= 1.0:
                 pass
-            
+
             del self.reader
             self.conn.close()
-            
-            while time.perf_counter() - t0 <= .5:
+
+            while time.perf_counter() - t0 <= 0.5:
                 pass
-            
+
             self.conn = serial.Serial(self.__port, self.__brate, timeout=1)
-            
+
             if self.conn.is_open:
                 logging.info(f"Connected to ublox sensor {self.name} @ {self.__brate}")
-            
+
                 self.reader = ubx.UBXReader(self.conn)
 
     def read_continous_binary(self, fs, flag, sensor_lock):
-        
+
         while not flag.is_set():
             sensor_lock.acquire()
             msg = self.read()
@@ -169,7 +175,7 @@ class UBX:
         self.close()
 
     def read(self, parsing=False):
-        
+
         raw, parsed = self.reader.read()
 
         if parsing:

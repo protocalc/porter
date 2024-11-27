@@ -34,14 +34,14 @@ def main():
         os.mkdir(filepath + "/decoded")
 
     if args.voltage:
-        pattern = "dff"
+        pattern = "dqf"
     else:
         pattern = "di"
 
     with open(args.path, "rb") as fstream:
         data = fstream.read()
 
-    reps = int(len(data) / 16)
+    reps = int(len(data) / 20)
 
     vals = struct.unpack("<" + pattern * reps, data)
 
@@ -53,12 +53,11 @@ def main():
         import matplotlib.pyplot as plt
 
         plt.plot(final[:, 0] - final[0, 0], final[:, 1])
-        #plt.plot(np.cumsum(final[:, -1]), final[:, 1])
-        #plt.plot(final[:,1])
+        plt.xlabel("Time (s)")
+        plt.ylabel("Amplitude")
         plt.show()
-        print('MEAN', np.median(final[:,-1]))
         plt.hist(final[:, -1], bins=10)
-        plt.hist(np.diff(final[:, 0] - final[0, 0]),bins=10)
+        plt.hist(np.diff(final[:, 0] - final[0, 0]), bins=10)
         plt.show()
 
     np.savetxt(decoded_filename, final)
