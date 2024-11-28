@@ -131,9 +131,9 @@ class ADS1015:
             _, raw_value = lgpio.i2c_read_i2c_block_data(
                 self.bus, ADS1015_REG_CONVERSION, 2
             )
-            
+
             read_time = time.perf_counter_ns() - t_start
-            
+
             next_sample_time = next_sample_time + self.__time_sample * (
                 1 + int(read_time / 1e9 / self.__time_sample)
             )
@@ -141,10 +141,10 @@ class ADS1015:
             raw_value = ((raw_value[0] << 8) | raw_value[1]) >> 4
             if raw_value > 2047:
                 raw_value -= 4096
-            
+
             struct.pack_into("<d", msg_buffer, 0, time.time())
             struct.pack_into("<q", msg_buffer, 8, read_time)
-            struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 2048.)
+            struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 2048.0)
 
             fs.write(msg_buffer)
             sensor_lock.release()

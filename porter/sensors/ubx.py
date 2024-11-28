@@ -11,7 +11,6 @@ class UBX:
 
     def __init__(self, port, baudrate, name):
 
-        self.conn = serial.Serial(port, 38400, timeout=1)
         self.name = name
 
         self.__new_baudrate = False
@@ -21,9 +20,11 @@ class UBX:
             self.__port = port
             self.__brate = int(baudrate)
 
-        if self.conn.is_open:
-            logging.info(f"Connected to ublox sensor {self.name} @ {38400}")
-            self.reader = ubx.UBXReader(self.conn, protfilter=2)
+        else:
+            self.conn = serial.Serial(port, 38400, timeout=1)
+            if self.conn.is_open:
+                logging.info(f"Connected to ublox sensor {self.name} @ {38400}")
+                self.reader = ubx.UBXReader(self.conn, protfilter=2)
 
     def configure(self, config):
 
@@ -100,64 +101,55 @@ class UBX:
                     keys.append((config[i][0], config[i][1]))
 
         cfgs = ubx.UBXMessage.config_set(layers, transaction, keys)
+        serial_cfgs = cfgs.serialize()
 
         msg_count = 0
         ack_count = 0
 
+        if self.__new_baudrate:
+            self.conn = serial.Serial(port, 38400, timeout=1)
+            if self.conn.is_open:
+                logging.info(f"Connected to ublox sensor {self.name} @ {38400}")
+                self.reader = ubx.UBXReader(self.conn, protfilter=2)
+
         for i in range(2):
             count = 0
-            msg_cfg_count = 0
             t0 = time.perf_counter()
-            if self.conn.inWaiting() == 0 and i == 0:
-                self.conn.write(cfgs.serialize())
+
+            if self.conn.inWaiting() != 0 and i == 0:
+                parsed_data = self.read(parsing=True)
+
+            if msg_count == i:
+                self.conn.write(serial_cfgs)
                 msg_count += 1
-                msg_cfg_count += 1
                 logging.info(
-                    f"Sent UBLOX configuration message {cfgs} - Count: {msg_count} {msg_cfg_count}"
+                    f"Sent UBLOX configuration message {cfgs} - Count: {msg_count}"
                 )
-                
+                tm = time.perf_counter()
 
             parsed_data = self.read(parsing=True)
-            
-            to_read = self.conn.inWaiting()
-            logging.info(f"Count: {count} - {parsed_data.identity} --- To Read {to_read}")
 
             if parsed_data.identity == "ACK-ACK":
                 ack_count += 1
 
             while parsed_data.identity != "ACK-ACK":
                 parsed_data = self.read(parsing=True)
-                to_read = self.conn.inWaiting()
-                logging.info(f"Count: {count} - {parsed_data.identity} --- To Read {to_read}")
-                if  to_read == 0 and parsed_data.identity != "ACK-ACK" and msg_cfg_count != 1:
-                    self.conn.write(cfgs.serialize())
-                    msg_count += 1
-                    msg_cfg_count += 1
-                    logging.info(
-                        f"Sent UBLOX configuration message {cfgs} - Count: {msg_count} {msg_cfg_count}"
-                    )
-
+                logging.info(f"Count: {count} - {parsed_data.identity}")
                 if parsed_data.identity == "ACK-ACK":
                     ack_count += 1
 
-                if count >= 30:
-                    if msg_cfg_count != 1:
-                        self.conn.write(cfgs.serialize())
-                        msg_count += 1
-                        msg_cfg_count += 1
-                        logging.info(
-                            f"Sent UBLOX configuration message {cfgs} - Count: {msg_count} {msg_cfg_count}"
-                        )
+                if count > 30:
                     break
                 count += 1
 
-            while time.perf_counter() - t0 < 1.0:
-                pass
+            while time.perf_counter() - tm < 1:
+                _ = self.read(parsing=True)
 
         if ack_count == 2:
             logging.info("UBlox Sensor Configured Correctly")
 
         if self.__new_baudrate:
+            t0 = time.perf_counter()
             msg_baud = ubx.UBXMessage.config_set(
                 1, 0, [("CFG_UART1_BAUDRATE", self.__brate)]
             )
