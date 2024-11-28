@@ -115,12 +115,13 @@ class UBX:
                 logging.info(
                     f"Sent UBLOX configuration message {cfgs} - Count: {msg_count} {msg_cfg_count}"
                 )
-                
 
             parsed_data = self.read(parsing=True)
-            
+
             to_read = self.conn.inWaiting()
-            logging.info(f"Count: {count} - {parsed_data.identity} --- To Read {to_read}")
+            logging.info(
+                f"Count: {count} - {parsed_data.identity} --- To Read {to_read}"
+            )
 
             if parsed_data.identity == "ACK-ACK":
                 ack_count += 1
@@ -128,8 +129,14 @@ class UBX:
             while parsed_data.identity != "ACK-ACK":
                 parsed_data = self.read(parsing=True)
                 to_read = self.conn.inWaiting()
-                logging.info(f"Count: {count} - {parsed_data.identity} --- To Read {to_read}")
-                if  to_read == 0 and parsed_data.identity != "ACK-ACK" and msg_cfg_count != 1:
+                logging.info(
+                    f"Count: {count} - {parsed_data.identity} --- To Read {to_read}"
+                )
+                if (
+                    to_read == 0
+                    and parsed_data.identity != "ACK-ACK"
+                    and msg_cfg_count != 1
+                ):
                     self.conn.write(cfgs.serialize())
                     msg_count += 1
                     msg_cfg_count += 1
@@ -158,6 +165,7 @@ class UBX:
             logging.info("UBlox Sensor Configured Correctly")
 
         if self.__new_baudrate:
+            t0 = time.perf_counter()
             msg_baud = ubx.UBXMessage.config_set(
                 1, 0, [("CFG_UART1_BAUDRATE", self.__brate)]
             )
