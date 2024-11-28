@@ -15,8 +15,21 @@ sensors:
         type: ADC
         manufacturer: ADS
     configuration: 
-      gain: 2/3
-      data_rate: 490
+      gain: 16
+      adc_rate: 490
+      
+  DAC_1:
+    name: MCP4725
+    connection:
+      type: I2C
+      parameters:
+        address: 0x60
+    sensor_info:
+        type: DAC
+        manufacturer: ADS
+    configuration: 
+      voltage: 1.1
+      max_voltage: 3.3
       
 source:
   name: VALON-5019
@@ -26,4 +39,5 @@ source:
   power: -6.5
   mod_amp: 15
   mod_freq: 37
+  mult_factor: 6
 

@@ -21,6 +21,8 @@ class MCP4725:
     def configure(self, config):
 
         bits = 4095
+        
+        print(int(bits*config['voltage']/config['max_voltage']))
 
         self.dac.raw_value = int(bits*config['voltage']/config['max_voltage'])
 

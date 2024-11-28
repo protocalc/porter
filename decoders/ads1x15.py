@@ -52,13 +52,16 @@ def main():
     if args.plot:
         import matplotlib.pyplot as plt
 
-        plt.plot(final[:, 0] - final[0, 0], final[:, 1])
+        plt.plot(final[:, 0] - final[0, 0], final[:, 2])
         plt.xlabel("Time (s)")
         plt.ylabel("Amplitude")
         plt.show()
-        plt.hist(final[:, -1], bins=10)
+        plt.hist(final[:, 1]/1e9, bins=10)
         plt.hist(np.diff(final[:, 0] - final[0, 0]), bins=10)
         plt.show()
+        
+        print(f'Mean Reading Time: {np.mean(final[:, 1]/1e9)}')
+        print(f'Mean Time Samples: {np.mean(np.diff(final[:, 0] - final[0, 0]))}')
 
     np.savetxt(decoded_filename, final)
 

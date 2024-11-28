@@ -106,37 +106,52 @@ class UBX:
 
         for i in range(2):
             count = 0
+            msg_cfg_count = 0
             t0 = time.perf_counter()
             if self.conn.inWaiting() == 0 and i == 0:
                 self.conn.write(cfgs.serialize())
                 msg_count += 1
+                msg_cfg_count += 1
                 logging.info(
-                    f"Sent UBLOX configuration message {cfgs} - Count: {msg_count}"
+                    f"Sent UBLOX configuration message {cfgs} - Count: {msg_count} {msg_cfg_count}"
                 )
+                
 
             parsed_data = self.read(parsing=True)
+            
+            to_read = self.conn.inWaiting()
+            logging.info(f"Count: {count} - {parsed_data.identity} --- To Read {to_read}")
 
             if parsed_data.identity == "ACK-ACK":
                 ack_count += 1
 
             while parsed_data.identity != "ACK-ACK":
                 parsed_data = self.read(parsing=True)
-                logging.info(f"Count: {count} - {parsed_data}")
-                if self.conn.inWaiting() == 0 and parsed_data.identity != "ACK-ACK":
+                to_read = self.conn.inWaiting()
+                logging.info(f"Count: {count} - {parsed_data.identity} --- To Read {to_read}")
+                if  to_read == 0 and parsed_data.identity != "ACK-ACK" and msg_cfg_count != 1:
                     self.conn.write(cfgs.serialize())
                     msg_count += 1
+                    msg_cfg_count += 1
                     logging.info(
-                        f"Sent UBLOX configuration message {cfgs} - Count: {msg_count}"
+                        f"Sent UBLOX configuration message {cfgs} - Count: {msg_count} {msg_cfg_count}"
                     )
 
                 if parsed_data.identity == "ACK-ACK":
                     ack_count += 1
 
-                if count >= 100:
+                if count >= 30:
+                    if msg_cfg_count != 1:
+                        self.conn.write(cfgs.serialize())
+                        msg_count += 1
+                        msg_cfg_count += 1
+                        logging.info(
+                            f"Sent UBLOX configuration message {cfgs} - Count: {msg_count} {msg_cfg_count}"
+                        )
                     break
                 count += 1
 
-            while time.perf_counter() - t0 <= 1.0:
+            while time.perf_counter() - t0 < 1.0:
                 pass
 
         if ack_count == 2:

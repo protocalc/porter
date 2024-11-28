@@ -122,7 +122,7 @@ class ADS1015:
         count = 0
         avg_read_time = 0
 
-        next_sample_time = time.perf_counter_ns()
+        next_sample_time = time.perf_counter()
 
         while not flag.is_set():
             sensor_lock.acquire()
@@ -131,29 +131,31 @@ class ADS1015:
             _, raw_value = lgpio.i2c_read_i2c_block_data(
                 self.bus, ADS1015_REG_CONVERSION, 2
             )
-
-            raw_value = ((raw_value[0] << 8) | (raw_value[1] & 0xFF)) >> 4
-
+            
             read_time = time.perf_counter_ns() - t_start
+            
+            next_sample_time = next_sample_time + self.__time_sample * (
+                1 + int(read_time / 1e9 / self.__time_sample)
+            )
 
+            raw_value = ((raw_value[0] << 8) | raw_value[1]) >> 4
+            if raw_value > 2047:
+                raw_value -= 4096
+            
             struct.pack_into("<d", msg_buffer, 0, time.time())
             struct.pack_into("<q", msg_buffer, 8, read_time)
-            struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 2048)
-
-            next_sample_time = next_sample_time + self.__time_sample * (
-                1 + int(read_time / self.__time_sample)
-            )
+            struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 2048.)
 
             fs.write(msg_buffer)
             sensor_lock.release()
-            while time.perf_counter_ns() < next_sample_time:
+            while time.perf_counter() < next_sample_time:
                 pass
 
         self.close()
 
     def configure(self, config):
 
-        keys = ["gain", "ADC_rate", ""]
+        keys = ["gain", "ADC_rate", "reading_rate"]
 
         for i in config.keys():
 
@@ -169,7 +171,6 @@ class ADS1015:
                 logger.info(f"Current ADC Data Rate in s: {self.__adc_sample}")
 
             elif i.lower() == "reading_rate":
-                self._rate = ADS1015_CONFIG_RATE[str(config[i])]
                 self.__time_sample = 1 / config[i]
 
                 if self.__time_sample < self.__adc_sample:

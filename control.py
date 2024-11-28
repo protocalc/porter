@@ -95,7 +95,7 @@ def main():
     for sig in signal_to_catch:
         signal.signal(sig, handler)
 
-    time.sleep(2)
+    time.sleep(1)
 
     try:
         if "sensors" in config.keys():
