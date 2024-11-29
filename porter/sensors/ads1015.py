@@ -119,9 +119,6 @@ class ADS1015:
 
         msg_buffer = bytearray(20)
 
-        count = 0
-        avg_read_time = 0
-
         next_sample_time = time.perf_counter()
 
         while not flag.is_set():
@@ -144,7 +141,7 @@ class ADS1015:
             
             struct.pack_into("<d", msg_buffer, 0, time.time())
             struct.pack_into("<q", msg_buffer, 8, read_time)
-            struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 2048.)
+            struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 4096.)
 
             fs.write(msg_buffer)
             sensor_lock.release()

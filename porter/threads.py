@@ -127,7 +127,7 @@ class Camera(threading.Thread):
                         self.camera.messageHandler(["videocontrol"])
                         self.shutdown_flag.set()
                         flag = not flag
-                        logging.info(f"STOPPING")
+                        logging.info("STOPPING")
                         break
                     else: 
                         self.shutdown_flag.wait(video_chunks)
@@ -136,7 +136,6 @@ class Camera(threading.Thread):
                         secs_remaining -= video_chunks
                 else:
                     flag = not flag
-            self.camera.messageHandler(["videocontrol"])
 
         elif self.mode == "photo":
             photo_count = 0
