@@ -1,8 +1,7 @@
+import porter.sensors.ads1015 as ads
 import porter.sensors.FakeSensor as fake
 import porter.sensors.KERNEL as KERNEL
 import porter.sensors.ubx as ubx
-
-import porter.sensors.ads1015 as ads
 
 try:
     import porter.sensors.ads1015 as ads
@@ -19,7 +18,13 @@ class Handler:
         self.sensor_params = sensor_params
         self.local = local
 
-    def _connection(self):
+        self.__create_sensor_object()
+
+        if not local:
+            if "configuration" in self.sensor_params.keys():
+                self._configuration()
+
+    def __create_sensor_object(self):
 
         if self.local:
             self.obj = fake.FakeConnection(self.sensor_params["name"])

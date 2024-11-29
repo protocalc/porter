@@ -89,6 +89,9 @@ class ADS1015:
 
         self.__adc_sample = 1 / 1600.0
         self.__time_sample = 1 / 1600.0
+        self.__time_sample_ns = self.__time_sample * 1e9
+
+        self.config_queue = None
 
         self.__config_register = (
             ADS1015_REG_CONFIG_CQUE_NONE
@@ -109,49 +112,39 @@ class ADS1015:
         logger.info(f"Current Reading Data Rate in s: {self.__time_sample}")
         logger.info(f"Current Gain: {self._gain_value}")
 
-    def read_continous_binary(self, fs, flag, sensor_lock):
+    def read_data(self, reading_queue, sensor_lock):
 
-        config_bytes = [
-            (self.__config_register >> 8) & 0xFF,
-            self.__config_register & 0xFF,
-        ]
-        lgpio.i2c_write_i2c_block_data(self.bus, ADS1015_REG_CONFIG, config_bytes)
+        msg_buffer = bytearray(18)
 
-        msg_buffer = bytearray(20)
+        sensor_lock.acquire()
+        t_start = time.perf_counter_ns()
 
-        count = 0
-        avg_read_time = 0
+        _, raw_value = lgpio.i2c_read_i2c_block_data(
+            self.bus, ADS1015_REG_CONVERSION, 2
+        )
 
-        next_sample_time = time.perf_counter()
+        read_time = time.perf_counter_ns() - t_start
 
-        while not flag.is_set():
-            sensor_lock.acquire()
-            t_start = time.perf_counter_ns()
+        sensor_lock.release()
 
-            _, raw_value = lgpio.i2c_read_i2c_block_data(
-                self.bus, ADS1015_REG_CONVERSION, 2
-            )
+        next_sample_time = next_sample_time + self.__time_sample_ns * (
+            1 + int(read_time / self.__time_sample_ns)
+        )
 
-            read_time = time.perf_counter_ns() - t_start
+        struct.pack_into("<d", msg_buffer, 0, time.time())
+        struct.pack_into("<q", msg_buffer, 8, read_time)
+        msg_buffer[16:] = raw_value
 
-            next_sample_time = next_sample_time + self.__time_sample * (
-                1 + int(read_time / 1e9 / self.__time_sample)
-            )
+        reading_queue.put(raw_value)
 
-            raw_value = ((raw_value[0] << 8) | raw_value[1]) >> 4
-            if raw_value > 2047:
-                raw_value -= 4096
+        while time.perf_counter() < next_sample_time:
+            pass
 
-            struct.pack_into("<d", msg_buffer, 0, time.time())
-            struct.pack_into("<q", msg_buffer, 8, read_time)
-            struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 2048.0)
+    def save_data(self, reading_queue, filename):
 
-            fs.write(msg_buffer)
-            sensor_lock.release()
-            while time.perf_counter() < next_sample_time:
-                pass
-
-        self.close()
+        while not reading_queue.empty():
+            value = reading_queue.get(False)
+            filename.write(raw)
 
     def configure(self, config):
 
@@ -179,6 +172,8 @@ class ADS1015:
                 else:
                     logger.info(f"Current Reading Data Rate in s: {self.__time_sample}")
 
+                self.__time_sample_ns = self.__time_sample * 1e9
+
         self.__config_register = (
             ADS1015_REG_CONFIG_CQUE_NONE
             | ADS1015_REG_CONFIG_CLAT_NONLAT
@@ -191,6 +186,15 @@ class ADS1015:
         self.__config_register |= self._gain
         self.__config_register |= self.__mux_channels
         self.__config_register |= ADS1015_REG_CONFIG_OS_SINGLE
+
+        config_bytes = [
+            (self.__config_register >> 8) & 0xFF,
+            self.__config_register & 0xFF,
+        ]
+
+        lgpio.i2c_write_i2c_block_data(self.bus, ADS1015_REG_CONFIG, config_bytes)
+
+        logging.info(f"Configured {self.name}")
 
     def close(self):
 

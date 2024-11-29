@@ -101,29 +101,52 @@ def main():
         if "sensors" in config.keys():
             sensor_locks = {}
             sensor_names = {}
-            sensor_handler = {}
+            sensor_handlers = {}
+            sensor_reading_queues = {}
+            sensor_writing_queues = {}
 
             for i in config["sensors"].keys():
-                logging.info(f'Sensor {i}')
-                sensors_handler = sh.Handler(
+                logging.info(f"Creating Handler for Sensor {i}")
+
+                sensor_locks[name] = threading.Lock()
+                sensor_reading_queues[name] = queue.Queue()
+
+                sensor_handler = sh.Handler(
                     config["sensors"][i], local=config["local_development"]
                 )
 
                 name = config["sensors"][i]["name"]
-                
-                sensor_handler[name] = sensors_handler
-                sensor_locks[name] = threading.Lock()
+
+                sensor_handlers[name] = sensor_handler
+                sensor_writing_queues[name] = sensor_handler.obj.writing_queue
                 sensor_names[name] = name
 
             for i in sensor_handler.keys():
-                logging.info(f'Sensor {i} - {sensor_handler[i]}')
-                threads.Sensors(
-                    handler=sensor_handler[i],
+                logging.info(f"Starting Threads for Sensor {i}")
+
+                if sensor_writing_queues[i]:
+                    threads.SensorWriting(
+                        handler=sensor_handlers[i],
+                        sensor_lock=sensor_locks[i],
+                        reading_queue=sensor_writing_queues[i],
+                        main_flag=flag,
+                        daemon=False,
+                    ).start()
+
+                threads.SensorReading(
+                    handler=sensor_handlers[i],
                     sensor_lock=sensor_locks[i],
-                    flag=flag,
-                    date=date,
-                    path=sensor_path,
-                    sensor_name=sensor_names[i],
+                    reading_queue=sensor_reading_queues[i],
+                    main_flag=flag,
+                    daemon=False,
+                ).start()
+
+                threads.SensorSaving(
+                    handler=sensor_handlers[i],
+                    sensor_name=sensor_handlers[i],
+                    path=path,
+                    reading_queue=sensor_writing_queues[i],
+                    main_flag=flag,
                     daemon=False,
                 ).start()
 

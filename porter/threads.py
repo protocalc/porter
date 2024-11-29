@@ -5,6 +5,87 @@ import time
 
 logger = logging.getLogger()
 
+
+class SensorReading(threading.Thread):
+
+    def __init__(
+        self,
+        handler,
+        reading_lock,
+        reading_queue,
+        main_flag,
+        *args,
+        **kwargs,
+    ):
+
+        super().__init__(*args, **kwargs)
+        self.handler = handler
+        self.sensor_lock = lock
+        self.reading_queue = queue
+        self.port_flag = port_flag
+        self.main_flag = main_flag
+
+    def run(self):
+
+        while not main_flag.is_set():
+            self.handler.obj.read_data(self.reading_queue, self.sensor_lock)
+
+        self.port_flag.set()
+        self.handler.obj.conn.close()
+
+        name = self.handler["name"]
+
+        logger.info(f"Closed Connection to sensor {name}")
+
+
+class SensorWriting(threading.Thread):
+
+    def __init__(
+        self,
+        handler,
+        sensor_lock,
+        writing_queue,
+        main_flag,
+        *args,
+        **kwargs,
+    ):
+
+        super().__init__(*args, **kwargs)
+        self.handler = handler
+        self.sensor_lock = lock
+        self.writing_queue = queue
+        self.main_flag = main_flag
+
+    def run(self):
+
+        while not main_flag.is_set():
+            self.handler.obj.write_data(self.writing_queue, self.sensor_lock)
+
+
+class SensorSaving(threading.Thread):
+
+    def __init__(
+        self, handler, sensor_name, path, reading_queue, main_flag, *args, **kwargs
+    ):
+
+        super().__init__(*args, **kwargs)
+        self.handler = handler
+        self.reading_queue = queue
+        self.main_flag = main_flag
+
+        name = path + sensor_name + "_" + date + ".bin"
+        try:
+            self.datafile = open(name, "r+b")
+        except FileNotFoundError:
+            self.datafile = open(name, "x+b")
+
+    def run(self):
+
+        while not main_flag.is_set():
+            with self.datafile as filename:
+                self.handler.obj.save_data(self.reading_queue, filename)
+
+
 class Sensors(threading.Thread):
 
     def __init__(
@@ -33,11 +114,11 @@ class Sensors(threading.Thread):
         super().__init__(*args, **kwargs)
 
         self.sensor_lock = sensor_lock
-        
+
         self.sensor_handler = handler
-        
+
         self.sensor_name = sensor_name
-        
+
         name = path + self.sensor_name + "_" + date + ".bin"
         try:
             self.datafile = open(name, "r+b")
@@ -47,17 +128,20 @@ class Sensors(threading.Thread):
         self.shutdown_flag = flag
 
     def run(self):
-        
+
         self.sensor_handler._connection()
 
-        logging.info(f'Configuring {self.sensor_name}')
-        
+        logging.info(f"Configuring {self.sensor_name}")
+
         self.sensor_handler._configuration()
 
         logging.info(f"Sensor {self.sensor_name} started")
-        
+
         with self.datafile as binary:
-            self.sensor_handler.obj.read_continous_binary(binary, self.shutdown_flag, self.sensor_lock)
+            self.sensor_handler.obj.read_continous_binary(
+                binary, self.shutdown_flag, self.sensor_lock
+            )
+
 
 class Camera(threading.Thread):
 
@@ -115,7 +199,7 @@ class Camera(threading.Thread):
 
         if self.mode == "video":
             flag = True
-            video_chunks = 30 * 60 
+            video_chunks = 30 * 60
             secs_remaining = copy.copy(self.duration)
             while not self.shutdown_flag.is_set():
                 time.sleep(0.1)
@@ -129,14 +213,15 @@ class Camera(threading.Thread):
                         flag = not flag
                         logging.info(f"STOPPING")
                         break
-                    else: 
+                    else:
                         self.shutdown_flag.wait(video_chunks)
                         self.camera.messageHandler(["videocontrol"])
                         time.sleep(2)
                         secs_remaining -= video_chunks
                 else:
                     flag = not flag
-            self.camera.messageHandler(["videocontrol"])
+
+            self.camera.close_usb_connection()
 
         elif self.mode == "photo":
             photo_count = 0
@@ -148,3 +233,5 @@ class Camera(threading.Thread):
                 photo_count += 1
                 if photo_count > self.frames:
                     break
+
+            self.camera.close_usb_connection()

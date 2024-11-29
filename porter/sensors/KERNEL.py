@@ -22,6 +22,8 @@ class KernelInertial:
 
         self.conn = serial.Serial(port, baudrate=baudrate, timeout=1)
 
+        self.config_queue = None
+
         self.name = kwargs.get("name", "Generic Kernel")
 
         if self.conn.is_open:
@@ -97,10 +99,31 @@ class KernelInertial:
     def read_continous_binary(self, fs, flag, sensor_lock):
 
         while not flag.is_set():
-            
+
             fs.write(self.read(sensor_lock))
 
         self.close()
+
+    def read_data(self, reading_queue, sensor_lock):
+
+        if self.__first_msg:
+            msg, length = self._find_msg()
+
+        else:
+            sensor_lock.acquire()
+            if self.expected_length is not None:
+                msg = self.conn.read(self.expected_length)
+            else:
+                msg = self.conn.read(chunk_size)
+            sensor_lock.release()
+
+        reading_queue.put(msg)
+
+    def save_data(self, reading_queue, filename):
+
+        while not reading_queue.empty():
+            value = reading_queue.get(False)
+            filename.write(raw)
 
     def read(self, sensor_lock, chunk_size=None):
 
