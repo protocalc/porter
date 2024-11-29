@@ -4,7 +4,9 @@ import time
 
 import adafruit_mcp4725
 
+import logging
 
+logger = logging.getLogger()
 
 class MCP4725:
 
@@ -21,11 +23,13 @@ class MCP4725:
     def configure(self, config):
 
         bits = 4095
-        
-        print(int(bits*config['voltage']/config['max_voltage']))
 
         self.dac.raw_value = int(bits*config['voltage']/config['max_voltage'])
-
+        
+        volt = config['voltage']
+        
+        logging.info(f"Set DAC @ {self.dac.raw_value} equal to {volt}") 
+        
     def read_continous_binary(self, fs, flag, sensor_lock):
         
         time.sleep(10)

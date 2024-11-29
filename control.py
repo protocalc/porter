@@ -108,33 +108,37 @@ def main():
             for i in config["sensors"].keys():
                 logging.info(f"Creating Handler for Sensor {i}")
 
-                sensor_locks[name] = threading.Lock()
-                sensor_reading_queues[name] = queue.Queue()
+                
 
                 sensor_handler = sh.Handler(
                     config["sensors"][i], local=config["local_development"]
                 )
 
                 name = config["sensors"][i]["name"]
+                sensor_locks[name] = threading.Lock()
+                sensor_reading_queues[name] = queue.Queue()
 
                 sensor_handlers[name] = sensor_handler
-                sensor_writing_queues[name] = sensor_handler.obj.writing_queue
+                sensor_writing_queues[name] = sensor_handler.obj.config_queue
                 sensor_names[name] = name
 
-            for i in sensor_handler.keys():
+            for i in sensor_handlers.keys():
                 logging.info(f"Starting Threads for Sensor {i}")
+                
+                print(sensor_reading_queues[i], 'Queue', i)
 
                 if sensor_writing_queues[i]:
                     threads.SensorWriting(
                         handler=sensor_handlers[i],
                         sensor_lock=sensor_locks[i],
-                        reading_queue=sensor_writing_queues[i],
+                        writing_queue=sensor_writing_queues[i],
                         main_flag=flag,
                         daemon=False,
                     ).start()
 
                 threads.SensorReading(
                     handler=sensor_handlers[i],
+                    sensor_name = i,
                     sensor_lock=sensor_locks[i],
                     reading_queue=sensor_reading_queues[i],
                     main_flag=flag,
@@ -143,10 +147,11 @@ def main():
 
                 threads.SensorSaving(
                     handler=sensor_handlers[i],
-                    sensor_name=sensor_handlers[i],
-                    path=path,
-                    reading_queue=sensor_writing_queues[i],
+                    sensor_name=i,
+                    path=sensor_path,
+                    reading_queue=sensor_reading_queues[i],
                     main_flag=flag,
+                    date = date,
                     daemon=False,
                 ).start()
 
@@ -160,6 +165,16 @@ def main():
             else:
                 synt.set_amd(0, 0)
             time.sleep(2)
+            
+        if "dac" in config.keys():
+            import porter.sensors.mcp4725 as mcp
+            
+            dac = mcp.MCP4725(
+                    config["dac"]["connection"]["parameters"]["address"],
+                )
+                
+            dac.configure(config["dac"]["configuration"])
+            
 
         if "camera" in config.keys() and not config["local_development"]:
 

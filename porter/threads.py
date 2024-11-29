@@ -11,7 +11,8 @@ class SensorReading(threading.Thread):
     def __init__(
         self,
         handler,
-        reading_lock,
+        sensor_name,
+        sensor_lock,
         reading_queue,
         main_flag,
         *args,
@@ -20,22 +21,19 @@ class SensorReading(threading.Thread):
 
         super().__init__(*args, **kwargs)
         self.handler = handler
-        self.sensor_lock = lock
-        self.reading_queue = queue
-        self.port_flag = port_flag
+        self.sensor_name = sensor_name
+        self.sensor_lock = sensor_lock
+        self.reading_queue = reading_queue
         self.main_flag = main_flag
 
     def run(self):
 
-        while not main_flag.is_set():
+        while not self.main_flag.is_set():
             self.handler.obj.read_data(self.reading_queue, self.sensor_lock)
 
-        self.port_flag.set()
-        self.handler.obj.conn.close()
+        self.handler.obj.close()
 
-        name = self.handler["name"]
-
-        logger.info(f"Closed Connection to sensor {name}")
+        logger.info(f"Closed Connection to sensor {self.sensor_name}")
 
 
 class SensorWriting(threading.Thread):
@@ -52,25 +50,25 @@ class SensorWriting(threading.Thread):
 
         super().__init__(*args, **kwargs)
         self.handler = handler
-        self.sensor_lock = lock
-        self.writing_queue = queue
+        self.sensor_lock = sensor_lock
+        self.writing_queue = writing_queue
         self.main_flag = main_flag
 
     def run(self):
 
-        while not main_flag.is_set():
+        while not self.main_flag.is_set():
             self.handler.obj.write_data(self.writing_queue, self.sensor_lock)
 
 
 class SensorSaving(threading.Thread):
 
     def __init__(
-        self, handler, sensor_name, path, reading_queue, main_flag, *args, **kwargs
+        self, handler, sensor_name, path, reading_queue, main_flag, date, *args, **kwargs
     ):
 
         super().__init__(*args, **kwargs)
         self.handler = handler
-        self.reading_queue = queue
+        self.reading_queue = reading_queue
         self.main_flag = main_flag
 
         name = path + sensor_name + "_" + date + ".bin"
@@ -80,9 +78,9 @@ class SensorSaving(threading.Thread):
             self.datafile = open(name, "x+b")
 
     def run(self):
-
-        while not main_flag.is_set():
-            with self.datafile as filename:
+        
+        with self.datafile as filename:
+            while not self.main_flag.is_set():
                 self.handler.obj.save_data(self.reading_queue, filename)
 
 

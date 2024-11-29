@@ -47,6 +47,7 @@ class UBX:
         msg_count = 0
 
         while not writing_queue.empty():
+            t0 = time.perf_counter()
 
             msg = writing_queue.get(False)
 
@@ -59,6 +60,8 @@ class UBX:
                     f"Sent UBLOX configuration message {msg[1]} - Count: {msg_count}"
                 )
                 msg_count += 1
+                
+                print(t0, timeout)
 
                 while time.perf_counter() - t0 < timeout:
                     pass
@@ -94,10 +97,11 @@ class UBX:
             raw, parsed = reading_queue.get(False)
             if not stop_counter:
                 msg_skipped += 1
-
-            if parsed.identity == "ACK-ACK":
-                ack_count += 1
-                logging.info(f"Message {parsed} @ acknolwedged")
+            
+            if isinstance(parsed.identity, str):
+                if parsed.identity == "ACK-ACK":
+                    ack_count += 1
+                    logging.info(f"Message {parsed} @ acknolwedged")
 
             if ack_count >= 2:
                 if not stop_counter:
@@ -181,10 +185,9 @@ class UBX:
                     keys.append((config[i][0], config[i][1]))
 
         cfgs = ubx.UBXMessage.config_set(layers, transaction, keys)
-        serial_cfgs = cfgs.serialize()
 
-        self.config_queue.put(("CFG", serial_cfgs))
-        self.config_queue.put(("CFG", serial_cfgs))
+        self.config_queue.put(("CFG", cfgs))
+        self.config_queue.put(("CFG", cfgs))
 
         if self.__new_baudrate:
 

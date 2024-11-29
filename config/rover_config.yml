@@ -85,19 +85,16 @@ sensors:
         adc_rate: 1600
         reading_rate: 350
         
-    DAC_1:
-      name: MCP4725
-      connection:
-        type: I2C
-        parameters:
-          bus: 1
-          address: 0x60
-      sensor_info:
-          type: DAC
-          manufacturer: MCP
-      configuration: 
-        voltage: 1.8
-        max_voltage: 3.3
+dac:
+  name: MCP4725
+  connection:
+    type: I2C
+    parameters:
+      bus: 1
+      address: 0x60
+    configuration: 
+      voltage: 1.8
+      max_voltage: 3.3
 
 source:
   name: VALON-5019

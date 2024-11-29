@@ -111,6 +111,8 @@ class ADS1015:
         logger.info(f"Current ADC Data Rate in s: {self.__adc_sample}")
         logger.info(f"Current Reading Data Rate in s: {self.__time_sample}")
         logger.info(f"Current Gain: {self._gain_value}")
+        
+        self.next_sample_time = time.perf_counter_ns()
 
     def read_data(self, reading_queue, sensor_lock):
 
@@ -127,24 +129,27 @@ class ADS1015:
 
         sensor_lock.release()
 
-        next_sample_time = next_sample_time + self.__time_sample_ns * (
+        self.next_sample_time = self.next_sample_time + self.__time_sample_ns * (
             1 + int(read_time / self.__time_sample_ns)
         )
 
         struct.pack_into("<d", msg_buffer, 0, time.time())
         struct.pack_into("<q", msg_buffer, 8, read_time)
         msg_buffer[16:] = raw_value
+        
+        print('Reading', msg_buffer)
+        
+        reading_queue.put(msg_buffer)
 
-        reading_queue.put(raw_value)
-
-        while time.perf_counter() < next_sample_time:
+        while time.perf_counter_ns() < self.next_sample_time:
             pass
 
     def save_data(self, reading_queue, filename):
 
         while not reading_queue.empty():
             value = reading_queue.get(False)
-            filename.write(raw)
+            print('Writing', value)
+            filename.write(value)
 
     def configure(self, config):
 

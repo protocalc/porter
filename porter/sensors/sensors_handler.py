@@ -8,8 +8,6 @@ try:
 except ModuleNotFoundError:
     pass
 
-import porter.sensors.mcp4725 as mcp
-
 
 class Handler:
 
@@ -46,12 +44,6 @@ class Handler:
                     bus=self.sensor_params["connection"]["parameters"]["bus"],
                     mode=self.sensor_params["connection"]["parameters"]["mode"],
                     name=self.sensor_params["name"],
-                )
-
-            elif self.sensor_params["sensor_info"]["type"].lower() == "dac":
-
-                self.obj = mcp.MCP4725(
-                    self.sensor_params["connection"]["parameters"]["address"],
                 )
 
             elif self.sensor_params["sensor_info"]["type"].lower() == "inclinometer":

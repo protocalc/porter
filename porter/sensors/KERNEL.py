@@ -116,14 +116,13 @@ class KernelInertial:
             else:
                 msg = self.conn.read(chunk_size)
             sensor_lock.release()
-
         reading_queue.put(msg)
 
     def save_data(self, reading_queue, filename):
 
         while not reading_queue.empty():
             value = reading_queue.get(False)
-            filename.write(raw)
+            filename.write(value)
 
     def read(self, sensor_lock, chunk_size=None):
 
