@@ -1,5 +1,6 @@
 import logging
 import time
+from datetime import datetime
 
 import pyubx2 as ubx
 import serial
@@ -107,28 +108,35 @@ class UBX:
         ack_count = 0
 
         if self.__new_baudrate:
-            self.conn = serial.Serial(self.__port, 38400, timeout=1)
+            self.conn = serial.Serial(self.__port, self.__brate, timeout=1)
+            #self.conn = serial.Serial(self.__port, 38400, timeout=1)
             if self.conn.is_open:
-                logging.info(f"Connected to ublox sensor {self.name} @ {38400}")
+                logging.info(f"Connected to ublox sensor {self.name} @ {self.__brate}")
+                #logging.info(f"Connected to ublox sensor {self.name} @ {38400}")
                 self.reader = ubx.UBXReader(self.conn, protfilter=2)
 
         for i in range(2):
+            
             count = 0
             t0 = time.perf_counter()
 
-            if self.conn.inWaiting() != 0 and i == 0:
-                parsed_data = self.read(parsing=True)
-
-            if msg_count == i:
-                self.conn.write(serial_cfgs)
-                msg_count += 1
-                logging.info(
-                    f"Sent UBLOX configuration message {cfgs} - Count: {msg_count}"
-                )
-                tm = time.perf_counter()
-
+            print('Enter loop')
+            self.conn.write(serial_cfgs)
+            msg_count += 1
+            logging.info(
+                f"Sent UBLOX configuration message {cfgs} - Count: {msg_count}"
+            )
+            tm = time.perf_counter()
+            tf = time.perf_counter()
+            while tf- tm < 1:
+                _ = self.read(parsing=True)
+                tf = time.perf_counter()
+                
+            logging.info(f"Elapsed time reading GPS: {tf - tm}")
+            
+            
             parsed_data = self.read(parsing=True)
-
+            
             if parsed_data.identity == "ACK-ACK":
                 ack_count += 1
 
@@ -138,12 +146,15 @@ class UBX:
                 if parsed_data.identity == "ACK-ACK":
                     ack_count += 1
 
-                if count > 30:
+                if count > 20:
                     break
                 count += 1
-
-            while time.perf_counter() - tm < 1:
+            tf = time.perf_counter()
+            while tf- tm < 1:
                 _ = self.read(parsing=True)
+                tf = time.perf_counter()
+                
+            logging.info(f"Elapsed time waiting for ACK: {tf - tm}")
 
         if ack_count == 2:
             logging.info("UBlox Sensor Configured Correctly")
@@ -154,13 +165,13 @@ class UBX:
                 1, 0, [("CFG_UART1_BAUDRATE", self.__brate)]
             )
             self.conn.write(msg_baud.serialize())
-
+            t0 = time.perf_counter()
             while time.perf_counter() - t0 <= 1.0:
                 pass
 
             del self.reader
             self.conn.close()
-
+            t0 = time.perf_counter()
             while time.perf_counter() - t0 <= 0.5:
                 pass
 
@@ -173,12 +184,43 @@ class UBX:
 
     def read_continous_binary(self, fs, flag, sensor_lock):
 
+        loop_start = time.time()
+        t_prev = loop_start
+
+        #while not flag.is_set():
+            #sensor_lock.acquire()
+            #msg = self.read()
+            #sensor_lock.release()
+            #fs.write(msg)
+
         while not flag.is_set():
             sensor_lock.acquire()
-            msg = self.read()
-            sensor_lock.release()
-            fs.write(msg)
+            t_start = time.perf_counter_ns()
+            msg = self.read(parsing=True)
+            t_end = time.perf_counter_ns()
 
+            read_time = t_end - t_start
+            t = time.time()
+            
+            print_time = datetime.fromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S.%f")
+            logging.info(f"Timestamp: {print_time}, Read Time: {read_time}, Data Type: {msg.identity}")
+            
+            with open("porter/sensors/testing/gps_timing_noadc.txt", 'a') as file:
+                file.write(f"{(t - t_prev) * 1e3} {read_time / 1e6}" + "\n")
+
+            with open("porter/sensors/testing/gps_identities_noadc.txt", 'a') as file:
+                file.write(f"{msg.identity}" + "\n")
+
+            t_prev = t
+            current_time = time.time()
+            if current_time - loop_start >= 1800:
+                print("Loop Done")
+            else:
+                print(f"GPS Loop in Progress: {(current_time - loop_start)/1800 * 100}%")
+            
+            sensor_lock.release()
+
+            
         self.close()
 
     def read(self, parsing=False):

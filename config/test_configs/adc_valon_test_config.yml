@@ -28,14 +28,14 @@ sensors:
         type: DAC
         manufacturer: ADS
     configuration: 
-      voltage: 1.1
+      voltage: 1.02
       max_voltage: 3.3
       
 source:
   name: VALON-5019
   port: /dev/ttyAMA4
   baudrate: 115200
-  freq: 90
+  freq: 93
   power: -6.5
   mod_amp: 15
   mod_freq: 37

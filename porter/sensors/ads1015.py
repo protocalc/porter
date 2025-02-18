@@ -2,7 +2,8 @@ import logging
 import random
 import struct
 import time
-
+from datetime import datetime, timezone
+import array
 import lgpio
 
 # ADS1015 registers
@@ -90,6 +91,8 @@ class ADS1015:
         self.__adc_sample = 1 / 1600.0
         self.__time_sample = 1 / 1600.0
 
+        self.channel = len(channel)
+
         self.__config_register = (
             ADS1015_REG_CONFIG_CQUE_NONE
             | ADS1015_REG_CONFIG_CLAT_NONLAT
@@ -108,6 +111,11 @@ class ADS1015:
         logger.info(f"Current ADC Data Rate in s: {self.__adc_sample}")
         logger.info(f"Current Reading Data Rate in s: {self.__time_sample}")
         logger.info(f"Current Gain: {self._gain_value}")
+        logger.info(f"Current Channel: {self.channel}")
+        
+        self.start_time = time.perf_counter()
+        
+
 
     def read_continous_binary(self, fs, flag, sensor_lock):
 
@@ -118,6 +126,7 @@ class ADS1015:
         lgpio.i2c_write_i2c_block_data(self.bus, ADS1015_REG_CONFIG, config_bytes)
 
         msg_buffer = bytearray(20)
+        t_prev = 0
 
         next_sample_time = time.perf_counter()
 
@@ -128,27 +137,51 @@ class ADS1015:
             _, raw_value = lgpio.i2c_read_i2c_block_data(
                 self.bus, ADS1015_REG_CONVERSION, 2
             )
-            
+            t = time.time()
             read_time = time.perf_counter_ns() - t_start
             
             next_sample_time = next_sample_time + self.__time_sample * (
                 1 + int(read_time / 1e9 / self.__time_sample)
-            )
+                ) - read_time/3e9
 
             raw_value = ((raw_value[0] << 8) | raw_value[1]) >> 4
             if raw_value > 2047:
                 raw_value -= 4096
             
-            struct.pack_into("<d", msg_buffer, 0, time.time())
+            struct.pack_into("<d", msg_buffer, 0, t)
             struct.pack_into("<q", msg_buffer, 8, read_time)
             struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 4096.)
 
+            #msg_buffer_time = struct.unpack('<d', msg_buffer[0:8])
+            #msg_buffer_readtime = struct.unpack('<q', msg_buffer[8:16])
+            #msg_buffer_value = struct.unpack('<f', msg_buffer[16:20])
             fs.write(msg_buffer)
+
+            time_print = datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S.%f')
+            logger.info(f"ADC Reading - Time: {time_print}, Read Time: {read_time} ns, Value: {raw_value * self._gain / 4096.} V")
+
+            log_time = time.perf_counter_ns()
+            #msg_buffer_converted = array.array('f', msg_buffer)
+            #logger.info(f"ADC Converted Value: {msg_buffer_converted[0]}")
+            with open('porter/sensors/testing/adc_timing.txt', 'a') as f:
+                f.write(f"{(t - t_prev) * 1e3} {read_time / 1e6}" + "\n") 
+
+            t_prev = t
+
             sensor_lock.release()
-            while time.perf_counter() < next_sample_time:
+            while time.perf_counter() < next_sample_time :
                 pass
 
+            if time.perf_counter() - self.start_time > 1800:
+                print("ADC Loop Done")
+            else:
+                print(f"ADC Loop in Progress: {(time.perf_counter() - self.start_time)*100/1800}%")
+
         self.close()
+
+
+                                
+
 
     def configure(self, config):
 
@@ -176,6 +209,8 @@ class ADS1015:
                 else:
                     logger.info(f"Current Reading Data Rate in s: {self.__time_sample}")
 
+
+
         self.__config_register = (
             ADS1015_REG_CONFIG_CQUE_NONE
             | ADS1015_REG_CONFIG_CLAT_NONLAT
@@ -192,3 +227,61 @@ class ADS1015:
     def close(self):
 
         logging.info(f"Closed sensor {self.name}")
+
+    def read(self, chunk_size=None, return_binary=True):
+        count = 0
+        self.__read_count = 0
+
+        if return_binary:
+            msg = struct.pack("<d", time.time())
+
+            while time.perf_counter() - tstart < self.__time_sample:
+                pass
+
+        else:
+            msg = [time.time()]
+            
+            tstart = time.perf_counter()
+
+            #if self.output_mode == "value":
+                #msg += self._get_value(return_binary=return_binary)
+            #else:
+            msg += self._get_voltage(return_binary=return_binary)
+
+            while time.perf_counter() - tstart < self.__time_sample:
+                pass
+
+        return msg
+
+
+    def _get_value(self, return_binary=True):
+        if return_binary:
+            msg = b""
+        else:
+            msg = []
+
+        for i in range(self.channel):
+            if return_binary:
+                msg += struct.pack("<i", i.value)
+            else:
+                msg.append(i.value)
+
+        return msg
+
+
+    def _get_voltage(self, return_binary=True):
+        if return_binary:
+            msg = b""
+        else:
+            msg = []
+
+        for i in range(self.channel):
+            if return_binary:
+                msg += struct.pack("<f", i.voltage)
+            else:
+                msg.append(i.voltage)
+
+        return msg
+        
+
+

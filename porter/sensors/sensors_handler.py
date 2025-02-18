@@ -3,6 +3,7 @@ import porter.sensors.KERNEL as KERNEL
 import porter.sensors.ubx as ubx
 
 import porter.sensors.ads1015 as ads
+#import porter.sensors.ads1x15 as ads
 
 try:
     import porter.sensors.ads1015 as ads
@@ -62,5 +63,7 @@ class Handler:
                     )
 
     def _configuration(self):
-
-        self.obj.configure(self.sensor_params["configuration"])
+        if "configuration" in self.sensor_params.keys():
+            self.obj.configure(self.sensor_params["configuration"])
+        else:
+            pass

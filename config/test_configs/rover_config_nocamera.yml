@@ -70,13 +70,27 @@ sensors:
           address: 0x48
           mode: differential
           channels: [0,1]
-          output: voltage
       sensor_info:
           type: ADC
           manufacturer: ADS
       configuration: 
-        gain: 2
-        data_rate: 490
+        gain: 16
+        adc_rate: 1600
+        reading_rate: 350
+        
+    DAC_1:
+      name: MCP4725
+      connection:
+        type: I2C
+        parameters:
+          bus: 1
+          address: 0x60
+      sensor_info:
+          type: DAC
+          manufacturer: MCP
+      configuration: 
+        voltage: 1.1
+        max_voltage: 3.3
 
 
 source:
@@ -84,8 +98,9 @@ source:
   port: /dev/ttyAMA4
   baudrate: 115200
   freq: 90
-  power: -3.5
+  power: -6.5
   mod_amp: 15
   mod_freq: 37
+  mult_factor: 6
 
 

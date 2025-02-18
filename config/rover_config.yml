@@ -5,7 +5,7 @@ camera:
   mode: video
   program: MovieM
   ISO: 100
-  shutter_speed: 0.001
+  shutter_speed: 0.000625
   focus_distance: infinity
 
 sensors:
@@ -15,46 +15,11 @@ sensors:
         type: serial
         parameters:
           port: /dev/ttyAMA0
-          baudrate: 115200
+          baudrate: 38400
       sensor_info:
         type: GPS
         manufacturer: UBlox
-      configuration:
-        NMEA1:
-          output:
-            port: UART1
-            set: False
-        NMEA2:
-          output:
-            port: UART2
-            set: True
-        UBX:
-          output:
-            port: UART1
-            set: True
-        RATE:
-          value: 2
-        UBX_MSG:
-          output_port: UART1
-          NAV: [
-            'POSECEF',
-            'POSLLH'
-            ]
-          RXM: [
-            'RAWX',
-            'SFRBX'
-            ]
-        NMEA_MSG:
-          output_port: UART2
-          ID : [
-            'GGA',
-            'GSV',
-            'GSA',
-            'GST',
-            'GNS',
-            'ZDA'
-          ]
-
+    
     Inclinometer_1:
       name: Kernel-100
       connection:
@@ -96,14 +61,14 @@ sensors:
           type: DAC
           manufacturer: MCP
       configuration: 
-        voltage: 1.8
+        voltage: 1.02
         max_voltage: 3.3
 
 source:
   name: VALON-5019
   port: /dev/ttyAMA4
   baudrate: 115200
-  freq: 90
+  freq: 93
   power: -6.5
   mod_amp: 15
   mod_freq: 37
