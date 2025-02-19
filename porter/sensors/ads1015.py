@@ -125,7 +125,7 @@ class ADS1015:
         if raw_value > 2047:
             raw_value -= 4096
             
-        tension_value = (raw_value * self._gain) / 4096.
+        tension_value = (raw_value * self._gain_value) / 4096.
             
         return tension_value
 
@@ -161,7 +161,7 @@ class ADS1015:
             
             struct.pack_into("<d", msg_buffer, 0, t)
             struct.pack_into("<q", msg_buffer, 8, read_time)
-            struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 4096.)
+            struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain_value) / 4096.)
 
             fs.write(msg_buffer)
             sensor_lock.release()
