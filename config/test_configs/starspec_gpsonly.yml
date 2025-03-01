@@ -31,11 +31,12 @@ sensors:
           output_port: UART1
           NAV: [
             'POSECEF',
-            'POSLLH'
+            'POSLLH',
+            'CLOCK'
             ]
           RXM: [
             'RAWX',
-            'SFRBX'
+            'SFRBX',
             ]
         NMEA_MSG:
           output_port: UART2

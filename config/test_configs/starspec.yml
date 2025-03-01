@@ -4,6 +4,7 @@ local_development: False
 sensors:
     GPS_1:
       name: ZED-F9P
+      sensor_core: 3
       connection:
         type: serial
         parameters:
@@ -31,7 +32,8 @@ sensors:
           output_port: UART1
           NAV: [
             'POSECEF',
-            'POSLLH'
+            'POSLLH',
+            'CLOCK'
             ]
           RXM: [
             'RAWX',
@@ -50,6 +52,7 @@ sensors:
     
     ADC_1:
       name: ADS1015
+      sensor_core: 2
       connection:
         type: I2C
         parameters:

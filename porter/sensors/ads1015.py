@@ -114,7 +114,8 @@ class ADS1015:
         logger.info(f"Current Channel: {self.channel}")
         
         self.start_time = time.perf_counter()
-        
+
+        self.timing_results = ""
 
 
     def read_continous_binary(self, fs, flag, sensor_lock):
@@ -152,19 +153,15 @@ class ADS1015:
             struct.pack_into("<q", msg_buffer, 8, read_time)
             struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 4096.)
 
-            #msg_buffer_time = struct.unpack('<d', msg_buffer[0:8])
-            #msg_buffer_readtime = struct.unpack('<q', msg_buffer[8:16])
-            #msg_buffer_value = struct.unpack('<f', msg_buffer[16:20])
             fs.write(msg_buffer)
 
             time_print = datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S.%f')
             logger.info(f"ADC Reading - Time: {time_print}, Read Time: {read_time} ns, Value: {raw_value * self._gain / 4096.} V")
 
             log_time = time.perf_counter_ns()
-            #msg_buffer_converted = array.array('f', msg_buffer)
-            #logger.info(f"ADC Converted Value: {msg_buffer_converted[0]}")
-            with open('porter/sensors/testing/adc_timing.txt', 'a') as f:
-                f.write(f"{(t - t_prev) * 1e3} {read_time / 1e6}" + "\n") 
+    
+            # Record timing results
+            self.timing_results += f"{(t - t_prev) * 1e3} {read_time / 1e6}\n"
 
             t_prev = t
 
@@ -172,10 +169,14 @@ class ADS1015:
             while time.perf_counter() < next_sample_time :
                 pass
 
-            if time.perf_counter() - self.start_time > 1800:
+            if time.perf_counter() - self.start_time > 300:
                 print("ADC Loop Done")
+                # Write the timing results to file
+                with open('porter/sensors/testing/adc_timing.txt', 'a') as f:
+                    f.write(self.timing_results) 
             else:
-                print(f"ADC Loop in Progress: {(time.perf_counter() - self.start_time)*100/1800}%")
+                print(f"ADC Loop in Progress: {(time.perf_counter() - self.start_time)*100/300}%")
+
 
         self.close()
 

@@ -1,3 +1,4 @@
+import os
 import copy
 import logging
 import threading
@@ -15,6 +16,7 @@ class Sensors(threading.Thread):
         date,
         path,
         sensor_name=None,
+        affinity_mask=None,
         *args,
         **kwargs,
     ):
@@ -29,6 +31,9 @@ class Sensors(threading.Thread):
             date (str): string with the date and time at the program start
             path (str): path for file storage
         """
+
+        if affinity_mask is not None:
+            os.sched_setaffinity(0, affinity_mask)
 
         super().__init__(*args, **kwargs)
 
@@ -70,6 +75,7 @@ class Camera(threading.Thread):
         fps=2,
         frames=None,
         duration=None,
+        affinity_mask=None,
         *args,
         **kwargs,
     ):
@@ -84,6 +90,9 @@ class Camera(threading.Thread):
             frames (int): number of photo in case of photo mode
             duration (float): duration of the video in case of video mode
         """
+
+        if affinity_mask is not None:
+            os.sched_setaffinity(0, affinity_mask)
 
         super().__init__(*args, **kwargs)
 
