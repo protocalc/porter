@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import array
 import lgpio
 import multiprocessing as mp
+import queue
 
 # ADS1015 registers
 ADS1015_REG_CONVERSION = 0x00
@@ -133,7 +134,7 @@ class ADS1015:
         next_sample_time = time.perf_counter()
         signal = 1
 
-        while signal is not None:
+        while signal == 1: 
 
             t_start = time.perf_counter_ns()
 
@@ -156,7 +157,7 @@ class ADS1015:
             struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 4096.)
 
             # Add the data to the queue
-            data_queue.put(msg_buffer, True)
+            data_queue.put(msg_buffer, False)
 
             time_print = datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S.%f')
             logger.info(f"ADC Reading - Time: {time_print}, Read Time: {read_time} ns, Value: {raw_value * self._gain / 4096.} V")
@@ -182,13 +183,16 @@ class ADS1015:
             # Get signals from the main thread; mainly for shutdown
             try:
                 signal = signal_queue.get(False)
-            except signal_queue.Empty:
+                print(f"Close signal received")
+            except queue.Empty:
                 signal = 1
             except Exception:
-                print("Sensor queue unexpected shutdown")
-                signal = None
+                print(f"Sensor queue unexpected shutdown")
+                signal = 0 
 
+        print("Closed")
         self.close()
+        print("Closed")
 
 
 

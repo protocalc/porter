@@ -4,15 +4,16 @@ import logging
 import threading
 import time
 import multiprocessing
+import queue
 
-from multiprocessing import Process, SimpleQueue, freeze_support
+from multiprocessing import Process, Queue, freeze_support
 
 logger = logging.getLogger()
 
 def CoreThread(handler, signal_queue, data_queue, affinity_mask=None):
     # Set core
     if affinity_mask is not None:
-        os.sched_setaffinity(0, affinity_mask)`
+        os.sched_setaffinity(0, affinity_mask)
 
     # Configure
     handler._connection()
@@ -58,26 +59,26 @@ class Sensors(threading.Thread):
         self.shutdown_flag = flag
 
         # Spawn mpsc queues
-        self.signal_queue = SimpleQueue()
-        self.data_queue = SimpleQueue()
+        self.signal_queue = Queue(10)
+        self.data_queue = Queue(1000)
 
         # Initialize the sensor and start the sensor handler thread
         logging.info(f'Configuring {self.sensor_name}')
         logging.info(f"Sensor {self.sensor_name} started")
 
-        p = Process(target=CoreThread, args=(handler, self.signal_queue, self.data_queue, affinity_mask))
-        p.start()
+        self.process = Process(target=CoreThread, args=(handler, self.signal_queue, self.data_queue, affinity_mask))
+        self.process.start()
 
     def run(self):
         # Loop forever, getting data from the handler thread through the queue, until shutdown
         while not self.shutdown_flag.is_set():
             try:
                 # Get the data
-                data = self.data_queue.get(False)
+                data = self.data_queue.get(block=False)
 
                 # Write the data to disk
                 self.datafile.write(data)
-            except SimpleQueue.Empty:
+            except queue.Empty:
                 # No data, so sleep
                 time.sleep(1)
             except Exception:
@@ -86,7 +87,10 @@ class Sensors(threading.Thread):
                 break
 
         # Send signal to sensor thread to shutdown
-        self.signal_queue.put(None, False)
+        logging.info(f"Sensor {self.sensor_name} told to close")
+        self.signal_queue.put(0, False)
+        self.process.join()
+        logging.info(f"Sensor {self.sensor_name} closed")
 
 class Camera(threading.Thread):
 
