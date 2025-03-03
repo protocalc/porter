@@ -52,15 +52,15 @@ class Sensors(threading.Thread):
 
         name = path + self.sensor_name + "_" + date + ".bin"
         try:
-            self.datafile = open(name, "r+b")
+            self.datafile = open(name, "r+b", 0)
         except FileNotFoundError:
-            self.datafile = open(name, "x+b")
+            self.datafile = open(name, "x+b", 0)
 
         self.shutdown_flag = flag
 
         # Spawn mpsc queues
-        self.signal_queue = Queue(10)
-        self.data_queue = Queue(1000)
+        self.signal_queue = Queue(-1)
+        self.data_queue = Queue(-1)
 
         # Initialize the sensor and start the sensor handler thread
         logging.info(f'Configuring {self.sensor_name}')
@@ -74,13 +74,13 @@ class Sensors(threading.Thread):
         while not self.shutdown_flag.is_set():
             try:
                 # Get the data
-                data = self.data_queue.get(block=False)
+                data = self.data_queue.get(block=True, timeout=1)
 
                 # Write the data to disk
                 self.datafile.write(data)
             except queue.Empty:
-                # No data, so sleep
-                time.sleep(1)
+                # No data, so pass
+                pass
             except Exception:
                 # Something is wrong with the queue, so assume closed
                 logging.error(f"Sensor {self.sensor_name} data queue closed")
