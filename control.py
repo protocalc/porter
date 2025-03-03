@@ -99,7 +99,6 @@ def main():
 
     try:
         if "sensors" in config.keys():
-            sensor_locks = {}
             sensor_names = {}
             sensor_handler = {}
             sensor_cores = {}
@@ -115,9 +114,8 @@ def main():
                     core = config["sensors"][i]["sensor_core"]
                 else:
                     core = None
-                
+
                 sensor_handler[name] = sensors_handler
-                sensor_locks[name] = threading.Lock()
                 sensor_names[name] = name
                 sensor_cores[name] = core
 
@@ -130,7 +128,6 @@ def main():
                     affinity_mask = None
                 threads.Sensors(
                     handler=sensor_handler[i],
-                    sensor_lock=sensor_locks[i],
                     flag=flag,
                     date=date,
                     path=sensor_path,

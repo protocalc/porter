@@ -3,15 +3,29 @@ import copy
 import logging
 import threading
 import time
+import multiprocessing
+
+from multiprocessing import Process, SimpleQueue, freeze_support
 
 logger = logging.getLogger()
+
+def CoreThread(handler, signal_queue, data_queue, affinity_mask=None):
+    # Set core
+    if affinity_mask is not None:
+        os.sched_setaffinity(0, affinity_mask)`
+
+    # Configure
+    handler._connection()
+    handler._configuration()
+
+    # Read continuously; blocks until signaled to stop
+    handler.obj.read_continous_binary(signal_queue, data_queue)
 
 class Sensors(threading.Thread):
 
     def __init__(
         self,
         handler,
-        sensor_lock,
         flag,
         date,
         path,
@@ -20,29 +34,21 @@ class Sensors(threading.Thread):
         *args,
         **kwargs,
     ):
+
         """Class to create a thread for each sensor
 
         Parameters:
             conn (Object): object with the connection to a specific sensor
-            sensor_lock (threading.lock): lock to preserve multiple attempts to
-                                          access the sensor queue
             flag (threading.Event): flag to communicate to the thread a
                                     particular event happened
             date (str): string with the date and time at the program start
             path (str): path for file storage
         """
 
-        if affinity_mask is not None:
-            os.sched_setaffinity(0, affinity_mask)
-
         super().__init__(*args, **kwargs)
 
-        self.sensor_lock = sensor_lock
-        
-        self.sensor_handler = handler
-        
         self.sensor_name = sensor_name
-        
+
         name = path + self.sensor_name + "_" + date + ".bin"
         try:
             self.datafile = open(name, "r+b")
@@ -51,18 +57,36 @@ class Sensors(threading.Thread):
 
         self.shutdown_flag = flag
 
-    def run(self):
-        
-        self.sensor_handler._connection()
+        # Spawn mpsc queues
+        self.signal_queue = SimpleQueue()
+        self.data_queue = SimpleQueue()
 
+        # Initialize the sensor and start the sensor handler thread
         logging.info(f'Configuring {self.sensor_name}')
-        
-        self.sensor_handler._configuration()
-
         logging.info(f"Sensor {self.sensor_name} started")
-        
-        with self.datafile as binary:
-            self.sensor_handler.obj.read_continous_binary(binary, self.shutdown_flag, self.sensor_lock)
+
+        p = Process(target=CoreThread, args=(handler, self.signal_queue, self.data_queue, affinity_mask))
+        p.start()
+
+    def run(self):
+        # Loop forever, getting data from the handler thread through the queue, until shutdown
+        while not self.shutdown_flag.is_set():
+            try:
+                # Get the data
+                data = self.data_queue.get(False)
+
+                # Write the data to disk
+                self.datafile.write(data)
+            except SimpleQueue.Empty:
+                # No data, so sleep
+                time.sleep(1)
+            except Exception:
+                # Something is wrong with the queue, so assume closed
+                logging.error(f"Sensor {self.sensor_name} data queue closed")
+                break
+
+        # Send signal to sensor thread to shutdown
+        self.signal_queue.put(None, False)
 
 class Camera(threading.Thread):
 
@@ -124,7 +148,7 @@ class Camera(threading.Thread):
 
         if self.mode == "video":
             flag = True
-            video_chunks = 30 * 60 
+            video_chunks = 30 * 60
             secs_remaining = copy.copy(self.duration)
             while not self.shutdown_flag.is_set():
                 time.sleep(0.1)
@@ -138,7 +162,7 @@ class Camera(threading.Thread):
                         flag = not flag
                         logging.info("STOPPING")
                         break
-                    else: 
+                    else:
                         self.shutdown_flag.wait(video_chunks)
                         self.camera.messageHandler(["videocontrol"])
                         time.sleep(2)

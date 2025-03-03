@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timezone
 import array
 import lgpio
+import multiprocessing as mp
 
 # ADS1015 registers
 ADS1015_REG_CONVERSION = 0x00
@@ -112,13 +113,13 @@ class ADS1015:
         logger.info(f"Current Reading Data Rate in s: {self.__time_sample}")
         logger.info(f"Current Gain: {self._gain_value}")
         logger.info(f"Current Channel: {self.channel}")
-        
+
         self.start_time = time.perf_counter()
 
         self.timing_results = ""
 
 
-    def read_continous_binary(self, fs, flag, sensor_lock):
+    def read_continous_binary(self, signal_queue, data_queue):
 
         config_bytes = [
             (self.__config_register >> 8) & 0xFF,
@@ -130,9 +131,10 @@ class ADS1015:
         t_prev = 0
 
         next_sample_time = time.perf_counter()
+        signal = 1
 
-        while not flag.is_set():
-            sensor_lock.acquire()
+        while signal is not None:
+
             t_start = time.perf_counter_ns()
 
             _, raw_value = lgpio.i2c_read_i2c_block_data(
@@ -140,7 +142,7 @@ class ADS1015:
             )
             t = time.time()
             read_time = time.perf_counter_ns() - t_start
-            
+
             next_sample_time = next_sample_time + self.__time_sample * (
                 1 + int(read_time / 1e9 / self.__time_sample)
                 ) - read_time/3e9
@@ -148,24 +150,24 @@ class ADS1015:
             raw_value = ((raw_value[0] << 8) | raw_value[1]) >> 4
             if raw_value > 2047:
                 raw_value -= 4096
-            
+
             struct.pack_into("<d", msg_buffer, 0, t)
             struct.pack_into("<q", msg_buffer, 8, read_time)
             struct.pack_into("<f", msg_buffer, 16, (raw_value * self._gain) / 4096.)
 
-            fs.write(msg_buffer)
+            # Add the data to the queue
+            data_queue.put(msg_buffer, True)
 
             time_print = datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S.%f')
             logger.info(f"ADC Reading - Time: {time_print}, Read Time: {read_time} ns, Value: {raw_value * self._gain / 4096.} V")
 
             log_time = time.perf_counter_ns()
-    
+
             # Record timing results
             self.timing_results += f"{(t - t_prev) * 1e3} {read_time / 1e6}\n"
 
             t_prev = t
 
-            sensor_lock.release()
             while time.perf_counter() < next_sample_time :
                 pass
 
@@ -173,15 +175,23 @@ class ADS1015:
                 print("ADC Loop Done")
                 # Write the timing results to file
                 with open('porter/sensors/testing/adc_timing.txt', 'a') as f:
-                    f.write(self.timing_results) 
+                    f.write(self.timing_results)
             else:
                 print(f"ADC Loop in Progress: {(time.perf_counter() - self.start_time)*100/300}%")
 
+            # Get signals from the main thread; mainly for shutdown
+            try:
+                signal = signal_queue.get(False)
+            except signal_queue.Empty:
+                signal = 1
+            except Exception:
+                print("Sensor queue unexpected shutdown")
+                signal = None
 
         self.close()
 
 
-                                
+
 
 
     def configure(self, config):
@@ -241,7 +251,7 @@ class ADS1015:
 
         else:
             msg = [time.time()]
-            
+
             tstart = time.perf_counter()
 
             #if self.output_mode == "value":
@@ -283,6 +293,3 @@ class ADS1015:
                 msg.append(i.voltage)
 
         return msg
-        
-
-
