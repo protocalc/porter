@@ -71,6 +71,8 @@ class ADS1015:
 
         self.model = kwargs.get("model", "ADS1015")
 
+        self.file_name = kwargs.get("file_name", "adc_timing")
+
         self.address = address
 
         self._gain = ADS1015_CONFIG_GAIN["8"]
@@ -158,16 +160,17 @@ class ADS1015:
 
             # Add the data to the queue
             data_queue.put(msg_buffer, False)
+            
+            t_log = time.time()
 
-            time_print = datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S.%f')
-            logger.info(f"ADC Reading - Time: {time_print}, Read Time: {read_time} ns, Value: {raw_value * self._gain / 4096.} V")
+            time_print = datetime.fromtimestamp(t_log).strftime('%Y-%m-%d %H:%M:%S.%f')
+            #logger.info(f"ADC Reading - Time: {time_print}, Read Time: {read_time} ns, Value: {raw_value * self._gain / 4096.} V")
 
-            log_time = time.perf_counter_ns()
 
             # Record timing results
-            self.timing_results += f"{(t - t_prev) * 1e3} {read_time / 1e6}\n"
+            self.timing_results += f"{time_print} {read_time / 1e6} {(t_log - t_prev) * 1e3}\n"
 
-            t_prev = t
+            t_prev = t_log
 
             while time.perf_counter() < next_sample_time :
                 pass
@@ -175,11 +178,11 @@ class ADS1015:
             if time.perf_counter() - self.start_time > 1500:
                 print("ADC Loop Done")
                 # Write the timing results to file
-                with open('porter/sensors/testing/adc_timing.txt', 'a') as f:
+                with open(f'porter/sensors/testing/{self.file_name}.txt', 'w') as f:
                     f.write(self.timing_results)
                 break
-            else:
-                print(f"ADC Loop in Progress: {(time.perf_counter() - self.start_time)*100/1500}%")
+            #else:
+                #print(f"ADC Loop in Progress: {(time.perf_counter() - self.start_time)*100/1500}%")
 
             # Get signals from the main thread; mainly for shutdown
             try:

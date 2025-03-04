@@ -10,11 +10,13 @@ logger = logging.getLogger()
 
 class UBX:
 
-    def __init__(self, port, baudrate, name):
+    def __init__(self, port, baudrate, name, file_name):
 
         self.name = name
 
         self.__new_baudrate = False
+
+        self.file_name = file_name
 
         if baudrate != 38400:
             self.__new_baudrate = True
@@ -26,6 +28,9 @@ class UBX:
             if self.conn.is_open:
                 logging.info(f"Connected to ublox sensor {self.name} @ {38400}")
                 self.reader = ubx.UBXReader(self.conn, protfilter=2)
+
+        self.timing_results = ""
+        self.identities = ""
 
     def configure(self, config):
 
@@ -203,21 +208,20 @@ class UBX:
             t = time.time()
             
             print_time = datetime.fromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S.%f")
-            logging.info(f"Timestamp: {print_time}, Read Time: {read_time}, Data Type: {msg.identity}")
-            
-            with open("porter/sensors/testing/gps_timing_noadc.txt", 'a') as file:
-                file.write(f"{(t - t_prev) * 1e3} {read_time / 1e6}" + "\n")
+            #logging.info(f"Timestamp: {print_time}, Read Time: {read_time}, Data Type: {msg.identity}")
 
-            with open("porter/sensors/testing/gps_identities_noadc.txt", 'a') as file:
-                file.write(f"{msg.identity}" + "\n")
+            self.timing_results += f"{print_time} {read_time / 1e6} {(t - t_prev) * 1e3} \n"
+            self.identities += f"{msg.identity} \n"
 
             t_prev = t
             current_time = time.time()
             if current_time - loop_start >= 1800:
-                print("Loop Done")
-            else:
-                print(f"GPS Loop in Progress: {(current_time - loop_start)/1800 * 100}%")
-            
+                print("GPS Loop Done")
+                with open(f"porter/sensors/testing/gps_timing{file_name}.txt", 'w') as f:
+                    f.write(self.timing_results)
+                with open(f"porter/sensors/testing/gps_identities{file_name}.txt", 'w') as f2:
+                    f2.write(self.identities)
+                       
             sensor_lock.release()
 
             

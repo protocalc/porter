@@ -4,6 +4,7 @@ local_development: False
 sensors:
     GPS_1:
       name: ZED-F9P
+      file_name: "_noadc"
       connection:
         type: serial
         parameters:
