@@ -172,14 +172,14 @@ class ADS1015:
             while time.perf_counter() < next_sample_time :
                 pass
 
-            if time.perf_counter() - self.start_time > 300:
+            if time.perf_counter() - self.start_time > 1500:
                 print("ADC Loop Done")
                 # Write the timing results to file
                 with open('porter/sensors/testing/adc_timing.txt', 'a') as f:
                     f.write(self.timing_results)
                 break
             else:
-                print(f"ADC Loop in Progress: {(time.perf_counter() - self.start_time)*100/300}%")
+                print(f"ADC Loop in Progress: {(time.perf_counter() - self.start_time)*100/1500}%")
 
             # Get signals from the main thread; mainly for shutdown
             try:
