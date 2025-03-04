@@ -177,6 +177,7 @@ class ADS1015:
                 # Write the timing results to file
                 with open('porter/sensors/testing/adc_timing.txt', 'a') as f:
                     f.write(self.timing_results)
+                break
             else:
                 print(f"ADC Loop in Progress: {(time.perf_counter() - self.start_time)*100/300}%")
 
