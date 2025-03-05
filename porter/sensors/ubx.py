@@ -4,6 +4,8 @@ from datetime import datetime
 
 import pyubx2 as ubx
 import serial
+import queue
+import pickle
 
 logger = logging.getLogger()
 
@@ -134,7 +136,7 @@ class UBX:
             tm = time.perf_counter()
             tf = time.perf_counter()
             while tf- tm < 1:
-                _ = self.read(parsing=True)
+                msg = self.read(parsing=True)
                 tf = time.perf_counter()
                 
             logging.info(f"Elapsed time reading GPS: {tf - tm}")
@@ -187,7 +189,7 @@ class UBX:
 
                 self.reader = ubx.UBXReader(self.conn)
 
-    def read_continous_binary(self, fs, flag, sensor_lock):
+    def read_continous_binary(self, signal_queue, data_queue):
 
         loop_start = time.time()
         t_prev = loop_start
@@ -197,15 +199,18 @@ class UBX:
             #msg = self.read()
             #sensor_lock.release()
             #fs.write(msg)
+        signal = 1
 
-        while not flag.is_set():
-            sensor_lock.acquire()
+        while signal == 1:
             t_start = time.perf_counter_ns()
             msg = self.read(parsing=True)
             t_end = time.perf_counter_ns()
 
             read_time = t_end - t_start
             t = time.time()
+
+            # Push the data to the queue
+            data_queue.put(pickle.dumps(msg), False)
             
             print_time = datetime.fromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S.%f")
             #logging.info(f"Timestamp: {print_time}, Read Time: {read_time}, Data Type: {msg.identity}")
@@ -215,15 +220,24 @@ class UBX:
 
             t_prev = t
             current_time = time.time()
-            if current_time - loop_start >= 1800:
+            if current_time - loop_start >= 60:
                 print("GPS Loop Done")
-                with open(f"porter/sensors/testing/gps_timing{file_name}.txt", 'w') as f:
+                with open(f"porter/sensors/testing/gps_timing{self.file_name}.txt", 'w') as f:
                     f.write(self.timing_results)
-                with open(f"porter/sensors/testing/gps_identities{file_name}.txt", 'w') as f2:
+                with open(f"porter/sensors/testing/gps_identities{self.file_name}.txt", 'w') as f2:
                     f2.write(self.identities)
-                       
-            sensor_lock.release()
+                break;
 
+            # Get signals from the main thread; mainly for shutdown
+            try:
+                signal = signal_queue.get(False)
+                print(f"Close signal for {self.name} received")
+            except queue.Empty:
+                signal = 1
+            except Exception:
+                print(f"Sensor {self.name} queue unexpected shutdown")
+                signal = 0 
+                       
             
         self.close()
 

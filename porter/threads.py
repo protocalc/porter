@@ -52,9 +52,9 @@ class Sensors(threading.Thread):
 
         name = path + self.sensor_name + "_" + date + ".bin"
         try:
-            self.datafile = open(name, "r+b", 0)
+            self.datafile = open(name, "r+b")
         except FileNotFoundError:
-            self.datafile = open(name, "x+b", 0)
+            self.datafile = open(name, "x+b")
 
         self.shutdown_flag = flag
 
@@ -82,11 +82,11 @@ class Sensors(threading.Thread):
                 # No data, so pass
                 pass
             except Exception:
-                # Something is wrong with the queue, so assume closed
-                logging.error(f"Sensor {self.sensor_name} data queue closed")
+                # Queue is closed or some other error, so assume break
                 break
 
         # Send signal to sensor thread to shutdown
+        print(f"Here for {self.sensor_name}")
         logging.info(f"Sensor {self.sensor_name} told to close")
         self.signal_queue.put(0, False)
         self.process.join()

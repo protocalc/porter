@@ -175,7 +175,7 @@ class ADS1015:
             while time.perf_counter() < next_sample_time :
                 pass
 
-            if time.perf_counter() - self.start_time > 1500:
+            if time.perf_counter() - self.start_time > 60:
                 print("ADC Loop Done")
                 # Write the timing results to file
                 with open(f'porter/sensors/testing/{self.file_name}.txt', 'w') as f:
@@ -187,11 +187,11 @@ class ADS1015:
             # Get signals from the main thread; mainly for shutdown
             try:
                 signal = signal_queue.get(False)
-                print(f"Close signal received")
+                print(f"Close signal for {self.name} received")
             except queue.Empty:
                 signal = 1
             except Exception:
-                print(f"Sensor queue unexpected shutdown")
+                print(f"Sensor {self.name} queue unexpected shutdown")
                 signal = 0 
 
         print("Closed")
