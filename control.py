@@ -101,7 +101,6 @@ def main():
         if "sensors" in config.keys():
             sensor_names = {}
             sensor_handler = {}
-            sensor_cores = {}
 
             for i in config["sensors"].keys():
                 logging.info(f'Sensor {i}')
@@ -110,29 +109,18 @@ def main():
                 )
 
                 name = config["sensors"][i]["name"]
-                if "sensor_core" in config["sensors"][i]:
-                    core = config["sensors"][i]["sensor_core"]
-                else:
-                    core = None
 
                 sensor_handler[name] = sensors_handler
                 sensor_names[name] = name
-                sensor_cores[name] = core
 
             for i in sensor_handler.keys():
                 logging.info(f'Sensor {i} - {sensor_handler[i]}')
-                if sensor_cores[i] is not None:
-                    affinity_mask = {sensor_cores[i]}
-                    logging.info(f'Sensor {i} - CORE {sensor_cores[i]}')
-                else:
-                    affinity_mask = None
                 threads.Sensors(
                     handler=sensor_handler[i],
                     flag=flag,
                     date=date,
                     path=sensor_path,
                     sensor_name=sensor_names[i],
-                    affinity_mask=affinity_mask,
                     daemon=False,
                 ).start()
 

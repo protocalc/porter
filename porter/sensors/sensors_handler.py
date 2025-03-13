@@ -38,11 +38,9 @@ class Handler:
             elif self.sensor_params["sensor_info"]["type"].lower() == "adc":
 
                 self.obj = ads.ADS1015(
-                    self.sensor_params["connection"]["parameters"]["channels"],
-                    address=self.sensor_params["connection"]["parameters"]["address"],
-                    bus=self.sensor_params["connection"]["parameters"]["bus"],
-                    mode=self.sensor_params["connection"]["parameters"]["mode"],
                     name=self.sensor_params["name"],
+                    bus=self.sensor_params["connection"]["parameters"]["bus"],
+                    sensor_core=self.sensor_params.get("sensor_core", None),
                     file_name=self.sensor_params["file_name"],
                 )
 

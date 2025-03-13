@@ -10,11 +10,7 @@ from multiprocessing import Process, Queue, freeze_support
 
 logger = logging.getLogger()
 
-def CoreThread(handler, signal_queue, data_queue, affinity_mask=None):
-    # Set core
-    if affinity_mask is not None:
-        os.sched_setaffinity(0, affinity_mask)
-
+def CoreThread(handler, signal_queue, data_queue):
     # Configure
     handler._connection()
     handler._configuration()
@@ -31,7 +27,6 @@ class Sensors(threading.Thread):
         date,
         path,
         sensor_name=None,
-        affinity_mask=None,
         *args,
         **kwargs,
     ):
@@ -66,7 +61,7 @@ class Sensors(threading.Thread):
         logging.info(f'Configuring {self.sensor_name}')
         logging.info(f"Sensor {self.sensor_name} started")
 
-        self.process = Process(target=CoreThread, args=(handler, self.signal_queue, self.data_queue, affinity_mask))
+        self.process = Process(target=CoreThread, args=(handler, self.signal_queue, self.data_queue))
         self.process.start()
 
     def run(self):
@@ -103,7 +98,6 @@ class Camera(threading.Thread):
         fps=2,
         frames=None,
         duration=None,
-        affinity_mask=None,
         *args,
         **kwargs,
     ):
@@ -118,9 +112,6 @@ class Camera(threading.Thread):
             frames (int): number of photo in case of photo mode
             duration (float): duration of the video in case of video mode
         """
-
-        if affinity_mask is not None:
-            os.sched_setaffinity(0, affinity_mask)
 
         super().__init__(*args, **kwargs)
 
