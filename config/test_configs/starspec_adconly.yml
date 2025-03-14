@@ -5,7 +5,6 @@ sensors:
     ADC_1:
       name: ADS1015
       sensor_core: 2
-      file_name: 'adc_only'
       connection:
         type: I2C
         parameters:

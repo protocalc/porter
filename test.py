@@ -59,6 +59,9 @@ ADS1015_CONFIG_RATE = {
 # Open the bus
 bus = lgpio.i2c_open(6, 0x48)
 
+rate = 128 
+total_time = 1800
+
 # Write the config
 config_register = (
     ADS1015_REG_CONFIG_CQUE_NONE
@@ -77,10 +80,27 @@ config_bytes = [
 ]
 lgpio.i2c_write_i2c_block_data(bus, ADS1015_REG_CONFIG, config_bytes)
 
+time.sleep(1)
+
 t_prev = 0
 num_samples = 0
 start_time = time.perf_counter()
-while time.perf_counter() - start_time < 60:
+timing_results = ""
+next_time = time.time()
+period = 1.0 / rate
+index = 0;
+
+while time.perf_counter() - start_time < total_time:
+    sleep_time = next_time - time.time() 
+    death = 0
+    while sleep_time < 0:
+        next_time += period
+        sleep_time = next_time - time.time()
+        death += 1
+        print(f"{index}: {death}")
+    time.sleep(sleep_time)
+    next_time += period
+
     t_start = time.perf_counter_ns()
     _, raw_value = lgpio.i2c_read_i2c_block_data(
         bus, ADS1015_REG_CONVERSION, 2
@@ -88,5 +108,10 @@ while time.perf_counter() - start_time < 60:
     t = time.time()
     read_time = time.perf_counter_ns() - t_start
     num_samples += 1
+    timing_results += f"{t} {raw_value} {read_time / 1e6} {death}\n" 
+    index += 1
 
-print(f"Read {num_samples} samples")
+with open('with_values.txt', 'w') as f:
+    f.write(timing_results)
+
+print(f"Read {num_samples} samples in {total_time} seconds")

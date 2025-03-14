@@ -32,7 +32,6 @@ class Handler:
                     port=self.sensor_params["connection"]["parameters"]["port"],
                     baudrate=self.sensor_params["connection"]["parameters"]["baudrate"],
                     name=self.sensor_params["name"],
-                    file_name=self.sensor_params["file_name"],
                 )
 
             elif self.sensor_params["sensor_info"]["type"].lower() == "adc":
@@ -41,7 +40,6 @@ class Handler:
                     name=self.sensor_params["name"],
                     bus=self.sensor_params["connection"]["parameters"]["bus"],
                     sensor_core=self.sensor_params.get("sensor_core", None),
-                    file_name=self.sensor_params["file_name"],
                 )
 
             elif self.sensor_params["sensor_info"]["type"].lower() == "dac":

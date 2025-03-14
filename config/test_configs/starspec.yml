@@ -4,7 +4,6 @@ local_development: False
 sensors:
     GPS_1:
       name: ZED-F9P
-      file_name: ""
       sensor_core: 3
       connection:
         type: serial
@@ -54,7 +53,6 @@ sensors:
     ADC_1:
       name: ADS1015
       sensor_core: 2
-      file_name: 'adc_timing'
       connection:
         type: I2C
         parameters:

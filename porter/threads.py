@@ -6,17 +6,7 @@ import time
 import multiprocessing
 import queue
 
-from multiprocessing import Process, Queue, freeze_support
-
 logger = logging.getLogger()
-
-def CoreThread(handler, signal_queue, data_queue):
-    # Configure
-    handler._connection()
-    handler._configuration()
-
-    # Read continuously; blocks until signaled to stop
-    handler.obj.read_continous_binary(signal_queue, data_queue)
 
 class Sensors(threading.Thread):
 
@@ -45,46 +35,21 @@ class Sensors(threading.Thread):
 
         self.sensor_name = sensor_name
 
-        name = path + self.sensor_name + "_" + date + ".bin"
-        try:
-            self.datafile = open(name, "r+b")
-        except FileNotFoundError:
-            self.datafile = open(name, "x+b")
-
+        self.datafile_name = path + self.sensor_name + "_" + date + ".bin"
         self.shutdown_flag = flag
-
-        # Spawn mpsc queues
-        self.signal_queue = Queue(-1)
-        self.data_queue = Queue(-1)
+        self.handler = handler
 
         # Initialize the sensor and start the sensor handler thread
         logging.info(f'Configuring {self.sensor_name}')
-        logging.info(f"Sensor {self.sensor_name} started")
-
-        self.process = Process(target=CoreThread, args=(handler, self.signal_queue, self.data_queue))
-        self.process.start()
+        self.handler._connection()
+        self.handler._configuration()
 
     def run(self):
-        # Loop forever, getting data from the handler thread through the queue, until shutdown
-        while not self.shutdown_flag.is_set():
-            try:
-                # Get the data
-                data = self.data_queue.get(block=True, timeout=1)
+        # Block forever, getting data from the handler thread through the queue, until shutdown
+        logging.info(f"Sensor {self.sensor_name} started")
+        self.handler.obj.read_continous_binary(self.shutdown_flag, self.datafile_name)
 
-                # Write the data to disk
-                self.datafile.write(data)
-            except queue.Empty:
-                # No data, so pass
-                pass
-            except Exception:
-                # Queue is closed or some other error, so assume break
-                break
-
-        # Send signal to sensor thread to shutdown
-        print(f"Here for {self.sensor_name}")
-        logging.info(f"Sensor {self.sensor_name} told to close")
-        self.signal_queue.put(0, False)
-        self.process.join()
+        # Can only get here if shutdown flag is set
         logging.info(f"Sensor {self.sensor_name} closed")
 
 class Camera(threading.Thread):

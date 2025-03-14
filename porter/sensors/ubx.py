@@ -4,7 +4,6 @@ from datetime import datetime
 
 import pyubx2 as ubx
 import serial
-import queue
 import pickle
 
 logger = logging.getLogger()
@@ -12,13 +11,11 @@ logger = logging.getLogger()
 
 class UBX:
 
-    def __init__(self, port, baudrate, name, file_name):
+    def __init__(self, port, baudrate, name):
 
         self.name = name
 
         self.__new_baudrate = False
-
-        self.file_name = file_name
 
         if baudrate != 38400:
             self.__new_baudrate = True
@@ -189,7 +186,7 @@ class UBX:
 
                 self.reader = ubx.UBXReader(self.conn)
 
-    def read_continous_binary(self, signal_queue, data_queue):
+    def read_continous_binary(self, shutdown_flag, datafile_name):
 
         loop_start = time.time()
         t_prev = loop_start
@@ -199,45 +196,37 @@ class UBX:
             #msg = self.read()
             #sensor_lock.release()
             #fs.write(msg)
-        signal = 1
+        try:
+            datafile = open(datafile_name, "r+b")
+        except FileNotFoundError:
+            datafile = open(datafile_name, "x+b")
 
-        while signal == 1:
+        while not shutdown_flag.is_set():
             t_start = time.perf_counter_ns()
-            msg = self.read(parsing=True)
+            msg, parsed = self.read(parsing=None)
             t_end = time.perf_counter_ns()
 
             read_time = t_end - t_start
             t = time.time()
 
             # Push the data to the queue
-            data_queue.put(pickle.dumps(msg), False)
+            datafile.write(msg)
             
             print_time = datetime.fromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S.%f")
-            #logging.info(f"Timestamp: {print_time}, Read Time: {read_time}, Data Type: {msg.identity}")
+            #logging.info(f"Timestamp: {print_time}, Read Time: {read_time}, Data Type: {parsed.identity}")
 
             self.timing_results += f"{print_time} {read_time / 1e6} {(t - t_prev) * 1e3} \n"
-            self.identities += f"{msg.identity} \n"
+            self.identities += f"{parsed.identity} \n"
 
             t_prev = t
             current_time = time.time()
-            if current_time - loop_start >= 60:
+            if current_time - loop_start >= 1800:
                 print("GPS Loop Done")
                 with open(f"porter/sensors/testing/gps_timing{self.file_name}.txt", 'w') as f:
                     f.write(self.timing_results)
                 with open(f"porter/sensors/testing/gps_identities{self.file_name}.txt", 'w') as f2:
                     f2.write(self.identities)
                 break;
-
-            # Get signals from the main thread; mainly for shutdown
-            try:
-                signal = signal_queue.get(False)
-                print(f"Close signal for {self.name} received")
-            except queue.Empty:
-                signal = 1
-            except Exception:
-                print(f"Sensor {self.name} queue unexpected shutdown")
-                signal = 0 
-                       
             
         self.close()
 
@@ -245,7 +234,9 @@ class UBX:
 
         raw, parsed = self.reader.read()
 
-        if parsing:
+        if parsing is None:
+            return raw, parsed
+        elif parsing:
             return parsed
         else:
             return raw

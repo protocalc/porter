@@ -20,11 +20,10 @@ logger = logging.getLogger()
 
 class ADS1015:
 
-    def __init__(self, name="Generic ADC", bus=6, model="ADS1015", file_name="adc_timing", sensor_core=None):
+    def __init__(self, name="Generic ADC", bus=6, model="ADS1015", sensor_core=None):
 
         self.name = name 
         self.model = model 
-        self.file_name = file_name 
         self.core = sensor_core
         self.bus = int(bus)
 
@@ -36,23 +35,16 @@ class ADS1015:
 
         logger.info(f"Connected to ADC {self.name}")
 
-    def read_continous_binary(self, signal_queue, data_queue):
+    def read_continous_binary(self, shutdown_flag, datafile_name):
         # Start the ads1015 process
-        cmd = f"ads1015 --gain {self.gain} --rate {self.rate} --output {self.file_name} --i2c-bus {self.bus}"
+        cmd = f"ads1015 --gain {self.gain} --rate {self.rate} --output {datafile_name} --i2c-bus {self.bus}"
         if self.core is not None:
             cmd += f" --core {int(self.core)}"
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid) 
         # Loop until told to close
-        signal = 1
-        while signal == 1: 
-            try:
-                signal = signal_queue.get(False)
-                logger.info(f"Close signal for {self.name} received")
-            except queue.Empty:
-                signal = 1
-            except Exception:
-                logger.info(f"Sensor {self.name} queue unexpected shutdown")
-                signal = 0 
+
+        while not shutdown_flag.is_set():
+            time.sleep(1)
 
         self.close()
 
@@ -68,7 +60,7 @@ class ADS1015:
     def close(self):
 
         # Kill the process
-        if self.process is None:
+        if self.process is not None:
             os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
             self.process = None
 
