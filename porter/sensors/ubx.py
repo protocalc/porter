@@ -133,19 +133,19 @@ class UBX:
             tm = time.perf_counter()
             tf = time.perf_counter()
             while tf- tm < 1:
-                msg = self.read(parsing=True)
+                self.read()
                 tf = time.perf_counter()
                 
             logging.info(f"Elapsed time reading GPS: {tf - tm}")
             
             
-            parsed_data = self.read(parsing=True)
+            _, parsed_data = self.read()
             
             if parsed_data.identity == "ACK-ACK":
                 ack_count += 1
 
             while parsed_data.identity != "ACK-ACK":
-                parsed_data = self.read(parsing=True)
+                _, parsed_data = self.read()
                 logging.info(f"Count: {count} - {parsed_data.identity}")
                 if parsed_data.identity == "ACK-ACK":
                     ack_count += 1
@@ -155,7 +155,7 @@ class UBX:
                 count += 1
             tf = time.perf_counter()
             while tf- tm < 1:
-                _ = self.read(parsing=True)
+                self.read()
                 tf = time.perf_counter()
                 
             logging.info(f"Elapsed time waiting for ACK: {tf - tm}")
@@ -203,7 +203,7 @@ class UBX:
 
         while not shutdown_flag.is_set():
             t_start = time.perf_counter_ns()
-            msg, parsed = self.read(parsing=None)
+            msg, parsed = self.read()
             t_end = time.perf_counter_ns()
 
             read_time = t_end - t_start
@@ -230,16 +230,9 @@ class UBX:
             
         self.close()
 
-    def read(self, parsing=False):
+    def read(self):
 
-        raw, parsed = self.reader.read()
-
-        if parsing is None:
-            return raw, parsed
-        elif parsing:
-            return parsed
-        else:
-            return raw
+        return self.reader.read()
 
     def close(self):
 
