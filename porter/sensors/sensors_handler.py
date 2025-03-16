@@ -3,6 +3,7 @@ import porter.sensors.KERNEL as KERNEL
 import porter.sensors.ubx as ubx
 
 import porter.sensors.ads1015 as ads
+import porter.sensors.inertial as inertial
 #import porter.sensors.ads1x15 as ads
 
 try:
@@ -39,7 +40,13 @@ class Handler:
                 self.obj = ads.ADS1015(
                     name=self.sensor_params["name"],
                     bus=self.sensor_params["connection"]["parameters"]["bus"],
-                    sensor_core=self.sensor_params.get("sensor_core", None),
+                )
+
+            elif self.sensor_params["sensor_info"]["type"].lower() == "inertial":
+
+                self.obj = inertial.Inertial(
+                    name=self.sensor_params["name"],
+                    bus=self.sensor_params["connection"]["parameters"]["bus"],
                 )
 
             elif self.sensor_params["sensor_info"]["type"].lower() == "dac":
