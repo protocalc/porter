@@ -72,7 +72,7 @@ sensors:
         parameters:
           bus: 4
       sensor_info:
-          type: Interial
+          type: Inertial
           manufacturer: Varios
       configuration: 
         data_rate: 200
