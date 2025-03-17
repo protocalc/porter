@@ -11,9 +11,11 @@ logger = logging.getLogger()
 
 class UBX:
 
-    def __init__(self, port, baudrate, name):
+    def __init__(self, port, baudrate, name, file_name):
 
         self.name = name
+
+        self.file_name = file_name
 
         self.__new_baudrate = False
 
@@ -112,14 +114,12 @@ class UBX:
         ack_count = 0
 
         if self.__new_baudrate:
-            self.conn = serial.Serial(self.__port, self.__brate, timeout=1)
-            #self.conn = serial.Serial(self.__port, 38400, timeout=1)
+            self.conn = serial.Serial(self.__port, 38400, timeout=1)
             if self.conn.is_open:
-                logging.info(f"Connected to ublox sensor {self.name} @ {self.__brate}")
-                #logging.info(f"Connected to ublox sensor {self.name} @ {38400}")
+                logging.info(f"Connected to ublox sensor {self.name} @ {38400}")
                 self.reader = ubx.UBXReader(self.conn, protfilter=2)
 
-        for i in range(2):
+        '''for i in range(2):
             
             count = 0
             t0 = time.perf_counter()
@@ -133,19 +133,19 @@ class UBX:
             tm = time.perf_counter()
             tf = time.perf_counter()
             while tf- tm < 1:
-                self.read()
+                msg = self.read(parsing=True)
                 tf = time.perf_counter()
                 
             logging.info(f"Elapsed time reading GPS: {tf - tm}")
             
             
-            _, parsed_data = self.read()
+            parsed_data = self.read(parsing=True)
             
             if parsed_data.identity == "ACK-ACK":
                 ack_count += 1
 
             while parsed_data.identity != "ACK-ACK":
-                _, parsed_data = self.read()
+                parsed_data = self.read(parsing=True)
                 logging.info(f"Count: {count} - {parsed_data.identity}")
                 if parsed_data.identity == "ACK-ACK":
                     ack_count += 1
@@ -155,13 +155,13 @@ class UBX:
                 count += 1
             tf = time.perf_counter()
             while tf- tm < 1:
-                self.read()
+                _ = self.read(parsing=True)
                 tf = time.perf_counter()
                 
             logging.info(f"Elapsed time waiting for ACK: {tf - tm}")
 
         if ack_count == 2:
-            logging.info("UBlox Sensor Configured Correctly")
+            logging.info("UBlox Sensor Configured Correctly")'''
 
         if self.__new_baudrate:
             t0 = time.perf_counter()
@@ -171,13 +171,11 @@ class UBX:
             self.conn.write(msg_baud.serialize())
             t0 = time.perf_counter()
             while time.perf_counter() - t0 <= 1.0:
-                pass
+                self.conn.reset_input_buffer()
 
             del self.reader
             self.conn.close()
             t0 = time.perf_counter()
-            while time.perf_counter() - t0 <= 0.5:
-                pass
 
             self.conn = serial.Serial(self.__port, self.__brate, timeout=1)
 
@@ -203,7 +201,7 @@ class UBX:
 
         while not shutdown_flag.is_set():
             t_start = time.perf_counter_ns()
-            msg, parsed = self.read()
+            msg, parsed = self.read(parsing=None)
             t_end = time.perf_counter_ns()
 
             read_time = t_end - t_start
@@ -213,14 +211,14 @@ class UBX:
             datafile.write(msg)
             
             print_time = datetime.fromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S.%f")
-            #logging.info(f"Timestamp: {print_time}, Read Time: {read_time}, Data Type: {parsed.identity}")
+            logging.info(f"Timestamp: {print_time}, Read Time: {read_time}, Data Type: {parsed.identity}")
 
             self.timing_results += f"{print_time} {read_time / 1e6} {(t - t_prev) * 1e3} \n"
             self.identities += f"{parsed.identity} \n"
 
             t_prev = t
             current_time = time.time()
-            if current_time - loop_start >= 1800:
+            if current_time - loop_start >= 10:
                 print("GPS Loop Done")
                 with open(f"porter/sensors/testing/gps_timing{self.file_name}.txt", 'w') as f:
                     f.write(self.timing_results)
@@ -230,9 +228,16 @@ class UBX:
             
         self.close()
 
-    def read(self):
+    def read(self, parsing=False):
 
-        return self.reader.read()
+        raw, parsed = self.reader.read()
+
+        if parsing is None:
+            return raw, parsed
+        elif parsing:
+            return parsed
+        else:
+            return raw
 
     def close(self):
 
