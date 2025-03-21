@@ -52,6 +52,29 @@ class Sensors(threading.Thread):
         # Can only get here if shutdown flag is set
         logging.info(f"Sensor {self.sensor_name} closed")
 
+class Gimbal(threading.Thread):
+    def __init__(
+            self,
+            flag,
+            gimbal,
+            gimbal_name=None,
+            *args,
+            **kwargs,
+        ):
+
+        super().__init__(*args, **kwargs)
+        self.gimbal_name = gimbal_name
+        self.gimbal = gimbal
+
+        self.shutdown_flag = flag
+
+    def run(self):
+        logging.info(f"Gimbal {self.gimbal_name} started")
+        self.gimbal.maneuver(self.shutdown_flag) 
+
+        logging.info(f"Gimbal {self.gimbal_name} stopped")
+
+
 class Camera(threading.Thread):
 
     def __init__(

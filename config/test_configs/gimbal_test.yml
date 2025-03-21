@@ -1,0 +1,7 @@
+local_development: False
+
+
+gimbal:
+  gimbal_name: RONIN_MX
+  core: 1
+  device: /dev/ttyAMA0
