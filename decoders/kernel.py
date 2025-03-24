@@ -4,7 +4,7 @@ import sys
 
 import pandas as pd
 
-sys.path.append("/home/gabriele/Documents/porter")
+sys.path.append("/home/polocalc/Documents/porter")
 import porter.sensors.KERNEL_utils as utils
 
 

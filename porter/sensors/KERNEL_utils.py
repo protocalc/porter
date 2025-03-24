@@ -55,21 +55,25 @@ class KernelMsg:
 
         msg_type = msg[type_idx].to_bytes(1, byteorder="little")
         modes = list(Kdb.MODES.keys())
-
+        
+        vals = {}
+        
         idx = self.msg_address.index(msg_type)
+        
+        start = type_idx + 3
 
-        struct_type = "<" + "".join(Kdb.MODES[modes[idx]]["Type"])
-        scale = Kdb.MODES[modes[idx]]["Scale"]
-
-        vals = struct.unpack(struct_type, msg[type_idx + 3 : -2])
-
-        if return_dict:
-            vals = dict(
-                zip(
-                    Kdb.MODES[modes[idx]]["Parameters"],
-                    list(map(lambda x, y: x / y, vals, scale)),
-                )
-            )
+        for i in range(len(Kdb.MODES[modes[idx]]["Type"])):
+            fmt = "<" + "".join(Kdb.MODES[modes[idx]]["Type"][i])
+            val = msg[start:start+struct.calcsize(Kdb.MODES[modes[idx]]["Type"][i])]
+            
+            if Kdb.MODES[modes[idx]]["Parameters"][i] != 'USW':
+                tmp, = struct.unpack(fmt, val)
+                vals[Kdb.MODES[modes[idx]]["Parameters"][i]] = tmp / Kdb.MODES[modes[idx]]["Scale"][i]
+            else:
+                tmp = Kdb.extract_USW(val)
+                vals[Kdb.MODES[modes[idx]]["Parameters"][i]] = tmp
+            
+            start += struct.calcsize(Kdb.MODES[modes[idx]]["Type"][i])
 
         return vals
 
@@ -96,6 +100,8 @@ class KernelMsg:
 
             tmp = copy.copy(data[i * length : (i + 1) * length])
             tmp = self.decode_single(tmp, return_dict=True)
+            
+            print(tmp)
 
             for j in tmp.keys():
                 if i == 0:

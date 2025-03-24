@@ -68,6 +68,14 @@ class KernelInertial:
             return msg
 
     def configure(self, config):
+        
+        #msg = utils.HEADER + b"\x00" + b"\x00" + b"\x07" + b"\x00" + b"\xFE"
+
+        #chk = utils._checksum(msg)
+        #self.conn.write(msg + chk)
+        
+        #time.sleep(0.1)
+        
 
         mode = config["mode"]
 
@@ -83,37 +91,48 @@ class KernelInertial:
             msg, chk = self.payload_cmds(mode)
 
             self.conn.write(msg)
+        #time.sleep(0.1)
+        
+        #ack = self.conn.read(10)
+        
+        #val = copy.copy(ack[6:8])
 
-        ack = self.conn.read(10)
+        #if val == chk:
+        #    logger.info("Sent message to start collecting Inclinometer data")
+        #    logger.info(f"Mode Used: {mode}")
+        #    logger.info(f"MSG: {msg}")
+        #    logger.info(f"ACK: {ack}")
+        #else:
+        #    logger.info("Cannot connect to inclinometer")
 
-        val = copy.copy(ack[6:8])
-
-        if val == chk:
-            logger.info("Sent message to start collecting Inclinometer data")
-            logger.info(f"Mode Used: {mode}")
-        else:
-            logger.info("Cannot connect to inclinometer")
-
-    def read_continous_binary(self, fs, flag, sensor_lock):
+    def read_continous_binary(self, flag, fs):
+        
+        try:
+            datafile = open(fs, "r+b")
+        except FileNotFoundError:
+            datafile = open(fs, "x+b")
 
         while not flag.is_set():
+            if self.__first_msg:
+                msg, length = self._find_msg()
             
-            fs.write(self.read(sensor_lock))
+            print(self.read_single(decode=True))
+            #datafile.write(self.read())
 
         self.close()
 
-    def read(self, sensor_lock, chunk_size=None):
+    def read(self, chunk_size=None):
 
         if self.__first_msg:
             msg, length = self._find_msg()
 
         else:
-            sensor_lock.acquire()
             if self.expected_length is not None:
                 msg = self.conn.read(self.expected_length)
             else:
                 msg = self.conn.read(chunk_size)
-            sensor_lock.release()
+                
+        print(msg)
 
         return msg
 
@@ -157,10 +176,13 @@ class KernelInertial:
         """Read the first single message available from a Kernel Device"""
 
         msg, _ = self._find_msg()
-
+        
         if decode:
-            msg_class = utils.KernelMsg()
-            msg = msg_class.decode_single(msg, return_dict=return_dict)
+            try:
+                msg_class = utils.KernelMsg()
+                msg = msg_class.decode_single(msg, return_dict=return_dict)
+            except ValueError:
+                pass
 
         return msg
 

@@ -34,26 +34,21 @@ USW_TABLE = {
 }
 
 def extract_USW(USW):
-
     def check_byte(byte):
         if isinstance(byte, int):
-            return bin(byte).lstrip('0b')
+            return format(byte, '08b')  # Ensure 8-bit representation
         elif isinstance(byte, str):
-            return bin(int(byte, base=16)).lstrip('0b')
+            return format(int(byte, base=16), '08b')  # Convert hex to binary
 
     def check_values(bits, table):
-        count = 0
-        tmp = ''
-        for i in bits:
-            if table[count] == 'reserved':
-                tmp = 'RES_'
+        result = []
+        for i, bit in enumerate(reversed(bits)):  # Reverse bits (LSB first)
+            if table[i] == 'Reserved':
+                result.append(f'RES_{i}')
             else:
-                if i == 1:
-                    tmp = 'KO_'
-                else:
-                    tmp = 'OK_'
-        
-        return tmp[:-1]
+                result.append(f'KO_{table[i]}' if bit == '1' else f'OK_{table[i]}')
+
+        return ', '.join(result)  # Return a readable string
 
     low = check_byte(USW[0])
     high = check_byte(USW[1])
