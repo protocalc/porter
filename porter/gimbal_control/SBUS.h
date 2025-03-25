@@ -38,7 +38,7 @@ class SBUS
         int begin();
         bool read(uint16_t* channels, uint8_t* failsafe, uint16_t* lostFrame);
         bool readCal(float* calChannels, uint8_t* failsafe, uint16_t* lostFrame);
-        void write(uint16_t* channels);
+	std::string write(uint16_t* channels);
         void writeCal(float *channels);
         void setEndPoints(uint8_t channel,uint16_t min,uint16_t max);
         void getEndPoints(uint8_t channel,uint16_t *min,uint16_t *max);

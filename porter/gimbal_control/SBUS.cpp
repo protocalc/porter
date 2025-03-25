@@ -118,9 +118,10 @@ int SBUS::begin()
 }
 
 /* write SBUS packets */
-void SBUS::write(uint16_t* channels)
+string SBUS::write(uint16_t* channels)
 {
     static uint8_t packet[25];
+    string output;
     /* assemble the SBUS packet */
     // SBUS header
     packet[0] = _sbusHeader;
@@ -151,16 +152,22 @@ void SBUS::write(uint16_t* channels)
         packet[22] = (uint8_t) ((channels[15] & 0x07FF)>>3);
 
 	cout << "Channels inputted: ";
+	output.append("Channels inputted: ");
 	for (int i = 0; i<16; i++) {
 		cout << channels[i] << " ";
+		output.append(channels[i]);
+		output.append(" ");
 	}
 	cout << endl;
+	output.append(endl);
     }
     // flags
     packet[23] = 0x00;
     // footer
     packet[24] = _sbusFooter;
     ::write(_fd, packet, sizeof(packet));
+
+    return output;
 }
 
 /* write SBUS packets from calibrated inputs */
