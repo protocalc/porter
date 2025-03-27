@@ -6,7 +6,13 @@ import time
 import multiprocessing
 import queue
 
+try:
+    from sour_core import sony
+except ModuleNotFoundError:
+    pass
+
 logger = logging.getLogger()
+
 
 class Sensors(threading.Thread):
 
@@ -20,7 +26,6 @@ class Sensors(threading.Thread):
         *args,
         **kwargs,
     ):
-
         """Class to create a thread for each sensor
 
         Parameters:
@@ -40,7 +45,7 @@ class Sensors(threading.Thread):
         self.handler = handler
 
         # Initialize the sensor and start the sensor handler thread
-        logging.info(f'Configuring {self.sensor_name}')
+        logging.info(f"Configuring {self.sensor_name}")
         self.handler._connection()
         self.handler._configuration()
 
@@ -52,17 +57,14 @@ class Sensors(threading.Thread):
         # Can only get here if shutdown flag is set
         logging.info(f"Sensor {self.sensor_name} closed")
 
+
 class Camera(threading.Thread):
 
     def __init__(
         self,
-        camera,
+        camera_config,
         flag,
         mode,
-        camera_name=None,
-        fps=2,
-        frames=None,
-        duration=None,
         *args,
         **kwargs,
     ):
@@ -80,47 +82,66 @@ class Camera(threading.Thread):
 
         super().__init__(*args, **kwargs)
 
-        self.camera = camera
+        self.camera_config = camera_config
 
-        self.camera_name = camera_name
-        self.mode = mode
-
-        if fps is not None:
-            self.timing = 1 / fps
-        else:
-            self.timing = None
-
-        if frames is not None:
-            self.frames = int(frames)
-        else:
-            self.frames = int(1e9)
-
-        if duration is not None:
-            self.duration = duration
-        else:
-            self.duration = 20 * 60
+        self.camera_name = self.camera_config["name"]
 
         self.shutdown_flag = flag
 
     def run(self):
 
-        logging.info(f"Camera {self.camera_name} started")
+        camera = sony.SONYconn(self.camera_name)
 
-        if self.mode == "video":
+        camera.initialize_camera()
+
+        time.sleep(0.2)
+
+        camera.messageHandler(["datetime", 0.04, 1e-3])
+
+        time.sleep(0.1)
+
+        camera.messageHandler(["programmode", self.camera_config["program"]])
+
+        time.sleep(0.1)
+
+        if "ISO" in self.camera_config.keys():
+            camera.messageHandler(["iso", self.camera_config["ISO"]])
+            time.sleep(0.1)
+
+        if "shutter_speed" in self.camera_config.keys():
+            camera.messageHandler(["shutterspeed", self.camera_config["shutter_speed"]])
+            time.sleep(0.1)
+
+        if "focus_distance" in self.camera_config.keys():
+            camera.messageHandler(
+                ["focusdistance", self.camera_config["focus_distance"]]
+            )
+            time.sleep(0.1)
+
+        logging.info(f"Camera {self.camera_name} Configured")
+
+        if self.camera_config["mode"] == "video":
+            if "duration" in self.camera_config.keys():
+                duration = self.camera_config["duration"]
+            else:
+                duration = 20 * 60
+
             flag = True
             video_chunks = 30 * 60
-            secs_remaining = copy.copy(self.duration)
+            secs_remaining = copy.copy(duration)
             while not self.shutdown_flag.is_set():
                 time.sleep(0.1)
                 self.camera.messageHandler(["videocontrol"])
                 if flag:
                     if secs_remaining < video_chunks:
-                        logging.info(f"RECORDING {secs_remaining}")
+                        logging.info(
+                            f"Camera {self.camera_name} starts recording, remaining {secs_remaining} s"
+                        )
                         self.shutdown_flag.wait(secs_remaining)
                         self.camera.messageHandler(["videocontrol"])
                         self.shutdown_flag.set()
                         flag = not flag
-                        logging.info("STOPPING")
+                        logging.info(f"Camera {self.camera_name} stops recording")
                         break
                     else:
                         self.shutdown_flag.wait(video_chunks)
@@ -130,13 +151,31 @@ class Camera(threading.Thread):
                 else:
                     flag = not flag
 
-        elif self.mode == "photo":
+        elif self.camera_config["mode"] == "photo":
+            if "fps" in self.camera_config.keys():
+                fps = self.camera_config["fps"]
+            else:
+                fps = 1
+
+            if "frames" in self.camera_config.keys():
+                frames = self.camera_config["frames"]
+            else:
+                frames = 1e9
+
+            timing = 1 / fps
+
             photo_count = 0
             while not self.shutdown_flag.is_set():
                 t = time.time()
                 self.camera.messageHandler(["capture"])
-                time.sleep(self.timing - (time.time() - t))
+
+                while (time.time() - t) < timing:
+                    pass
 
                 photo_count += 1
-                if photo_count > self.frames:
+                if photo_count > frames:
                     break
+
+        logging.info(f"Camera {self.camera_name} stopped")
+
+        camera.close_usb_connection()
