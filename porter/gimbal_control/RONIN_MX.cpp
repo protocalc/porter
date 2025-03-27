@@ -2,6 +2,7 @@
 #include <chrono>
 #include <thread>
 #include <getopt.h>
+#include <fstream>
 
 using namespace std;
 
@@ -20,9 +21,9 @@ void setup() {
 	RONIN.setEndPoints(rollChannel, 352, 1696);
 }
 
-char* send_values(int panValue, int tiltValue, int rollValue, int panChannel, int tiltChannel, int rollChannel) {
+string send_values(int panValue, int tiltValue, int rollValue, int panChannel, int tiltChannel, int rollChannel) {
 	uint16_t channels[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-	char* gimbal_output;
+	string gimbal_output;
 	for (int chan = 0; chan <= 16; chan++) {
 		if (chan == panChannel) {
 			channels[panChannel-1] = panValue;	
@@ -68,22 +69,21 @@ void loop(string datafile) {
 
 	std::cout << "Channels:         - T P - R - - - - - - - - - - -" << std::endl;
 
-	for (val=0; val<8; val++) {
+	for (val=0; val<2; val++) {
 		panValue = panValues[val];
 		tiltValue = tiltValues[val];
 		rollValue = rollValues[val];
 
-		char* gimbal_output;
+		string gimbal_output;
 
 		for (int i = 1; i <= 500; i++) {
-			while ((gimbal_output = send_values(panValue, tiltValue, rollValue, panChannel, tiltChannel, rollChannel)) != nullptr) {
+			gimbal_output = send_values(panValue, tiltValue, rollValue, panChannel, tiltChannel, rollChannel);
+			if (!gimbal_output.empty()) {
 				gimbal_buffer.append(gimbal_output);
-				free(gimbal_output);
 			}
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 	}
-
 	ofstream out(datafile);
 	out << gimbal_buffer;
 	out.close();
@@ -102,6 +102,7 @@ int main(int argc, char* argv[]) {
 	while ((opt = getopt_long(argc, argv, "o:", long_options, nullptr)) != -1) {
 		if (opt == 'o') {
 			datafile = optarg;
+			cout << "Output File: " << datafile << endl;
 		}
 		else {
 			cerr << "Usage: " << argv[0] << " --output <filename>\n";
