@@ -12,6 +12,7 @@ import yaml
 import porter.sensors.sensors_handler as sh
 import porter.threads as threads
 import porter.valon as valon
+import porter.gimbal_control.ronin_mx as ronin
 
 path = os.path.dirname(os.path.realpath(__file__))
 home_dir = os.environ["HOME"]
@@ -126,14 +127,32 @@ def main():
 
         if "source" in config.keys():
             synt = valon.Valon(config["source"]["port"], config["source"]["baudrate"])
-
+            print("Opened serial connection.")
             synt.set_freq(config["source"]["freq"] / config["source"]["mult_factor"])
             synt.set_pwr(config["source"]["power"])
+            print("Set frequency and power.")
             if config["source"]["mod_freq"] > 0:
                 synt.set_amd(config["source"]["mod_amp"], config["source"]["mod_freq"])
+                print("Set AMD.")
             else:
                 synt.set_amd(0, 0)
+
+            for i in range(1000):
+                valon_id = synt.get_id()
+                time.sleep(0.01)
+            
+            print(f"Valon ID: {valon_id}")
             time.sleep(2)
+
+        if "gimbal" in config.keys():
+            gimbal = ronin.Gimbal(config["gimbal"]["device"], config["gimbal"]["gimbal_name"])
+            threads.Gimbal(
+                    flag=flag,
+                    gimbal=gimbal,
+                    gimbal_name=config["gimbal"]["gimbal_name"]
+                ).start() 
+                   
+
 
         if "camera" in config.keys() and not config["local_development"]:
 

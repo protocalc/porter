@@ -168,6 +168,7 @@ class UBX:
             msg_baud = ubx.UBXMessage.config_set(
                 1, 0, [("CFG_UART1_BAUDRATE", self.__brate)]
             )
+            self.conn.write(serial_cfgs)
             self.conn.write(msg_baud.serialize())
             t0 = time.perf_counter()
             while time.perf_counter() - t0 <= 1.0:
