@@ -81,8 +81,8 @@ class KernelInertial:
             temp = self.conn.read_until(expected=utils.HEADER)[:-2]
 
             if temp[1:2] == b"\x41":
-                data_rate = struct.unpack("<H", temp[5:7])
-                self.__alignment_time = struct.unpack("<H", temp[7:9])
+                data_rate, = struct.unpack("<H", temp[4:6])
+                self.__alignment_time, = struct.unpack("<H", temp[6:8])
 
                 logger.info(f"Current Data Rate {data_rate} Hz")
                 logger.info(f"Alignment Time {self.__alignment_time} s")
@@ -106,6 +106,8 @@ class KernelInertial:
         time.sleep(0.5)
 
         ack = self.conn.read(10)
+        
+        print(ack)
 
         val = copy.copy(ack[6:8])
 
