@@ -22,36 +22,38 @@ class Handler:
         self.local = local
 
     def _connection(self):
+        
 
+        # For local development, set up a fake connection.
         if self.local:
             self.obj = fake.FakeConnection(self.sensor_params["name"])
 
         else:
             if self.sensor_params["sensor_info"]["type"].lower() == "gps":
-
+                # Set up GPS with output port, baudrate, GPS name, and output file name options.
                 self.obj = ubx.UBX(
                     port=self.sensor_params["connection"]["parameters"]["port"],
                     baudrate=self.sensor_params["connection"]["parameters"]["baudrate"],
                     name=self.sensor_params["name"],
-                    file_name=self.sensor_params["file_name"],
                 )
 
-            elif self.sensor_params["sensor_info"]["type"].lower() == "adc":
 
+            elif self.sensor_params["sensor_info"]["type"].lower() == "adc":
+                # Set up ADC with name and I2C bus specifications.
                 self.obj = ads.ADS1015(
                     name=self.sensor_params["name"],
                     bus=self.sensor_params["connection"]["parameters"]["bus"],
                 )
 
             elif self.sensor_params["sensor_info"]["type"].lower() == "inertial":
-
+                # Set up inertial sensors with name and I2C bus specifications
                 self.obj = inertial.Inertial(
                     name=self.sensor_params["name"],
                     bus=self.sensor_params["connection"]["parameters"]["bus"],
                 )
 
             elif self.sensor_params["sensor_info"]["type"].lower() == "dac":
-
+                # Set up DAC with address specification.
                 self.obj = mcp.MCP4725(
                     self.sensor_params["connection"]["parameters"]["address"],
                 )
@@ -61,7 +63,7 @@ class Handler:
                     self.sensor_params["sensor_info"]["manufacturer"].lower()
                     == "inertial_labs"
                 ):
-
+                    # Set up inclinometer with port, baudrate, and sensor name.
                     self.obj = KERNEL.KernelInertial(
                         self.sensor_params["connection"]["parameters"]["port"],
                         self.sensor_params["connection"]["parameters"]["baudrate"],

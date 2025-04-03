@@ -36,7 +36,7 @@ class ADS1015:
         logger.info(f"Connected to ADC {self.name}")
 
     def read_continous_binary(self, shutdown_flag, datafile_name):
-        # Start the ads1015 process
+        # Start the ads1015 process through the command line.
         cmd = f"ads1015 --gain {self.gain} --rate {self.rate} --output {datafile_name} --i2c-bus {self.bus}"
         if self.core is not None:
             cmd += f" --core {int(self.core)}"

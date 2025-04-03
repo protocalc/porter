@@ -11,20 +11,20 @@ logger = logging.getLogger()
 
 class UBX:
 
-    def __init__(self, port, baudrate, name, file_name):
+    def __init__(self, port, baudrate, name):
 
         self.name = name
-
-        self.file_name = file_name
 
         self.__new_baudrate = False
 
         if baudrate != 38400:
+            # Set parameters for updating baudrate of the GPS.
             self.__new_baudrate = True
             self.__port = port
             self.__brate = int(baudrate)
 
         else:
+            # Open a serial connection with the ZED-F9P at the default baud rate if not configured otherwise.
             self.conn = serial.Serial(port, 38400, timeout=1)
             if self.conn.is_open:
                 logging.info(f"Connected to ublox sensor {self.name} @ {38400}")
@@ -40,15 +40,19 @@ class UBX:
 
         keys = []
 
+        # Parsing yaml config file keys and converting them to configuration keys that the ZED-F9P can interpret.
+
         for i in config.keys():
 
             if i.lower() == "rate":
-
+                
+                # Add rate configuration
                 rate = int(1 / config["RATE"]["value"] * 1000)
                 keys.append(("CFG_RATE_MEAS", rate))
 
             elif i.lower() == "ubx_msg":
-
+                
+                # Add output port for UBX messages.
                 output_port = config["UBX_MSG"]["output_port"]
 
                 if output_port[0].lower() == "uart":
@@ -57,7 +61,8 @@ class UBX:
                     port_string = output_port
 
                 string = "CFG_MSGOUT_UBX_"
-
+                
+                # Enable options for logging different UBX messages.
                 for j in config["UBX_MSG"].keys():
                     if j.lower() == "output_port":
                         pass
@@ -69,6 +74,7 @@ class UBX:
 
             elif i.lower() == "nmea_msg":
 
+                # Add output port for NMEA messages.
                 output_port = config["NMEA_MSG"]["output_port"]
 
                 if output_port[0].lower() == "uart":
@@ -78,6 +84,7 @@ class UBX:
 
                 string = "CFG_MSGOUT_NMEA_ID"
 
+                # Enable options for logging different NMEA messages.
                 for j in config["NMEA_MSG"].keys():
                     if j.lower() == "output_port":
                         pass
@@ -87,6 +94,7 @@ class UBX:
 
                             keys.append((msg, 1))
 
+            # Configuring output port configurations for the ZED-F9P
             elif i[:4].lower() == "nmea" or i[:3].lower() == "ubx":
 
                 if i[:4].lower() == "nmea":
@@ -107,6 +115,7 @@ class UBX:
                 if isinstance(config[i], list):
                     keys.append((config[i][0], config[i][1]))
 
+        # Setting up and serialize the configuration parameters for the ZED-F9P
         cfgs = ubx.UBXMessage.config_set(layers, transaction, keys)
         serial_cfgs = cfgs.serialize()
 
@@ -114,6 +123,7 @@ class UBX:
         ack_count = 0
 
         if self.__new_baudrate:
+            # Open a serial connection at default baudrate of ZED-F9P to ensure connectivity upon reboot.
             self.conn = serial.Serial(self.__port, 38400, timeout=1)
             if self.conn.is_open:
                 logging.info(f"Connected to ublox sensor {self.name} @ {38400}")
@@ -164,12 +174,14 @@ class UBX:
             logging.info("UBlox Sensor Configured Correctly")'''
 
         if self.__new_baudrate:
-            t0 = time.perf_counter()
+            # Set the ZED-F9P baudrate to the one specified in the config file.
             msg_baud = ubx.UBXMessage.config_set(
                 1, 0, [("CFG_UART1_BAUDRATE", self.__brate)]
             )
             self.conn.write(serial_cfgs)
             self.conn.write(msg_baud.serialize())
+
+            # Flush the input buffer for 1 second to ensure baudrate update has been registered.
             t0 = time.perf_counter()
             while time.perf_counter() - t0 <= 1.0:
                 self.conn.reset_input_buffer()
@@ -178,15 +190,17 @@ class UBX:
             self.conn.close()
             t0 = time.perf_counter()
 
+            # Reopen a serial connection at the new baudrate.
             self.conn = serial.Serial(self.__port, self.__brate, timeout=1)
 
             if self.conn.is_open:
                 logging.info(f"Connected to ublox sensor {self.name} @ {self.__brate}")
 
-                self.reader = ubx.UBXReader(self.conn)
+                self.reader = ubx.UBXReader(self.conn, protfilter=2)
 
     def read_continous_binary(self, shutdown_flag, datafile_name):
 
+        # Capture loop start time for logging printouts. 
         loop_start = time.time()
         t_prev = loop_start
 
@@ -201,6 +215,7 @@ class UBX:
             datafile = open(datafile_name, "x+b")
 
         while not shutdown_flag.is_set():
+            # Read from the GPS and measure the amount of time taken.
             t_start = time.perf_counter_ns()
             msg, parsed = self.read(parsing=None)
             t_end = time.perf_counter_ns()
@@ -211,6 +226,7 @@ class UBX:
             # Push the data to the queue
             datafile.write(msg)
             
+            # Logging timestamp and GPS messages
             print_time = datetime.fromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S.%f")
             logging.info(f"Timestamp: {print_time}, Read Time: {read_time}, Data Type: {parsed.identity}")
 
@@ -219,11 +235,13 @@ class UBX:
 
             t_prev = t
             current_time = time.time()
+
+            # Write to output file
             if current_time - loop_start >= 10:
                 print("GPS Loop Done")
-                with open(f"porter/sensors/testing/gps_timing{self.file_name}.txt", 'w') as f:
+                with open(f"porter/sensors/testing/gps_timing.txt", 'w') as f:
                     f.write(self.timing_results)
-                with open(f"porter/sensors/testing/gps_identities{self.file_name}.txt", 'w') as f2:
+                with open(f"porter/sensors/testing/gps_identities.txt", 'w') as f2:
                     f2.write(self.identities)
                 break;
             
@@ -231,6 +249,7 @@ class UBX:
 
     def read(self, parsing=False):
 
+        # Read from the UBX reader
         raw, parsed = self.reader.read()
 
         if parsing is None:
@@ -241,7 +260,8 @@ class UBX:
             return raw
 
     def close(self):
-
+        
+        # Turn off the serial connection
         self.conn.close()
 
         logging.info(f"Closed ublox sensor {self.name}")

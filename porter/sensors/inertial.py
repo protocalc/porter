@@ -25,7 +25,7 @@ class Inertial:
         logger.info(f"Connected to inertial sensors {self.name}")
 
     def read_continous_binary(self, shutdown_flag, datafile_name):
-        # Start the inertial process
+        # Start the inertial process through the command line.
         cmd = f"inertial --rate {self.rate} --outputdir {datafile_name} --i2c-bus {self.bus}"
         if self.core is not None:
             cmd += f" --core {int(self.core)}"
