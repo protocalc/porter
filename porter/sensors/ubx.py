@@ -237,7 +237,7 @@ class UBX:
             current_time = time.time()
 
             # Write to output file
-            if current_time - loop_start >= 10:
+            if current_time - loop_start >= 3600:
                 print("GPS Loop Done")
                 with open(f"porter/sensors/testing/gps_timing.txt", 'w') as f:
                     f.write(self.timing_results)
