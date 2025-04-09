@@ -17,7 +17,7 @@ edges = []
 levels = []
 
 try:
-    while (time.time_ns() - t_start) < (120*1e9):
+    while True:
         #edges.append(time.time_ns())
         GPIO.output(PIN, GPIO.HIGH)
         edges.append(time.time_ns())
