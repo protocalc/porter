@@ -26,7 +26,7 @@ class Inertial:
 
     def read_continous_binary(self, shutdown_flag, datafile_name):
         # Start the inertial process through the command line.
-        cmd = f"bin/./inertial --rate {self.rate} --outputdir {datafile_name} --i2c-bus {self.bus}"
+        cmd = f"inertial --rate {self.rate} --outputdir {datafile_name} --i2c-bus {self.bus}"
         if self.core is not None:
             cmd += f" --core {int(self.core)}"
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid) 
