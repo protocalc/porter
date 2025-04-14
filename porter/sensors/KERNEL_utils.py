@@ -4,7 +4,7 @@ import struct
 
 import porter.sensors.sensors_db.KERNEL as Kdb
 
-HEADER = b"\xAA\x55"
+HEADER = b"\xaa\x55"
 
 
 def _checksum(msg):
@@ -56,20 +56,35 @@ class KernelMsg:
         msg_type = msg[type_idx].to_bytes(1, byteorder="little")
         modes = list(Kdb.MODES.keys())
 
+        vals = {}
+
         idx = self.msg_address.index(msg_type)
 
-        struct_type = "<" + "".join(Kdb.MODES[modes[idx]]["Type"])
-        scale = Kdb.MODES[modes[idx]]["Scale"]
+        vals["Type"] = modes[idx]
 
-        vals = struct.unpack(struct_type, msg[type_idx + 3 : -2])
+        start = type_idx + 3
 
-        if return_dict:
-            vals = dict(
-                zip(
-                    Kdb.MODES[modes[idx]]["Parameters"],
-                    list(map(lambda x, y: x / y, vals, scale)),
-                )
-            )
+        try:
+            for i in range(len(Kdb.MODES[modes[idx]]["Type"])):
+                mm = Kdb.MODES[modes[idx]]["Parameters"][i]
+
+                fmt = "<" + "".join(Kdb.MODES[modes[idx]]["Type"][i])
+                val = msg[
+                    start : start + struct.calcsize(Kdb.MODES[modes[idx]]["Type"][i])
+                ]
+
+                if Kdb.MODES[modes[idx]]["Parameters"][i] != "USW":
+                    (tmp,) = struct.unpack(fmt, val)
+                    vals[Kdb.MODES[modes[idx]]["Parameters"][i]] = (
+                        tmp / Kdb.MODES[modes[idx]]["Scale"][i]
+                    )
+                else:
+                    tmp = Kdb.extract_USW(val)
+                    vals[Kdb.MODES[modes[idx]]["Parameters"][i]] = tmp
+
+                start += struct.calcsize(Kdb.MODES[modes[idx]]["Type"][i])
+        except KeyError:
+            pass
 
         return vals
 
@@ -84,23 +99,35 @@ class KernelMsg:
             else:
                 data = fd.read()
 
+        print("Values ", len(data))
+
+        parts = data.split(HEADER)
+
+        # Reattach the header to each split part (except the first, which was before the first header)
+        messages = [HEADER + part for part in parts[1:]]
+
         data = data[data.find(HEADER) :]
 
-        length = int.from_bytes(data[4:5], byteorder="little", signed=False)
-
-        length += 2
-
         decoded = {}
+        count = 0
 
-        for i in range(int(len(data) / length) - 1):
+        for msg in messages:
+            try:
+                tmp = self.decode_single(msg, return_dict=True)
 
-            tmp = copy.copy(data[i * length : (i + 1) * length])
-            tmp = self.decode_single(tmp, return_dict=True)
+                for j in tmp.keys():
+                    if count == 0:
+                        decoded[j] = []
 
-            for j in tmp.keys():
-                if i == 0:
-                    decoded[j] = []
+                    decoded[j].append(tmp[j])
 
-                decoded[j].append(tmp[j])
+            except struct.error:
+                pass
+            except ValueError:
+                pass
+            except IndexError:
+                pass
 
+            count += 1
+            
         return decoded

@@ -4,10 +4,14 @@ import pickle
 import time
 
 import serial
-import struct
 
-import porter.sensors.KERNEL_utils as utils
-import porter.sensors.sensors_db.KERNEL as Kdb
+import sys
+
+sys.path.insert(0, "/home/polocalc/Documents/porter/porter/sensors")
+sys.path.insert(0, "/home/polocalc/Documents/porter/porter/sensors/sensors_db")
+
+import KERNEL_utils_test as utils
+import KERNEL_test as Kdb
 
 logger = logging.getLogger()
 
@@ -70,25 +74,6 @@ class KernelInertial:
 
     def configure(self, config):
 
-        ### Read Current Configuration to log Important data ###
-
-        msg = utils.HEADER + b"\x00" + b"\x00" + b"\x07" + b"\x00" + b"\x41"
-
-        chk = utils._checksum(msg)
-        self.conn.write(msg + chk)
-
-        while True:
-            temp = self.conn.read_until(expected=utils.HEADER)[:-2]
-
-            if temp[1:2] == b"\x41":
-                data_rate, = struct.unpack("<H", temp[4:6])
-                self.__alignment_time, = struct.unpack("<H", temp[6:8])
-
-                logger.info(f"Current Data Rate {data_rate} Hz")
-                logger.info(f"Alignment Time {self.__alignment_time} s")
-
-                break
-
         mode = config["mode"]
 
         self._INC_mode = mode
@@ -103,52 +88,43 @@ class KernelInertial:
             msg, chk = self.payload_cmds(mode)
 
             self.conn.write(msg)
-        time.sleep(0.5)
 
         ack = self.conn.read(10)
-        
-        print(ack)
 
         val = copy.copy(ack[6:8])
 
         if val == chk:
             logger.info("Sent message to start collecting Inclinometer data")
             logger.info(f"Mode Used: {mode}")
-            logger.info(f"MSG: {msg}")
-            logger.info(f"ACK: {ack}")
         else:
             logger.info("Cannot connect to inclinometer")
 
-    def read_continous_binary(self, flag, fs, chunk_size=1000):
-
-        try:
-            datafile = open(fs, "r+b")
-        except FileNotFoundError:
-            datafile = open(fs, "x+b")
-
-        time.sleep(self.__alignment_time)
+    def read_continous_binary(self, fs, flag, sensor_lock):
 
         while not flag.is_set():
-            datafile.write(self.conn.read(chunk_size))
+            
+            fs.write(self.read(sensor_lock))
 
         self.close()
 
-    def read(self, chunk_size=None):
+    def read(self, sensor_lock, chunk_size=None):
 
         if self.__first_msg:
             msg, length = self._find_msg()
 
         else:
+            sensor_lock.acquire()
             if self.expected_length is not None:
                 msg = self.conn.read(self.expected_length)
             else:
                 msg = self.conn.read(chunk_size)
+            sensor_lock.release()
 
         return msg
 
     def close(self):
 
-        msg = utils.HEADER + b"\x00" + b"\x00" + b"\x07" + b"\x00" + b"\xfe"
+        msg = utils.HEADER + b"\x00" + b"\x00" + b"\x07" + b"\x00" + b"\xFE"
 
         chk = utils._checksum(msg)
         self.conn.write(msg + chk)
@@ -188,11 +164,8 @@ class KernelInertial:
         msg, _ = self._find_msg()
 
         if decode:
-            try:
-                msg_class = utils.KernelMsg()
-                msg = msg_class.decode_single(msg, return_dict=return_dict)
-            except ValueError:
-                pass
+            msg_class = utils.KernelMsg()
+            msg = msg_class.decode_single(msg, return_dict=return_dict)
 
         return msg
 

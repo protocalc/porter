@@ -7,6 +7,8 @@ import sys
 import threading
 import time
 
+import subprocess
+
 import yaml
 
 import porter.sensors.sensors_handler as sh
@@ -95,6 +97,10 @@ def main():
     for sig in signal_to_catch:
         signal.signal(sig, handler)
 
+    result = subprocess.run(["gpsctl"], check=True, capture_output=True, text=True)
+
+    logging.info(f"Current GPS devices connected to GPSD: {result.stdout}")
+
     time.sleep(1)
 
     try:
@@ -103,7 +109,7 @@ def main():
             sensor_handler = {}
 
             for i in config["sensors"].keys():
-                logging.info(f'Sensor {i}')
+                logging.info(f"Sensor {i}")
                 sensors_handler = sh.Handler(
                     config["sensors"][i], local=config["local_development"]
                 )
@@ -114,7 +120,7 @@ def main():
                 sensor_names[name] = name
 
             for i in sensor_handler.keys():
-                logging.info(f'Sensor {i} - {sensor_handler[i]}')
+                logging.info(f"Sensor {i} - {sensor_handler[i]}")
                 threads.Sensors(
                     handler=sensor_handler[i],
                     flag=flag,
