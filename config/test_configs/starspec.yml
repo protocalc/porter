@@ -52,7 +52,7 @@ sensors:
     
     ADC_1:
       name: ADS1015
-      sensor_core: 3
+      sensor_core: 1
       connection:
         type: I2C
         parameters:
@@ -75,4 +75,4 @@ sensors:
         type: Inertial
         manufacturer: Varios
       configuration: 
-        data_rate: 200
+        data_rate: 125
