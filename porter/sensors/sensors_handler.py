@@ -43,6 +43,7 @@ class Handler:
                 self.obj = ads.ADS1015(
                     name=self.sensor_params["name"],
                     bus=self.sensor_params["connection"]["parameters"]["bus"],
+                    sensor_core=self.sensor_params["sensor_core"]
                 )
 
             elif self.sensor_params["sensor_info"]["type"].lower() == "inertial":
@@ -50,6 +51,7 @@ class Handler:
                 self.obj = inertial.Inertial(
                     name=self.sensor_params["name"],
                     bus=self.sensor_params["connection"]["parameters"]["bus"],
+                    sensor_core=self.sensor_params["sensor_core"]
                 )
 
             elif self.sensor_params["sensor_info"]["type"].lower() == "dac":
