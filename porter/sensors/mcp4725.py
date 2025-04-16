@@ -1,10 +1,11 @@
 import board
 import busio
 import time
+import logging
 
 import adafruit_mcp4725
 
-
+logger = logging.getLogger("mainlogger")
 
 class MCP4725:
 
@@ -21,6 +22,10 @@ class MCP4725:
     def configure(self, config):
 
         bits = 4095
+        
+        volt = config['voltage']
+        
+        logger.info(f'Set DAC voltage: {volt}')
         
         print(int(bits*config['voltage']/config['max_voltage']))
 

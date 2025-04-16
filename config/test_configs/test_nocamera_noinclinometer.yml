@@ -1,13 +1,5 @@
 local_development: False
 
-camera:
-  name: Sony
-  mode: video
-  program: MovieM
-  ISO: 100
-  shutter_speed: 0.000625
-  focus_distance: infinity
-
 source:
   name: VALON-5019
   port: /dev/ttyAMA4
@@ -107,16 +99,3 @@ sensors:
           manufacturer: Varios
       configuration: 
         data_rate: 200
-
-    Inclinometer_1:
-      name: Kernel-100
-      connection:
-        type: serial
-        parameters:
-          port: /dev/ttyAMA5
-          baudrate: 230400
-      sensor_info:
-        type: Inclinometer
-        manufacturer: Inertial_Labs
-      configuration:
-        mode: KERNEL_CalibHR

@@ -16,7 +16,7 @@ ADS1015_VALUE_GAIN = {
     16: 0.256,
 }
 
-logger = logging.getLogger()
+logger = logging.getLogger("mainlogger")
 
 class ADS1015:
 

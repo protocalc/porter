@@ -9,7 +9,7 @@ import struct
 import porter.sensors.KERNEL_utils as utils
 import porter.sensors.sensors_db.KERNEL as Kdb
 
-logger = logging.getLogger()
+logger = logging.getLogger("mainlogger")
 
 
 class KernelInertial:
@@ -76,8 +76,12 @@ class KernelInertial:
 
         chk = utils._checksum(msg)
         self.conn.write(msg + chk)
+        
+        count = 0
+        
+        self.__alignment_time = 2
 
-        while True:
+        while count<20:
             temp = self.conn.read_until(expected=utils.HEADER)[:-2]
 
             if temp[1:2] == b"\x41":
@@ -88,6 +92,7 @@ class KernelInertial:
                 logger.info(f"Alignment Time {self.__alignment_time} s")
 
                 break
+            count += 1
 
         mode = config["mode"]
 
@@ -107,7 +112,7 @@ class KernelInertial:
 
         ack = self.conn.read(10)
         
-        print(ack)
+        print('VALS', ack, chk, utils.HEADER)
 
         val = copy.copy(ack[6:8])
 
@@ -127,10 +132,12 @@ class KernelInertial:
             datafile = open(fs, "x+b")
 
         time.sleep(self.__alignment_time)
-
+        
+        logger.info(f"Start collecting data from {self.name}")
+        
         while not flag.is_set():
             datafile.write(self.conn.read(chunk_size))
-
+        print('FUCK')
         self.close()
 
     def read(self, chunk_size=None):
@@ -155,7 +162,7 @@ class KernelInertial:
 
         self.conn.close()
 
-        logging.info(f"Closed sensor {self.name}")
+        logger.info(f"Closed sensor {self.name}")
 
     def _find_msg(self, waiting=2):
         """Find the first message available with output data"""

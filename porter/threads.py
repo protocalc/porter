@@ -11,7 +11,7 @@ try:
 except ModuleNotFoundError:
     pass
 
-logger = logging.getLogger()
+logger = logging.getLogger("mainlogger")
 
 
 class Sensors(threading.Thread):
@@ -45,17 +45,17 @@ class Sensors(threading.Thread):
         self.handler = handler
 
         # Initialize the sensor and start the sensor handler thread
-        logging.info(f"Configuring {self.sensor_name}")
+        logger.info(f"Configuring {self.sensor_name}")
         self.handler._connection()
         self.handler._configuration()
 
     def run(self):
         # Block forever, getting data from the handler thread through the queue, until shutdown
-        logging.info(f"Sensor {self.sensor_name} started")
+        logger.info(f"Sensor {self.sensor_name} started")
         self.handler.obj.read_continous_binary(self.shutdown_flag, self.datafile_name)
 
         # Can only get here if shutdown flag is set
-        logging.info(f"Sensor {self.sensor_name} closed")
+        logger.info(f"Sensor {self.sensor_name} closed")
 
 
 class Camera(threading.Thread):
@@ -64,7 +64,6 @@ class Camera(threading.Thread):
         self,
         camera_config,
         flag,
-        mode,
         *args,
         **kwargs,
     ):
@@ -118,7 +117,7 @@ class Camera(threading.Thread):
             )
             time.sleep(0.1)
 
-        logging.info(f"Camera {self.camera_name} Configured")
+        logger.info(f"Camera {self.camera_name} Configured")
 
         if self.camera_config["mode"] == "video":
             if "duration" in self.camera_config.keys():
@@ -131,25 +130,27 @@ class Camera(threading.Thread):
             secs_remaining = copy.copy(duration)
             while not self.shutdown_flag.is_set():
                 time.sleep(0.1)
-                self.camera.messageHandler(["videocontrol"])
+                camera.messageHandler(["videocontrol"])
                 if flag:
                     if secs_remaining < video_chunks:
-                        logging.info(
+                        logger.info(
                             f"Camera {self.camera_name} starts recording, remaining {secs_remaining} s"
                         )
                         self.shutdown_flag.wait(secs_remaining)
-                        self.camera.messageHandler(["videocontrol"])
+                        camera.messageHandler(["videocontrol"])
                         self.shutdown_flag.set()
                         flag = not flag
-                        logging.info(f"Camera {self.camera_name} stops recording")
+                        logger.info(f"Camera {self.camera_name} stops recording")
                         break
                     else:
                         self.shutdown_flag.wait(video_chunks)
-                        self.camera.messageHandler(["videocontrol"])
+                        camera.messageHandler(["videocontrol"])
                         time.sleep(2)
                         secs_remaining -= video_chunks
                 else:
                     flag = not flag
+                    
+            print('CAMERA OUT')
 
         elif self.camera_config["mode"] == "photo":
             if "fps" in self.camera_config.keys():
@@ -167,7 +168,7 @@ class Camera(threading.Thread):
             photo_count = 0
             while not self.shutdown_flag.is_set():
                 t = time.time()
-                self.camera.messageHandler(["capture"])
+                camera.messageHandler(["capture"])
 
                 while (time.time() - t) < timing:
                     pass
@@ -176,6 +177,6 @@ class Camera(threading.Thread):
                 if photo_count > frames:
                     break
 
-        logging.info(f"Camera {self.camera_name} stopped")
+        logger.info(f"Camera {self.camera_name} stopped")
 
         camera.close_usb_connection()

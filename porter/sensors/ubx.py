@@ -6,7 +6,7 @@ import pyubx2 as ubx
 import serial
 import pickle
 
-logger = logging.getLogger()
+logger = logging.getLogger("mainlogger")
 
 
 class UBX:

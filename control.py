@@ -159,15 +159,6 @@ def main():
                     daemon=False,
                 ).start()
                 
-        print("Logger Name: ", logger.name)
-        print("Logger Name: ", logger.level)
-        for handle in logger.handlers:
-            print("Logger Name: ", handle)
-            print("Logger Type: ", type(handle))
-            print("Logger Level: ", handle.level)
-            print("Logger Formatter: ", handle.formatter)
-            if isinstance(handle, logging.FileHandler):
-                print("Logger File: ", handle.baseFilename)
 
         if "source" in config.keys():
             synt = valon.Valon(config["source"]["port"], config["source"]["baudrate"])
@@ -178,19 +169,16 @@ def main():
             else:
                 synt.set_amd(0, 0)
 
-            for i in range(1000):
+            for i in range(10):
                 valon_id = synt.get_id()
                 time.sleep(0.01)
             
-            print(f"Valon ID: {valon_id}")
             time.sleep(2)
-                   
-
 
         if "camera" in config.keys() and not config["local_development"]:
 
             try:
-
+                print('OK')
                 threads.Camera(
                     camera_config=config["camera"],
                     flag=flag,
