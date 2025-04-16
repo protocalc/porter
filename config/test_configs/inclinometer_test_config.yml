@@ -7,7 +7,7 @@ sensors:
         type: serial
         parameters:
           port: /dev/ttyAMA5
-          baudrate: 115200
+          baudrate: 230400
       sensor_info:
         type: Inclinometer
         manufacturer: Inertial_Labs
