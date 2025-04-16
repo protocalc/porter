@@ -1,5 +1,13 @@
 local_development: False
 
+camera:
+  name: Sony
+  mode: video
+  program: MovieM
+  ISO: 100
+  shutter_speed: 0.000625
+  focus_distance: infinity
+
 source:
   name: VALON-5019
   port: /dev/ttyAMA4
@@ -111,4 +119,14 @@ sensors:
         type: Inclinometer
         manufacturer: Inertial_Labs
       configuration:
-        mode: KERNEL_CalibHR
+         mode: USER_DEFINED_DATA
+         UDD_data: [
+                    "Time_Data",
+                    "Orientation_Angles_HR",
+                    "Gyro_Data_HR",
+                    "Accelerometer_Data_HR",
+                    "Gyro_Bias",
+                    "Temperature",
+                    "Unit_Status_Word",
+                    "Unit_Status_Word_Extended"
+                  ]

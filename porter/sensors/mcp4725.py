@@ -26,8 +26,6 @@ class MCP4725:
         volt = config['voltage']
         
         logger.info(f'Set DAC voltage: {volt}')
-        
-        print(int(bits*config['voltage']/config['max_voltage']))
 
         self.dac.raw_value = int(bits*config['voltage']/config['max_voltage'])
 

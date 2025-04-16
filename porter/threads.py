@@ -88,36 +88,40 @@ class Camera(threading.Thread):
         self.shutdown_flag = flag
 
     def run(self):
+        try:
+            camera = sony.SONYconn(self.camera_name, log=logger)
+        except IndexError:
+            self.shutdown_flag.set()
+            logger.info("Camera not Found, stopping the code")
+        
+        if not self.shutdown_flag.is_set():
+            camera.initialize_camera()
 
-        camera = sony.SONYconn(self.camera_name)
+            time.sleep(0.2)
 
-        camera.initialize_camera()
+            camera.messageHandler(["datetime", 0.04, 1e-3])
 
-        time.sleep(0.2)
-
-        camera.messageHandler(["datetime", 0.04, 1e-3])
-
-        time.sleep(0.1)
-
-        camera.messageHandler(["programmode", self.camera_config["program"]])
-
-        time.sleep(0.1)
-
-        if "ISO" in self.camera_config.keys():
-            camera.messageHandler(["iso", self.camera_config["ISO"]])
             time.sleep(0.1)
 
-        if "shutter_speed" in self.camera_config.keys():
-            camera.messageHandler(["shutterspeed", self.camera_config["shutter_speed"]])
+            camera.messageHandler(["programmode", self.camera_config["program"]])
+
             time.sleep(0.1)
 
-        if "focus_distance" in self.camera_config.keys():
-            camera.messageHandler(
-                ["focusdistance", self.camera_config["focus_distance"]]
-            )
-            time.sleep(0.1)
+            if "ISO" in self.camera_config.keys():
+                camera.messageHandler(["iso", self.camera_config["ISO"]])
+                time.sleep(0.1)
 
-        logger.info(f"Camera {self.camera_name} Configured")
+            if "shutter_speed" in self.camera_config.keys():
+                camera.messageHandler(["shutterspeed", self.camera_config["shutter_speed"]])
+                time.sleep(0.1)
+
+            if "focus_distance" in self.camera_config.keys():
+                camera.messageHandler(
+                    ["focusdistance", self.camera_config["focus_distance"]]
+                )
+                time.sleep(0.1)
+
+            logger.info(f"Camera {self.camera_name} Configured")
 
         if self.camera_config["mode"] == "video":
             if "duration" in self.camera_config.keys():
@@ -149,8 +153,6 @@ class Camera(threading.Thread):
                         secs_remaining -= video_chunks
                 else:
                     flag = not flag
-                    
-            print('CAMERA OUT')
 
         elif self.camera_config["mode"] == "photo":
             if "fps" in self.camera_config.keys():
@@ -178,5 +180,7 @@ class Camera(threading.Thread):
                     break
 
         logger.info(f"Camera {self.camera_name} stopped")
-
-        camera.close_usb_connection()
+        try:
+            camera.close_usb_connection()
+        except UnboundLocalError:
+            pass

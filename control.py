@@ -97,13 +97,17 @@ def main():
     flag = threading.Event()
 
     cfg_path = path + "/" + cfg_name
+    
+    cfg_path_copy = home_dir + "/data/" + date + "/" + cfg_name.split("/")[-1]
 
     status = True
 
     with open(cfg_path, "r") as cfg:
         config = yaml.safe_load(cfg)
         logger.info(f"Loaded configuration {cfg_name}")
-
+    
+    os.popen(f"cp {cfg_path} {cfg_path_copy}")
+    
     if not os.path.exists(home_dir + "/data/" + date + "/sensors_data"):
         os.mkdir(home_dir + "/data/" + date + "/sensors_data")
         sensor_path = home_dir + "/data/" + date + "/sensors_data/"
@@ -178,7 +182,6 @@ def main():
         if "camera" in config.keys() and not config["local_development"]:
 
             try:
-                print('OK')
                 threads.Camera(
                     camera_config=config["camera"],
                     flag=flag,
@@ -205,8 +208,8 @@ def main():
 
                 shutil.rmtree(home_dir + "/data/" + date)
 
-        while status:
-            pass
+        while not flag.is_set():
+            time.sleep(0.1)
 
         capture_flag(flag)
 
