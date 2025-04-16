@@ -7,6 +7,8 @@ import sys
 import threading
 import time
 
+import subprocess
+
 import yaml
 
 import porter.sensors.sensors_handler as sh
@@ -95,6 +97,13 @@ def main():
     for sig in signal_to_catch:
         signal.signal(sig, handler)
 
+    try:
+        result = subprocess.run(["gpsctl"], check=True, capture_output=True, text=True)
+        logging.info(f"Current GPS devices connected to GPSD: {result.stdout}")
+    except:
+        logging.info(f"No GPS devices connected to GPSD")
+
+
     time.sleep(1)
 
     try:
@@ -103,7 +112,7 @@ def main():
             sensor_handler = {}
 
             for i in config["sensors"].keys():
-                logging.info(f'Sensor {i}')
+                logging.info(f"Sensor {i}")
                 sensors_handler = sh.Handler(
                     config["sensors"][i], local=config["local_development"]
                 )
@@ -114,7 +123,7 @@ def main():
                 sensor_names[name] = name
 
             for i in sensor_handler.keys():
-                logging.info(f'Sensor {i} - {sensor_handler[i]}')
+                logging.info(f"Sensor {i} - {sensor_handler[i]}")
                 threads.Sensors(
                     handler=sensor_handler[i],
                     flag=flag,
@@ -145,66 +154,10 @@ def main():
         if "camera" in config.keys() and not config["local_development"]:
 
             try:
-                camera = sony.SONYconn(config["camera"]["name"])
-
-                camera.initialize_camera()
-
-                time.sleep(0.2)
-
-                camera.messageHandler(["datetime", 0.04, 1e-3])
-
-                time.sleep(0.1)
-
-                camera.messageHandler(["programmode", config["camera"]["program"]])
-
-                time.sleep(0.1)
-
-                if "ISO" in config["camera"].keys():
-                    camera.messageHandler(["iso", config["camera"]["ISO"]])
-                    time.sleep(0.1)
-
-                if "shutter_speed" in config["camera"].keys():
-                    camera.messageHandler(
-                        ["shutterspeed", config["camera"]["shutter_speed"]]
-                    )
-                    time.sleep(0.1)
-
-                if "focus_distance" in config["camera"].keys():
-                    camera.messageHandler(
-                        ["focusdistance", config["camera"]["focus_distance"]]
-                    )
-                    time.sleep(0.1)
-
-                if config["camera"]["mode"] == "photo":
-                    duration = None
-
-                    if "fps" in config["camera"].keys():
-                        fps = config["camera"]["fps"]
-                    else:
-                        fps = 1
-
-                    if "frames" in config["camera"].keys():
-                        frames = config["camera"]["frames"]
-                    else:
-                        frames = None
-
-                else:
-                    if "duration" in config["camera"].keys():
-                        duration = config["camera"]["duration"]
-                    else:
-                        duration = None
-
-                    fps = None
-                    frames = None
 
                 threads.Camera(
-                    camera=camera,
+                    camera_config=config["camera"],
                     flag=flag,
-                    mode=config["camera"]["mode"],
-                    camera_name=config["camera"]["name"],
-                    fps=fps,
-                    frames=frames,
-                    duration=duration,
                     daemon=True,
                 ).start()
 
@@ -235,18 +188,6 @@ def main():
 
     except (ServiceExitError, FlagSetError) as err:
         logger.info(f"Flag has been raise")
-        if flag.is_set():
-            logger.info(f"CASE 1")
-            if "camera" in config.keys() and not config["local_development"]:
-                try:
-                    camera.close_usb_connection()
-                except UnboundLocalError:
-                    pass
-        else:
-            flag.set()
-            logger.info(f"CASE 2")
-            if "camera" in config.keys() and not config["local_development"]:
-                camera.close_usb_connection()
 
 
 if __name__ == "__main__":

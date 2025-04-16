@@ -3,9 +3,13 @@ import os
 import sys
 
 import pandas as pd
+import numpy as np
 
 sys.path.append("/home/gabriele/Documents/porter")
 import porter.sensors.KERNEL_utils as utils
+
+
+import matplotlib.pyplot as plt
 
 
 def main():
@@ -34,6 +38,7 @@ def main():
     dataframe = pd.DataFrame(dt)
 
     dataframe.to_csv(filename, index=False)
+
 
 
 if __name__ == "__main__":
