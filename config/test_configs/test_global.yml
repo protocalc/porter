@@ -18,53 +18,53 @@ source:
   mult_factor: 6
 
 sensors:
-    GPS_1:
-      name: ZED-F9P
-      sensor_core: 3
-      connection:
-        type: serial
-        parameters:
-          port: /dev/ttyAMA0
-          baudrate: 115200
-      sensor_info:
-        type: GPS
-        manufacturer: UBlox
-      configuration:
-        NMEA1:
-          output:
-            port: UART1
-            set: False
-        NMEA2:
-          output:
-            port: UART2
-            set: True
-        UBX:
-          output:
-            port: UART1
-            set: True
-        RATE:
-          value: 2
-        UBX_MSG:
-          output_port: UART1
-          NAV: [
-            'POSECEF',
-            'POSLLH',
-            'CLOCK'
-            ]
-          RXM: [
-            'RAWX',
-            'SFRBX'
-            ]
-        NMEA_MSG:
-          output_port: UART2
-          ID : [
-            'GGA',
-            'GSV',
-            'GSA',
-            'GST',
-            'GNS',
-            'ZDA'
-          ]
+    # GPS_1:
+    #   name: ZED-F9P
+    #   sensor_core: 3
+    #   connection:
+    #     type: serial
+    #     parameters:
+    #       port: /dev/ttyAMA0
+    #       baudrate: 115200
+    #   sensor_info:
+    #     type: GPS
+    #     manufacturer: UBlox
+    #   configuration:
+    #     NMEA1:
+    #       output:
+    #         port: UART1
+    #         set: False
+    #     NMEA2:
+    #       output:
+    #         port: UART2
+    #         set: True
+    #     UBX:
+    #       output:
+    #         port: UART1
+    #         set: True
+    #     RATE:
+    #       value: 2
+    #     UBX_MSG:
+    #       output_port: UART1
+    #       NAV: [
+    #         'POSECEF',
+    #         'POSLLH',
+    #         'CLOCK'
+    #         ]
+    #       RXM: [
+    #         'RAWX',
+    #         'SFRBX'
+    #         ]
+    #     NMEA_MSG:
+    #       output_port: UART2
+    #       ID : [
+    #         'GGA',
+    #         'GSV',
+    #         'GSA',
+    #         'GST',
+    #         'GNS',
+    #         'ZDA'
+    #       ]
     
     ADC_1:
       name: ADS1015
@@ -107,15 +107,15 @@ sensors:
       configuration: 
         data_rate: 200
 
-    # Inclinometer_1:
-    #   name: Kernel-100
-    #   connection:
-    #     type: serial
-    #     parameters:
-    #       port: /dev/ttyAMA5
-    #       baudrate: 115200
-    #   sensor_info:
-    #     type: Inclinometer
-    #     manufacturer: Inertial_Labs
-    #   configuration:
-    #     mode: KERNEL_CalibHR
+    Inclinometer_1:
+      name: Kernel-100
+      connection:
+        type: serial
+        parameters:
+          port: /dev/ttyAMA5
+          baudrate: 230400
+      sensor_info:
+        type: Inclinometer
+        manufacturer: Inertial_Labs
+      configuration:
+        mode: KERNEL_CalibHR
