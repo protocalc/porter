@@ -34,6 +34,20 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("mainlogger")
+logger.setLevel(logging.DEBUG)
+
+logfile = logging.FileHandler(home_dir + "/data/" + date + "/file.log")
+logfile.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter(
+    "%(asctime)s.%(msecs)03d  [%(threadName)s]  %(levelname)s:%(message)s",
+    datefmt="%Y/%m/%d %H:%M:%S"
+    )
+logfile.setFormatter(formatter)
+
+logger.addHandler(logfile)
+
+log_path = home_dir + "/data/" + date + "/file.log"
 
 try:
     from sour_core import sony
@@ -88,7 +102,7 @@ def main():
 
     with open(cfg_path, "r") as cfg:
         config = yaml.safe_load(cfg)
-        logging.info(f"Loaded configuration {cfg_name}")
+        logger.info(f"Loaded configuration {cfg_name}")
 
     if not os.path.exists(home_dir + "/data/" + date + "/sensors_data"):
         os.mkdir(home_dir + "/data/" + date + "/sensors_data")
@@ -96,12 +110,24 @@ def main():
 
     for sig in signal_to_catch:
         signal.signal(sig, handler)
+        
+    print("Logger Name: ", logger.name)
+    print("Logger Name: ", logger.level)
+    for handle in logger.handlers:
+        print("Logger Name: ", handle)
+        print("Logger Type: ", type(handle))
+        print("Logger Level: ", handle.level)
+        print("Logger Formatter: ", handle.formatter)
+        if isinstance(handle, logging.FileHandler):
+            print("Logger File: ", handle.baseFilename)
+            
+    print('----------------------')
 
     try:
         result = subprocess.run(["gpsctl"], check=True, capture_output=True, text=True)
-        logging.info(f"Current GPS devices connected to GPSD: {result.stdout}")
+        logger.info(f"Current GPS devices connected to GPSD: {result.stdout}")
     except:
-        logging.info(f"No GPS devices connected to GPSD")
+        logger.info(f"No GPS devices connected to GPSD")
 
 
     time.sleep(1)
@@ -112,7 +138,7 @@ def main():
             sensor_handler = {}
 
             for i in config["sensors"].keys():
-                logging.info(f"Sensor {i}")
+                logger.info(f"Sensor {i}")
                 sensors_handler = sh.Handler(
                     config["sensors"][i], local=config["local_development"]
                 )
@@ -123,7 +149,7 @@ def main():
                 sensor_names[name] = name
 
             for i in sensor_handler.keys():
-                logging.info(f"Sensor {i} - {sensor_handler[i]}")
+                logger.info(f"Sensor {i} - {sensor_handler[i]}")
                 threads.Sensors(
                     handler=sensor_handler[i],
                     flag=flag,
@@ -132,6 +158,16 @@ def main():
                     sensor_name=sensor_names[i],
                     daemon=False,
                 ).start()
+                
+        print("Logger Name: ", logger.name)
+        print("Logger Name: ", logger.level)
+        for handle in logger.handlers:
+            print("Logger Name: ", handle)
+            print("Logger Type: ", type(handle))
+            print("Logger Level: ", handle.level)
+            print("Logger Formatter: ", handle.formatter)
+            if isinstance(handle, logging.FileHandler):
+                print("Logger File: ", handle.baseFilename)
 
         if "source" in config.keys():
             synt = valon.Valon(config["source"]["port"], config["source"]["baudrate"])
