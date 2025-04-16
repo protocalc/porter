@@ -212,6 +212,7 @@ def main():
 
     except (ServiceExitError, FlagSetError) as err:
         logger.info(f"Flag has been raise")
+        flag.set()
 
 
 if __name__ == "__main__":
