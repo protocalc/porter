@@ -97,6 +97,8 @@ class KernelInertial:
         mode = config["mode"]
 
         self._INC_mode = mode
+        
+        self.conn.reset_input_buffer()
 
         if mode == "USER_DEFINED_DATA":
             msg_1, chk = self.payload_cmds(mode)
@@ -111,8 +113,6 @@ class KernelInertial:
         time.sleep(0.5)
 
         ack = self.conn.read(10)
-        
-        print('VALS', ack, chk, utils.HEADER)
 
         val = copy.copy(ack[6:8])
 
@@ -137,7 +137,6 @@ class KernelInertial:
         
         while not flag.is_set():
             datafile.write(self.conn.read(chunk_size))
-        print('FUCK')
         self.close()
 
     def read(self, chunk_size=None):
