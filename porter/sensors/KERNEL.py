@@ -133,7 +133,9 @@ class KernelInertial:
 
         time.sleep(self.__alignment_time)
         
-        logger.info(f"Start collecting data from {self.name}")
+        self.conn.reset_input_buffer()
+        
+        logger.info(f"Start collecting data from {self.name} @ {time.time()}")
         
         while not flag.is_set():
             datafile.write(self.conn.read(chunk_size))

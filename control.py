@@ -114,18 +114,6 @@ def main():
 
     for sig in signal_to_catch:
         signal.signal(sig, handler)
-        
-    print("Logger Name: ", logger.name)
-    print("Logger Name: ", logger.level)
-    for handle in logger.handlers:
-        print("Logger Name: ", handle)
-        print("Logger Type: ", type(handle))
-        print("Logger Level: ", handle.level)
-        print("Logger Formatter: ", handle.formatter)
-        if isinstance(handle, logging.FileHandler):
-            print("Logger File: ", handle.baseFilename)
-            
-    print('----------------------')
 
     try:
         result = subprocess.run(["gpsctl"], check=True, capture_output=True, text=True)
@@ -142,7 +130,6 @@ def main():
             sensor_handler = {}
 
             for i in config["sensors"].keys():
-                logger.info(f"Sensor {i}")
                 sensors_handler = sh.Handler(
                     config["sensors"][i], local=config["local_development"]
                 )
@@ -153,7 +140,6 @@ def main():
                 sensor_names[name] = name
 
             for i in sensor_handler.keys():
-                logger.info(f"Sensor {i} - {sensor_handler[i]}")
                 threads.Sensors(
                     handler=sensor_handler[i],
                     flag=flag,
@@ -210,7 +196,7 @@ def main():
 
         while not flag.is_set():
             time.sleep(0.1)
-
+        
         capture_flag(flag)
 
     except (ServiceExitError, FlagSetError) as err:
