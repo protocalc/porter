@@ -66,7 +66,21 @@ class KernelInertial:
                 if isinstance(i, str):
                     msg += Kdb.User_Defined_Data[i]["Address"]
             length_byte = len(msg).to_bytes(1, byteorder="little")
-            return length_byte + msg
+
+            payload = length_byte + msg
+
+            msg = (
+                utils.HEADER
+                + b"\x00"
+                + b"\x00"
+                + struct.pack("<H", len(payload))
+                + b"\x00"
+                + payload
+            )
+
+            chk = utils._checksum(msg)
+
+            return msg + chk, chk
 
     def convert_ack_UDD(self, data):
 
@@ -152,28 +166,27 @@ class KernelInertial:
         self.conn.reset_input_buffer()
 
         if mode == "USER_DEFINED_DATA":
-            msg_1, chk = self.payload_cmds("USER_DEFINED_DATA_CONFIG")
-            msg_2 = self.payload_UDD(config["UDD_data"])
+            msg_1, _ = self.payload_cmds("USER_DEFINED_DATA_CONFIG")
+            msg_2, chk2 = self.payload_UDD(config["UDD_data"])
 
             self.conn.write(msg_1)
             self.conn.write(msg_2)
-            
+
             ack = self.conn.read(15)
-            
+
             val = copy.copy(ack[6:8])
-            
-            print('ack', ack)
-            
-            if val == chk:
+
+            print("ack", ack)
+
+            if val == chk2:
                 logger.info("UDD Right")
                 add = copy.copy(ack[8:13])
-                print('ADD' , add)
+                print("ADD", add)
                 res = self.convert_ack_UDD(add)
 
                 for r in res.keys():
                     logger.info(f"Name: {r} with the following payload {res[r]}")
-            
-        
+
         msg, chk = self.payload_cmds(mode)
 
         self.conn.write(msg)
@@ -182,7 +195,7 @@ class KernelInertial:
         ack = self.conn.read(10)
 
         val = copy.copy(ack[6:8])
-        
+
         print(ack)
         print(msg_1)
         print(msg_2)
