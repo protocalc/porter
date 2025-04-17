@@ -129,9 +129,6 @@ class KernelMsg:
         # Reattach the header to each split part (except the first, which was before the first header)
         messages = [HEADER + part for part in parts[1:]]
 
-        print(messages[0], len(messages[0]))
-        print(messages[1], len(messages[1]))
-
         data = data[data.find(HEADER) :]
 
         decoded = {}
@@ -155,5 +152,5 @@ class KernelMsg:
                 pass
 
             count += 1
-            sys.exit()
+
         return decoded
