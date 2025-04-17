@@ -37,7 +37,7 @@ class KernelMsg:
         for i in Kdb.MODES.keys():
             self.msg_address.append(Kdb.MODES[i]["Address"])
 
-    def decode_single(self, msg, return_dict=False):
+    def decode_single(self, msg, UDD=False, UDD_keys=None):
         """Decode a single message sent by the inclinometer
 
         The structure of the message is presented in the KERNEL IMU ICD v1.27
@@ -64,31 +64,56 @@ class KernelMsg:
 
         start = type_idx + 3
 
-        try:
-            for i in range(len(Kdb.MODES[modes[idx]]["Type"])):
-                mm = Kdb.MODES[modes[idx]]["Parameters"][i]
+        print(vals["Type"], UDD_keys)
 
-                fmt = "<" + "".join(Kdb.MODES[modes[idx]]["Type"][i])
-                val = msg[
-                    start : start + struct.calcsize(Kdb.MODES[modes[idx]]["Type"][i])
-                ]
+        if UDD:
+            for key in UDD_keys:
+                print(key, Kdb.User_Defined_Data[key]["Name"])
 
-                if Kdb.MODES[modes[idx]]["Parameters"][i] != "USW":
-                    (tmp,) = struct.unpack(fmt, val)
-                    vals[Kdb.MODES[modes[idx]]["Parameters"][i]] = (
-                        tmp / Kdb.MODES[modes[idx]]["Scale"][i]
-                    )
+                fmt = "<" + "".join(Kdb.User_Defined_Data[key]["Struct"])
+                val = msg[start : start + struct.calcsize(fmt)]
+
+                print(key, fmt, struct.calcsize(fmt), len(msg), val)
+
+                if key != "USW":
+                    print("OK")
+                    tmp = struct.unpack(fmt, val)
+                    print("KEY", tmp)
+                    # vals[Kdb.User_Defined_Data[key]["Name"]] = (
+                    #    tmp / Kdb.User_Defined_Data[key]["Scale"]
+                    # )
                 else:
                     tmp = Kdb.extract_USW(val)
-                    vals[Kdb.MODES[modes[idx]]["Parameters"][i]] = tmp
+                    vals[Kdb.User_Defined_Data[key]["Name"]] = tmp
 
-                start += struct.calcsize(Kdb.MODES[modes[idx]]["Type"][i])
-        except KeyError:
-            pass
+                start += struct.calcsize(fmt)
+        else:
+            try:
+                for i in range(len(Kdb.MODES[modes[idx]]["Type"])):
+                    mm = Kdb.MODES[modes[idx]]["Parameters"][i]
+
+                    fmt = "<" + "".join(Kdb.MODES[modes[idx]]["Type"][i])
+                    val = msg[
+                        start : start
+                        + struct.calcsize(Kdb.MODES[modes[idx]]["Type"][i])
+                    ]
+
+                    if Kdb.MODES[modes[idx]]["Parameters"][i] != "USW":
+                        (tmp,) = struct.unpack(fmt, val)
+                        vals[Kdb.MODES[modes[idx]]["Parameters"][i]] = (
+                            tmp / Kdb.MODES[modes[idx]]["Scale"][i]
+                        )
+                    else:
+                        tmp = Kdb.extract_USW(val)
+                        vals[Kdb.MODES[modes[idx]]["Parameters"][i]] = tmp
+
+                    start += struct.calcsize(Kdb.MODES[modes[idx]]["Type"][i])
+            except KeyError:
+                pass
 
         return vals
 
-    def decode_multi(self, filename):
+    def decode_multi(self, filename, UDD=False, UDD_keys=None):
         """Decode multiple messages saved in a binary file"""
 
         count = 0
@@ -99,12 +124,13 @@ class KernelMsg:
             else:
                 data = fd.read()
 
-        print("Values ", len(data))
-
         parts = data.split(HEADER)
 
         # Reattach the header to each split part (except the first, which was before the first header)
         messages = [HEADER + part for part in parts[1:]]
+
+        print(messages[0], len(messages[0]))
+        print(messages[1], len(messages[1]))
 
         data = data[data.find(HEADER) :]
 
@@ -113,7 +139,7 @@ class KernelMsg:
 
         for msg in messages:
             try:
-                tmp = self.decode_single(msg, return_dict=True)
+                tmp = self.decode_single(msg, UDD=UDD, UDD_keys=UDD_keys)
 
                 for j in tmp.keys():
                     if count == 0:
@@ -129,5 +155,5 @@ class KernelMsg:
                 pass
 
             count += 1
-            
+            sys.exit()
         return decoded

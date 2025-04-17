@@ -454,14 +454,14 @@ User_Defined_Data = {
         "Scale": 10,
         "Struct": SWORD,
     },
-    "Unit_Status_Word": {
+    "USW": {
         "Address": b"\x53",
         "Length": 2,
         "Name": "USW",
         "Scale": 1,
         "Struct": WORD,
     },
-    "Unit_Status_Word_Extended": {
+    "USW_Extended": {
         "Address": b"\x5b",
         "Length": 2,
         "Name": "USW Extended",

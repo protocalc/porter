@@ -66,7 +66,59 @@ class KernelInertial:
                 if isinstance(i, str):
                     msg += Kdb.User_Defined_Data[i]["Address"]
 
-            return msg
+            length_byte = len(msg).to_bytes(1, byteorder="little")
+            return length_byte + msg
+
+    def convert_ack_UDD(self, data):
+
+        def check_byte(byte):
+            if isinstance(byte, int):
+                return format(byte, "08b")  # Ensure 8-bit representation
+            elif isinstance(byte, str):
+                return format(int(byte, base=16), "08b")  # Convert hex to binary
+
+        vals = {}
+
+        length = [1, 2, 1, 1]
+        name = ["Errors", "Correctness", "Max Data Rate", "Reserved"]
+
+        error_table = [
+            "Structure",
+            "Data",
+            "Data Type",
+            "Accepted Rate",
+            "Reserved",
+            "Reserved",
+            "Reserved",
+            "Reserved",
+        ]
+
+        start = 0
+
+        res = {}
+        for i in range(len(name)):
+
+            bits = check_byte(data[start : start + length[i]])
+            result = []
+            if name[i] == "Errors":
+                for j, bit in enumerate(reversed(bits)):
+                    if error_table[j] == "Reserved":
+                        pass
+                    else:
+                        result.append(
+                            f"KO_{error_table[j]}"
+                            if bit == "1"
+                            else f"OK_{error_table[j]}"
+                        )
+
+            else:
+                result.append(bits)
+
+            res[name] = result
+
+            start += length[i]
+
+        return res
 
     def configure(self, config):
 
@@ -76,17 +128,17 @@ class KernelInertial:
 
         chk = utils._checksum(msg)
         self.conn.write(msg + chk)
-        
+
         count = 0
-        
+
         self.__alignment_time = 2
 
-        while count<20:
+        while count < 20:
             temp = self.conn.read_until(expected=utils.HEADER)[:-2]
 
             if temp[1:2] == b"\x41":
-                data_rate, = struct.unpack("<H", temp[4:6])
-                self.__alignment_time, = struct.unpack("<H", temp[6:8])
+                (data_rate,) = struct.unpack("<H", temp[4:6])
+                (self.__alignment_time,) = struct.unpack("<H", temp[6:8])
 
                 logger.info(f"Current Data Rate {data_rate} Hz")
                 logger.info(f"Alignment Time {self.__alignment_time} s")
@@ -97,7 +149,7 @@ class KernelInertial:
         mode = config["mode"]
 
         self._INC_mode = mode
-        
+
         self.conn.reset_input_buffer()
 
         if mode == "USER_DEFINED_DATA":
@@ -111,8 +163,10 @@ class KernelInertial:
 
             self.conn.write(msg)
         time.sleep(0.5)
-
-        ack = self.conn.read(10)
+        if mode == "USER_DEFINED_DATA":
+            ack = self.conn.read(15)
+        else:
+            ack = self.conn.read(10)
 
         val = copy.copy(ack[6:8])
 
@@ -121,6 +175,12 @@ class KernelInertial:
             logger.info(f"Mode Used: {mode}")
             logger.info(f"MSG: {msg}")
             logger.info(f"ACK: {ack}")
+            if mode == "USER_DEFINED_DATA":
+                add = copy.copy(ack[8:13])
+                res = self.convert_ack_UDD(add)
+
+                for r in res.keys():
+                    logger.info(f"Name: {r} with the following payload {res[r]}")
         else:
             logger.info("Cannot connect to inclinometer")
 
@@ -132,11 +192,11 @@ class KernelInertial:
             datafile = open(fs, "x+b")
 
         time.sleep(self.__alignment_time)
-        
+
         self.conn.reset_input_buffer()
-        
+
         logger.info(f"Start collecting data from {self.name} @ {time.time()}")
-        
+
         while not flag.is_set():
             datafile.write(self.conn.read(chunk_size))
         self.close()
