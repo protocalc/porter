@@ -65,7 +65,6 @@ class KernelInertial:
             for i in data:
                 if isinstance(i, str):
                     msg += Kdb.User_Defined_Data[i]["Address"]
-
             length_byte = len(msg).to_bytes(1, byteorder="little")
             return length_byte + msg
 
@@ -153,34 +152,46 @@ class KernelInertial:
         self.conn.reset_input_buffer()
 
         if mode == "USER_DEFINED_DATA":
-            msg_1, chk = self.payload_cmds(mode)
+            msg_1, chk = self.payload_cmds("USER_DEFINED_DATA_CONFIG")
             msg_2 = self.payload_UDD(config["UDD_data"])
 
             self.conn.write(msg_1)
             self.conn.write(msg_2)
-        else:
-            msg, chk = self.payload_cmds(mode)
-
-            self.conn.write(msg)
-        time.sleep(0.5)
-        if mode == "USER_DEFINED_DATA":
+            
             ack = self.conn.read(15)
-        else:
-            ack = self.conn.read(10)
+            
+            val = copy.copy(ack[6:8])
+            
+            print('ack', ack)
+            
+            if val == chk:
+                logger.info("UDD Right")
+                add = copy.copy(ack[8:13])
+                print('ADD' , add)
+                res = self.convert_ack_UDD(add)
+
+                for r in res.keys():
+                    logger.info(f"Name: {r} with the following payload {res[r]}")
+            
+        
+        msg, chk = self.payload_cmds(mode)
+
+        self.conn.write(msg)
+        time.sleep(0.5)
+
+        ack = self.conn.read(10)
 
         val = copy.copy(ack[6:8])
+        
+        print(ack)
+        print(msg_1)
+        print(msg_2)
 
         if val == chk:
             logger.info("Sent message to start collecting Inclinometer data")
             logger.info(f"Mode Used: {mode}")
             logger.info(f"MSG: {msg}")
             logger.info(f"ACK: {ack}")
-            if mode == "USER_DEFINED_DATA":
-                add = copy.copy(ack[8:13])
-                res = self.convert_ack_UDD(add)
-
-                for r in res.keys():
-                    logger.info(f"Name: {r} with the following payload {res[r]}")
         else:
             logger.info("Cannot connect to inclinometer")
 
