@@ -19,6 +19,8 @@ HEADER = b"\xb5\x62"
 def find_baudrate(port, logger, baudrates=[38400, 57600, 115200, 230400], timeout=1.0):
 
     brate_found = False
+    
+    correct = 38400
 
     for brate in baudrates:
 
@@ -42,7 +44,10 @@ def find_baudrate(port, logger, baudrates=[38400, 57600, 115200, 230400], timeou
                     logger.info(f"Found Baudrate @ {brate}")
                     reader = ubx.UBXReader(io.BytesIO(data))
                     res, parsed = reader.read()
-                    logger.info(f"{type(parsed.identity)} ---- {parsed.identity}")
+                    try:
+                        logger.info(f"{type(parsed.identity)} ---- {parsed.identity}")
+                    except:
+                        logger.info(f"Message not recorded")
                     brate_found = True
                     correct = copy.copy(brate)
                     i = 10000
@@ -249,21 +254,22 @@ class UBX:
                 logger.info(f"Connected to ublox sensor {self.name} @ {self.__brate}")
 
                 self.reader = ubx.UBXReader(self.conn, protfilter=2)
+        
+        for i in range(2):
+            self.conn.write(serial_cfgs)
+            t0 = time.perf_counter()
+            self.conn.read(self.conn.inWaiting())
 
-        self.conn.write(serial_cfgs)
-        t0 = time.perf_counter()
-        self.conn.read(self.conn.inWaiting())
+            while time.perf_counter() - t0 <= 1.0:
+                logger.info(f"Bytes  === {self.conn.inWaiting()}")
+                parsed = self.read(parsing=True)
+                if parsed.identity == "ACK-ACK":
+                    logger.info(f"Output Configuration {parsed.identity}")
+                    break
+                else:
+                    logger.info(f"Output Configuration {parsed.identity}")
 
-        while time.perf_counter() - t0 <= 1.0:
-            logger.info(f"Bytes  === {self.conn.inWaiting()}")
-            parsed = self.read(parsing=True)
-            if parsed.identity == "ACK-ACK":
-                logger.info(f"Output Configuration {parsed.identity}")
-                break
-            else:
-                logger.info(f"Output Configuration {parsed.identity}")
-
-        logger.info(f"Configuration {keys}")
+            logger.info(f"Configuration {keys}")
 
     def read_continous_binary(self, shutdown_flag, datafile_name):
 

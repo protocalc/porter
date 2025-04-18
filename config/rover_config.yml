@@ -35,10 +35,6 @@ sensors:
           output:
             port: UART1
             set: False
-        NMEA2:
-          output:
-            port: UART2
-            set: True
         UBX:
           output:
             port: UART1
@@ -56,16 +52,6 @@ sensors:
             'RAWX',
             'SFRBX'
             ]
-        NMEA_MSG:
-          output_port: UART2
-          ID : [
-            'GGA',
-            'GSV',
-            'GSA',
-            'GST',
-            'GNS',
-            'ZDA'
-          ]
     
     ADC_1:
       name: ADS1015
