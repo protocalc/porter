@@ -93,6 +93,8 @@ signal_to_catch = [
 
 def main():
     cfg_name = sys.argv[1]
+    
+    print(datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
 
     flag = threading.Event()
 

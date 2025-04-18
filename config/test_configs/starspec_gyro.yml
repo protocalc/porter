@@ -1,0 +1,16 @@
+local_development: False
+
+
+sensors:
+    INERTIAL_1:
+      name: Inertial
+      sensor_core: 2
+      connection:
+        type: I2C
+        parameters:
+          bus: 4
+      sensor_info:
+        type: Inertial
+        manufacturer: Varios
+      configuration: 
+        data_rate: 125

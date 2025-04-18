@@ -30,7 +30,6 @@ def find_baudrate(port, logger, baudrates=[38400, 57600, 115200, 230400], timeou
             conn.read(conn.inWaiting())
             poll = ubx.UBXMessage("MON", "MON-VER", ubx.POLL)
             conn.reset_input_buffer()
-            print(conn.inWaiting())
             conn.write(poll.serialize())
 
             data = conn.read(1000)
@@ -40,12 +39,12 @@ def find_baudrate(port, logger, baudrates=[38400, 57600, 115200, 230400], timeou
                 header = copy.copy(data[i : i + 2])
 
                 if header == b"\xb5\x62" or header in NMEA_HDR:
-                    print(header)
                     logger.info(f"Found Baudrate @ {brate}")
                     reader = ubx.UBXReader(io.BytesIO(data))
                     res, parsed = reader.read()
                     logger.info(f"{type(parsed.identity)} ---- {parsed.identity}")
                     brate_found = True
+                    correct = copy.copy(brate)
                     i = 10000
                     break
 
@@ -55,7 +54,7 @@ def find_baudrate(port, logger, baudrates=[38400, 57600, 115200, 230400], timeou
             conn.close()
             time.sleep(0.2)
 
-    return brate
+    return correct
 
 
 class UBX:
@@ -276,6 +275,7 @@ class UBX:
             datafile = open(datafile_name, "r+b")
         except FileNotFoundError:
             datafile = open(datafile_name, "x+b")
+        
 
         # data_path = '/'.join(datafile_name.split('/')[:-1])
 
