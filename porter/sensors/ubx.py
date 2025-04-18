@@ -3,7 +3,10 @@ import time
 from datetime import datetime
 import io
 
+import copy
+
 import pyubx2 as ubx
+from pynmeagps import NMEA_HDR
 
 import serial
 
@@ -32,9 +35,12 @@ def find_baudrate(port, logger, baudrates=[38400, 57600, 115200, 230400], timeou
 
             data = conn.read(1000)
             i = 0
-            while i < 998:
-                if data[i : i + 2] == b"\xb5\x62":
-                    print(data[i : i + 2])
+            while i < (len(data) - 1):
+
+                header = copy.copy(data[i : i + 2])
+
+                if header == b"\xb5\x62" or header in NMEA_HDR:
+                    print(header)
                     logger.info(f"Found Baudrate @ {brate}")
                     reader = ubx.UBXReader(io.BytesIO(data))
                     res, parsed = reader.read()
