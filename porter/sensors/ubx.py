@@ -9,33 +9,47 @@ import serial
 
 logger = logging.getLogger("mainlogger")
 
+HEADER = b"\xb5\x62"
 
 def find_baudrate(
-    port, logger, baudrates=[9600, 38400, 57600, 115200, 230400], timeout=1.0
+    port, logger, baudrates=[38400, 57600, 115200, 230400], timeout=1.0
 ):
+    
+    brate_found = False
+    
     for brate in baudrates:
-        try:
-            with serial.Serial(port, brate, timeout=timeout) as ser:
-                # Send a simple UBX poll, like NAV-PVT
-                poll = ubx.UBXMessage("MON", "MON-VER", ubx.POLL)
-                ser.write(poll.serialize())
-
-                data = ser.read(100)
-                if b"\xb5\x62" in data:
-                    # Likely UBX, now use UBXReader for proper parse
-                    reader = ubx.UBXReader(ser, protfilter=2)
-                    res, _ = reader.read()
-                    if res.identity:
-                        logger.info(
-                            f"Found UBX response at {brate} baud: {res.identity}"
-                        )
-                        return brate
-
+        
+        if brate_found:
+            pass
+        else:
+        
+            conn = serial.Serial(port, brate, timeout=timeout)
+            logger.info(f'Attempting Baudrate {brate}')
+            conn.read(conn.inWaiting())
+            poll = ubx.UBXMessage("MON", "MON-VER", ubx.POLL)
+            conn.reset_input_buffer()
+            print(conn.inWaiting())
+            conn.write(poll.serialize())
+        
+            data = conn.read(1000)
+            i=0
+            while i < 998:
+                if data[i:i+2] == b"\xb5\x62":
+                    print(data[i:i+2])
+                    logger.info(f'Found Baudrate @ {brate}')
+                    reader = ubx.UBXReader(data)
+                    res, parsed = reader.read()
+                    logger.info(f'{type(parsed.identity)} ---- {parsed.identity}' )
+                    brate_found = True
+                    i = 10000
+                    break
+                
+                i += 1 
+            
+            conn.close()
             time.sleep(0.2)
-        except Exception as e:
-            pass  # Ignore and try next baudrate
-    return None
-
+        
+    return brate
 
 class UBX:
 
@@ -147,39 +161,39 @@ class UBX:
         cfgs = ubx.UBXMessage.config_set(layers, transaction, keys)
         serial_cfgs = cfgs.serialize()
 
-        msg_count = 0
-        ack_count = 0
+        # msg_count = 0
+        # ack_count = 0
+
+        # if self.__new_baudrate:
+            # # Open a serial connection at default baudrate of ZED-F9P to ensure connectivity upon reboot.
+            # self.conn = serial.Serial(self.__port, 38400, timeout=1)
+            # if self.conn.is_open:
+                # logger.info(f"Connected to ublox sensor {self.name} @ {38400}")
+                # self.reader = ubx.UBXReader(self.conn, protfilter=2)
+
+        # self.conn.reset_input_buffer()
+        # self.conn.write(serial_cfgs)
+
+        # t0 = time.perf_counter()
+        # while time.perf_counter() - t0 <= 1.0:
+            # parsed = self.read(parsing=True)
+            # if parsed.identity == "ACK-ACK":
+                # logger.info(f"Output Configuration ACK {parsed.identity}")
+                # logger.info(f"Configuration {keys}")
+                # break
+            # else:
+                # logger.info(f"Output Configuration {parsed.identity}")
+
+        # logger.info(
+            # f"Output Configuration ACK {parsed.identity} {time.perf_counter() - t0}"
+        # )
+        # logger.info(f"Configuration {keys}")
 
         if self.__new_baudrate:
-            # Open a serial connection at default baudrate of ZED-F9P to ensure connectivity upon reboot.
-            self.conn = serial.Serial(self.__port, 38400, timeout=1)
-            if self.conn.is_open:
-                logger.info(f"Connected to ublox sensor {self.name} @ {38400}")
-                self.reader = ubx.UBXReader(self.conn, protfilter=2)
+            # self.conn.reset_input_buffer()
 
-        self.conn.reset_input_buffer()
-        self.conn.write(serial_cfgs)
-
-        t0 = time.perf_counter()
-        while time.perf_counter() - t0 <= 1.0:
-            parsed = self.read(parsing=True)
-            if parsed.identity == "ACK-ACK":
-                logger.info(f"Output Configuration ACK {parsed.identity}")
-                logger.info(f"Configuration {keys}")
-                break
-            else:
-                logger.info(f"Output Configuration {parsed.identity}")
-
-        logger.info(
-            f"Output Configuration ACK {parsed.identity} {time.perf_counter() - t0}"
-        )
-        logger.info(f"Configuration {keys}")
-
-        if self.__new_baudrate:
-            self.conn.reset_input_buffer()
-
-            del self.reader
-            self.conn.close()
+            # del self.reader
+            # self.conn.close()
             # Set the ZED-F9P baudrate to the one specified in the config file.
             msg_baud = ubx.UBXMessage.config_set(
                 1, 0, [("CFG_UART1_BAUDRATE", self.__brate)]
@@ -196,7 +210,8 @@ class UBX:
                 baudrate_temp = find_baudrate(self.__port, logger)
 
                 if baudrate_temp == self.__brate:
-                    logger.info(f"Correct baudrate found")
+                    logger.info(f"Correct baudrate found @ {baudrate_temp}")
+                    logger.info("Baudrate has been changed correctly")
                     break
 
                 self.conn = serial.Serial(self.__port, baudrate_temp, timeout=1)
@@ -211,7 +226,6 @@ class UBX:
                 while time.perf_counter() - t0 <= 1.0:
                     self.conn.reset_input_buffer()
 
-                del self.reader
                 self.conn.close()
                 time.sleep(0.2)
 
@@ -231,10 +245,8 @@ class UBX:
 
                 self.reader = ubx.UBXReader(self.conn, protfilter=2)
 
-            logger.info(f"Bytes {self.conn.inWaiting()}")
-            self.conn.write(serial_cfgs)
 
-            logger.info(f"Bytes ++++ {self.conn.inWaiting()}")
+            self.conn.write(serial_cfgs)
             t0 = time.perf_counter()
             self.conn.read(self.conn.inWaiting())
 
