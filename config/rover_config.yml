@@ -8,6 +8,16 @@ camera:
   shutter_speed: 0.000625
   focus_distance: infinity
 
+source:
+  name: VALON-5019
+  port: /dev/ttyAMA4
+  baudrate: 115200
+  freq: 93
+  power: -6.5
+  mod_amp: 15
+  mod_freq: 37
+  mult_factor: 6
+
 sensors:
     GPS_1:
       name: ZED-F9P
@@ -48,7 +58,7 @@ sensors:
             ]
         NMEA_MSG:
           output_port: UART2
-          ID: [
+          ID : [
             'GGA',
             'GSV',
             'GSA',
@@ -56,40 +66,21 @@ sensors:
             'GNS',
             'ZDA'
           ]
-
-          
-    
-    Inclinometer_1:
-      name: Kernel-100
-      connection:
-        type: serial
-        parameters:
-          port: /dev/ttyAMA5
-          baudrate: 115200
-      sensor_info:
-        type: Inclinometer
-        manufacturer: Inertial_Labs
-      configuration:
-        mode: KERNEL_CalibHR
     
     ADC_1:
       name: ADS1015
-      sensor_core: 2
+      sensor_core: 1
       connection:
         type: I2C
         parameters:
           bus: 6
-          address: 0x48
-          mode: differential
-          channels: [0,1]
       sensor_info:
           type: ADC
           manufacturer: ADS
       configuration: 
         gain: 16
-        adc_rate: 1600
-        reading_rate: 350
-        
+        data_rate: 1600
+
     DAC_1:
       name: MCP4725
       connection:
@@ -104,13 +95,28 @@ sensors:
         voltage: 1.02
         max_voltage: 3.3
 
-source:
-  name: VALON-5019
-  port: /dev/ttyAMA4
-  baudrate: 115200
-  freq: 93
-  power: -6.5
-  mod_amp: 15
-  mod_freq: 37
-  mult_factor: 6
-
+    INERTIAL_1:
+      name: Inertial
+      sensor_core: 2
+      connection:
+        type: I2C
+        parameters:
+          bus: 4
+      sensor_info:
+          type: Inertial
+          manufacturer: Varios
+      configuration: 
+        data_rate: 150
+        
+    Inclinometer_1:
+      name: Kernel-100
+      connection:
+        type: serial
+        parameters:
+          port: /dev/ttyAMA5
+          baudrate: 230400
+      sensor_info:
+        type: Inclinometer
+        manufacturer: Inertial_Labs
+      configuration:
+         mode: KERNEL_CalibHR

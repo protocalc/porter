@@ -119,14 +119,4 @@ sensors:
         type: Inclinometer
         manufacturer: Inertial_Labs
       configuration:
-         mode: USER_DEFINED_DATA
-         UDD_data: [
-                    "Time_Data",
-                    "Orientation_Angles_HR",
-                    "Gyro_Data_HR",
-                    "Accelerometer_Data_HR",
-                    "Gyro_Bias",
-                    "Temperature",
-                    "Unit_Status_Word",
-                    "Unit_Status_Word_Extended"
-                  ]
+         mode: KERNEL_CalibHR

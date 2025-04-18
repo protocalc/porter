@@ -114,12 +114,20 @@ def main():
 
     for sig in signal_to_catch:
         signal.signal(sig, handler)
-
-    try:
-        result = subprocess.run(["gpsctl"], check=True, capture_output=True, text=True)
-        logger.info(f"Current GPS devices connected to GPSD: {result.stdout}")
-    except:
-        logger.info(f"No GPS devices connected to GPSD")
+        
+    counter = 0
+    
+    # while True:
+        # try:
+            # result = subprocess.run(["gpsctl"], check=True, capture_output=True, text=True)
+            # logger.info(f"Current GPS devices connected to GPSD: {result.stdout}")
+            # break
+        # except:
+            # logger.info(f"Trying to recconect to GPSD")
+            # time.sleep(0.1)
+            # counter += 1
+            # if counter > 100:
+                # break
 
 
     time.sleep(1)

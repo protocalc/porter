@@ -74,7 +74,6 @@ class KernelInertial:
                 + b"\x00"
                 + b"\x00"
                 + struct.pack("<H", len(payload))
-                + b"\x00"
                 + payload
             )
 
@@ -171,12 +170,10 @@ class KernelInertial:
 
             self.conn.write(msg_1)
             self.conn.write(msg_2)
-
+            
+            time.sleep(0.2)
             ack = self.conn.read(15)
-
             val = copy.copy(ack[6:8])
-
-            print("ack", ack)
 
             if val == chk2:
                 logger.info("UDD Right")
@@ -195,10 +192,6 @@ class KernelInertial:
         ack = self.conn.read(10)
 
         val = copy.copy(ack[6:8])
-
-        print(ack)
-        print(msg_1)
-        print(msg_2)
 
         if val == chk:
             logger.info("Sent message to start collecting Inclinometer data")
