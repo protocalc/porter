@@ -1,6 +1,7 @@
 import logging
 import time
 from datetime import datetime
+import io
 
 import pyubx2 as ubx
 
@@ -11,45 +12,45 @@ logger = logging.getLogger("mainlogger")
 
 HEADER = b"\xb5\x62"
 
-def find_baudrate(
-    port, logger, baudrates=[38400, 57600, 115200, 230400], timeout=1.0
-):
-    
+
+def find_baudrate(port, logger, baudrates=[38400, 57600, 115200, 230400], timeout=1.0):
+
     brate_found = False
-    
+
     for brate in baudrates:
-        
+
         if brate_found:
             pass
         else:
-        
             conn = serial.Serial(port, brate, timeout=timeout)
-            logger.info(f'Attempting Baudrate {brate}')
+            logger.info(f"Attempting Baudrate {brate}")
             conn.read(conn.inWaiting())
             poll = ubx.UBXMessage("MON", "MON-VER", ubx.POLL)
             conn.reset_input_buffer()
             print(conn.inWaiting())
             conn.write(poll.serialize())
-        
+
             data = conn.read(1000)
-            i=0
+            i = 0
             while i < 998:
-                if data[i:i+2] == b"\xb5\x62":
-                    print(data[i:i+2])
-                    logger.info(f'Found Baudrate @ {brate}')
-                    reader = ubx.UBXReader(data)
+                if data[i : i + 2] == b"\xb5\x62":
+                    print(data[i : i + 2])
+                    logger.info(f"Found Baudrate @ {brate}")
+                    reader = ubx.UBXReader(io.BytesIO(data))
                     res, parsed = reader.read()
-                    logger.info(f'{type(parsed.identity)} ---- {parsed.identity}' )
+                    logger.info(f"{type(parsed.identity)} ---- {parsed.identity}")
                     brate_found = True
                     i = 10000
                     break
-                
-                i += 1 
-            
+
+                i += 1
+
+            conn.read(conn.inWaiting())
             conn.close()
             time.sleep(0.2)
-        
+
     return brate
+
 
 class UBX:
 
@@ -165,27 +166,27 @@ class UBX:
         # ack_count = 0
 
         # if self.__new_baudrate:
-            # # Open a serial connection at default baudrate of ZED-F9P to ensure connectivity upon reboot.
-            # self.conn = serial.Serial(self.__port, 38400, timeout=1)
-            # if self.conn.is_open:
-                # logger.info(f"Connected to ublox sensor {self.name} @ {38400}")
-                # self.reader = ubx.UBXReader(self.conn, protfilter=2)
+        # # Open a serial connection at default baudrate of ZED-F9P to ensure connectivity upon reboot.
+        # self.conn = serial.Serial(self.__port, 38400, timeout=1)
+        # if self.conn.is_open:
+        # logger.info(f"Connected to ublox sensor {self.name} @ {38400}")
+        # self.reader = ubx.UBXReader(self.conn, protfilter=2)
 
         # self.conn.reset_input_buffer()
         # self.conn.write(serial_cfgs)
 
         # t0 = time.perf_counter()
         # while time.perf_counter() - t0 <= 1.0:
-            # parsed = self.read(parsing=True)
-            # if parsed.identity == "ACK-ACK":
-                # logger.info(f"Output Configuration ACK {parsed.identity}")
-                # logger.info(f"Configuration {keys}")
-                # break
-            # else:
-                # logger.info(f"Output Configuration {parsed.identity}")
+        # parsed = self.read(parsing=True)
+        # if parsed.identity == "ACK-ACK":
+        # logger.info(f"Output Configuration ACK {parsed.identity}")
+        # logger.info(f"Configuration {keys}")
+        # break
+        # else:
+        # logger.info(f"Output Configuration {parsed.identity}")
 
         # logger.info(
-            # f"Output Configuration ACK {parsed.identity} {time.perf_counter() - t0}"
+        # f"Output Configuration ACK {parsed.identity} {time.perf_counter() - t0}"
         # )
         # logger.info(f"Configuration {keys}")
 
@@ -212,6 +213,7 @@ class UBX:
                 if baudrate_temp == self.__brate:
                     logger.info(f"Correct baudrate found @ {baudrate_temp}")
                     logger.info("Baudrate has been changed correctly")
+                    count = 15
                     break
 
                 self.conn = serial.Serial(self.__port, baudrate_temp, timeout=1)
@@ -244,7 +246,6 @@ class UBX:
                 logger.info(f"Connected to ublox sensor {self.name} @ {self.__brate}")
 
                 self.reader = ubx.UBXReader(self.conn, protfilter=2)
-
 
             self.conn.write(serial_cfgs)
             t0 = time.perf_counter()
