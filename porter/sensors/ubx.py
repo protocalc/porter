@@ -199,8 +199,6 @@ class UBX:
         if self.__new_baudrate:
             # self.conn.reset_input_buffer()
 
-            # del self.reader
-            # self.conn.close()
             # Set the ZED-F9P baudrate to the one specified in the config file.
             msg_baud = ubx.UBXMessage.config_set(
                 1, 0, [("CFG_UART1_BAUDRATE", self.__brate)]
@@ -253,23 +251,20 @@ class UBX:
 
                 self.reader = ubx.UBXReader(self.conn, protfilter=2)
 
-            self.conn.write(serial_cfgs)
-            t0 = time.perf_counter()
-            self.conn.read(self.conn.inWaiting())
+        self.conn.write(serial_cfgs)
+        t0 = time.perf_counter()
+        self.conn.read(self.conn.inWaiting())
 
-            while time.perf_counter() - t0 <= 1.0:
-                logger.info(f"Bytes  === {self.conn.inWaiting()}")
-                parsed = self.read(parsing=True)
-                if parsed.identity == "ACK-ACK":
-                    logger.info(f"Output Configuration ACK {parsed.identity}")
-                    logger.info(f"Configuration {keys}")
-                    break
-                else:
-                    logger.info(f"Output Configuration {parsed.identity}")
-            logger.info(
-                f"Output Configuration ACK {parsed.identity} {time.perf_counter() - t0}"
-            )
-            logger.info(f"Configuration {keys}")
+        while time.perf_counter() - t0 <= 1.0:
+            logger.info(f"Bytes  === {self.conn.inWaiting()}")
+            parsed = self.read(parsing=True)
+            if parsed.identity == "ACK-ACK":
+                logger.info(f"Output Configuration {parsed.identity}")
+                break
+            else:
+                logger.info(f"Output Configuration {parsed.identity}")
+
+        logger.info(f"Configuration {keys}")
 
     def read_continous_binary(self, shutdown_flag, datafile_name):
 
