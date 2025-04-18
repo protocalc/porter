@@ -1,12 +1,61 @@
 import logging
 import time
 from datetime import datetime
+import io
+
+import copy
 
 import pyubx2 as ubx
-import serial
-import pickle
+from pynmeagps import NMEA_HDR
 
-logger = logging.getLogger()
+import serial
+
+
+logger = logging.getLogger("mainlogger")
+
+HEADER = b"\xb5\x62"
+
+
+def find_baudrate(port, logger, baudrates=[38400, 57600, 115200, 230400], timeout=1.0):
+
+    brate_found = False
+
+    for brate in baudrates:
+
+        if brate_found:
+            pass
+        else:
+            conn = serial.Serial(port, brate, timeout=timeout)
+            logger.info(f"Attempting Baudrate {brate}")
+            conn.read(conn.inWaiting())
+            poll = ubx.UBXMessage("MON", "MON-VER", ubx.POLL)
+            conn.reset_input_buffer()
+            print(conn.inWaiting())
+            conn.write(poll.serialize())
+
+            data = conn.read(1000)
+            i = 0
+            while i < (len(data) - 1):
+
+                header = copy.copy(data[i : i + 2])
+
+                if header == b"\xb5\x62" or header in NMEA_HDR:
+                    print(header)
+                    logger.info(f"Found Baudrate @ {brate}")
+                    reader = ubx.UBXReader(io.BytesIO(data))
+                    res, parsed = reader.read()
+                    logger.info(f"{type(parsed.identity)} ---- {parsed.identity}")
+                    brate_found = True
+                    i = 10000
+                    break
+
+                i += 1
+
+            conn.read(conn.inWaiting())
+            conn.close()
+            time.sleep(0.2)
+
+    return brate
 
 
 class UBX:
@@ -27,7 +76,7 @@ class UBX:
             # Open a serial connection with the ZED-F9P at the default baud rate if not configured otherwise.
             self.conn = serial.Serial(port, 38400, timeout=1)
             if self.conn.is_open:
-                logging.info(f"Connected to ublox sensor {self.name} @ {38400}")
+                logger.info(f"Connected to ublox sensor {self.name} @ {38400}")
                 self.reader = ubx.UBXReader(self.conn, protfilter=2)
 
         self.timing_results = ""
@@ -45,13 +94,13 @@ class UBX:
         for i in config.keys():
 
             if i.lower() == "rate":
-                
+
                 # Add rate configuration
                 rate = int(1 / config["RATE"]["value"] * 1000)
                 keys.append(("CFG_RATE_MEAS", rate))
 
             elif i.lower() == "ubx_msg":
-                
+
                 # Add output port for UBX messages.
                 output_port = config["UBX_MSG"]["output_port"]
 
@@ -61,7 +110,7 @@ class UBX:
                     port_string = output_port
 
                 string = "CFG_MSGOUT_UBX_"
-                
+
                 # Enable options for logging different UBX messages.
                 for j in config["UBX_MSG"].keys():
                     if j.lower() == "output_port":
@@ -119,100 +168,120 @@ class UBX:
         cfgs = ubx.UBXMessage.config_set(layers, transaction, keys)
         serial_cfgs = cfgs.serialize()
 
-        msg_count = 0
-        ack_count = 0
+        # msg_count = 0
+        # ack_count = 0
+
+        # if self.__new_baudrate:
+        # # Open a serial connection at default baudrate of ZED-F9P to ensure connectivity upon reboot.
+        # self.conn = serial.Serial(self.__port, 38400, timeout=1)
+        # if self.conn.is_open:
+        # logger.info(f"Connected to ublox sensor {self.name} @ {38400}")
+        # self.reader = ubx.UBXReader(self.conn, protfilter=2)
+
+        # self.conn.reset_input_buffer()
+        # self.conn.write(serial_cfgs)
+
+        # t0 = time.perf_counter()
+        # while time.perf_counter() - t0 <= 1.0:
+        # parsed = self.read(parsing=True)
+        # if parsed.identity == "ACK-ACK":
+        # logger.info(f"Output Configuration ACK {parsed.identity}")
+        # logger.info(f"Configuration {keys}")
+        # break
+        # else:
+        # logger.info(f"Output Configuration {parsed.identity}")
+
+        # logger.info(
+        # f"Output Configuration ACK {parsed.identity} {time.perf_counter() - t0}"
+        # )
+        # logger.info(f"Configuration {keys}")
 
         if self.__new_baudrate:
-            # Open a serial connection at default baudrate of ZED-F9P to ensure connectivity upon reboot.
-            self.conn = serial.Serial(self.__port, 38400, timeout=1)
-            if self.conn.is_open:
-                logging.info(f"Connected to ublox sensor {self.name} @ {38400}")
-                self.reader = ubx.UBXReader(self.conn, protfilter=2)
+            # self.conn.reset_input_buffer()
 
-        '''for i in range(2):
-            
-            count = 0
-            t0 = time.perf_counter()
-
-            print('Enter loop')
-            self.conn.write(serial_cfgs)
-            msg_count += 1
-            logging.info(
-                f"Sent UBLOX configuration message {cfgs} - Count: {msg_count}"
-            )
-            tm = time.perf_counter()
-            tf = time.perf_counter()
-            while tf- tm < 1:
-                msg = self.read(parsing=True)
-                tf = time.perf_counter()
-                
-            logging.info(f"Elapsed time reading GPS: {tf - tm}")
-            
-            
-            parsed_data = self.read(parsing=True)
-            
-            if parsed_data.identity == "ACK-ACK":
-                ack_count += 1
-
-            while parsed_data.identity != "ACK-ACK":
-                parsed_data = self.read(parsing=True)
-                logging.info(f"Count: {count} - {parsed_data.identity}")
-                if parsed_data.identity == "ACK-ACK":
-                    ack_count += 1
-
-                if count > 20:
-                    break
-                count += 1
-            tf = time.perf_counter()
-            while tf- tm < 1:
-                _ = self.read(parsing=True)
-                tf = time.perf_counter()
-                
-            logging.info(f"Elapsed time waiting for ACK: {tf - tm}")
-
-        if ack_count == 2:
-            logging.info("UBlox Sensor Configured Correctly")'''
-
-        if self.__new_baudrate:
             # Set the ZED-F9P baudrate to the one specified in the config file.
             msg_baud = ubx.UBXMessage.config_set(
                 1, 0, [("CFG_UART1_BAUDRATE", self.__brate)]
             )
-            self.conn.write(serial_cfgs)
-            self.conn.write(msg_baud.serialize())
 
-            # Flush the input buffer for 1 second to ensure baudrate update has been registered.
-            t0 = time.perf_counter()
-            while time.perf_counter() - t0 <= 1.0:
-                self.conn.reset_input_buffer()
+            time.sleep(0.5)
 
-            del self.reader
-            self.conn.close()
-            t0 = time.perf_counter()
+            baudrate_temp = 0
+
+            count = 0
+            loops = 10
+
+            while count < loops:
+                baudrate_temp = find_baudrate(self.__port, logger)
+
+                if baudrate_temp == self.__brate:
+                    logger.info(f"Correct baudrate found @ {baudrate_temp}")
+                    logger.info("Baudrate has been changed correctly")
+                    count = 15
+                    break
+
+                self.conn = serial.Serial(self.__port, baudrate_temp, timeout=1)
+                self.conn.write(msg_baud.serialize())
+
+                logger.info(
+                    f"Baudrate Message written with current Baudrate @ {baudrate_temp}"
+                )
+                time.sleep(0.2)
+
+                t0 = time.perf_counter()
+                while time.perf_counter() - t0 <= 1.0:
+                    self.conn.reset_input_buffer()
+
+                self.conn.close()
+                time.sleep(0.2)
+
+                count += 1
+
+            if count >= loops:
+                self.__brate = baudrate_temp
+                logger.info(f"Baudrate Set @ {self.__brate}")
+
+            time.sleep(0.5)
 
             # Reopen a serial connection at the new baudrate.
             self.conn = serial.Serial(self.__port, self.__brate, timeout=1)
 
             if self.conn.is_open:
-                logging.info(f"Connected to ublox sensor {self.name} @ {self.__brate}")
+                logger.info(f"Connected to ublox sensor {self.name} @ {self.__brate}")
 
                 self.reader = ubx.UBXReader(self.conn, protfilter=2)
 
+        self.conn.write(serial_cfgs)
+        t0 = time.perf_counter()
+        self.conn.read(self.conn.inWaiting())
+
+        while time.perf_counter() - t0 <= 1.0:
+            logger.info(f"Bytes  === {self.conn.inWaiting()}")
+            parsed = self.read(parsing=True)
+            if parsed.identity == "ACK-ACK":
+                logger.info(f"Output Configuration {parsed.identity}")
+                break
+            else:
+                logger.info(f"Output Configuration {parsed.identity}")
+
+        logger.info(f"Configuration {keys}")
+
     def read_continous_binary(self, shutdown_flag, datafile_name):
 
-        # Capture loop start time for logging printouts. 
+        # Capture loop start time for logging printouts.
         loop_start = time.time()
         t_prev = loop_start
 
-        #while not flag.is_set():
-            #sensor_lock.acquire()
-            #msg = self.read()
-            #sensor_lock.release()
-            #fs.write(msg)
         try:
             datafile = open(datafile_name, "r+b")
         except FileNotFoundError:
             datafile = open(datafile_name, "x+b")
+
+        # data_path = '/'.join(datafile_name.split('/')[:-1])
+
+        # timing_path = data_path + '/gps_timing.txt'
+
+        # logger.info(f'Timing path : {timing_path}')
 
         while not shutdown_flag.is_set():
             # Read from the GPS and measure the amount of time taken.
@@ -225,26 +294,20 @@ class UBX:
 
             # Push the data to the queue
             datafile.write(msg)
-            
+
             # Logging timestamp and GPS messages
-            print_time = datetime.fromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S.%f")
-            logging.info(f"Timestamp: {print_time}, Read Time: {read_time}, Data Type: {parsed.identity}")
+            # print_time = datetime.fromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S.%f")
+            # self.timing_results += f"{print_time} {read_time / 1e6} {(t - t_prev) * 1e3} \n"
 
-            self.timing_results += f"{print_time} {read_time / 1e6} {(t - t_prev) * 1e3} \n"
-            self.identities += f"{parsed.identity} \n"
-
-            t_prev = t
-            current_time = time.time()
+            # t_prev = t
+            # current_time = time.time()
 
             # Write to output file
-            if current_time - loop_start >= 3600:
-                print("GPS Loop Done")
-                with open(f"porter/sensors/testing/gps_timing.txt", 'w') as f:
-                    f.write(self.timing_results)
-                with open(f"porter/sensors/testing/gps_identities.txt", 'w') as f2:
-                    f2.write(self.identities)
-                break;
-            
+            # if current_time - loop_start >= 3600:
+            # with open(timing_path, 'w') as f:
+            #    f.write(self.timing_results)
+            # break
+
         self.close()
 
     def read(self, parsing=False):
@@ -260,8 +323,8 @@ class UBX:
             return raw
 
     def close(self):
-        
+
         # Turn off the serial connection
         self.conn.close()
 
-        logging.info(f"Closed ublox sensor {self.name}")
+        logger.info(f"Closed ublox sensor {self.name}")

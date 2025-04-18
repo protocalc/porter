@@ -1,13 +1,5 @@
 local_development: False
 
-camera:
-  name: Sony
-  mode: video
-  program: MovieM
-  ISO: 100
-  shutter_speed: 0.000625
-  focus_distance: infinity
-
 source:
   name: VALON-5019
   port: /dev/ttyAMA4
@@ -69,7 +61,7 @@ sensors:
     
     ADC_1:
       name: ADS1015
-      sensor_core: 1
+      sensor_core: 3
       connection:
         type: I2C
         parameters:
@@ -106,7 +98,7 @@ sensors:
           type: Inertial
           manufacturer: Varios
       configuration: 
-        data_rate: 150
+        data_rate: 200
         
     Inclinometer_1:
       name: Kernel-100
@@ -119,4 +111,4 @@ sensors:
         type: Inclinometer
         manufacturer: Inertial_Labs
       configuration:
-         mode: KERNEL_CalibHR
+        mode: KERNEL_CalibHR

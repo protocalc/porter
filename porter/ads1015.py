@@ -16,7 +16,7 @@ ADS1015_VALUE_GAIN = {
     16: 0.256,
 }
 
-logger = logging.getLogger("mainlogger")
+logger = logging.getLogger()
 
 class ADS1015:
 
@@ -37,11 +37,14 @@ class ADS1015:
 
     def read_continous_binary(self, shutdown_flag, datafile_name):
         # Start the ads1015 process through the command line.
+        print("KOUKOU")
         cmd = f"ads1015 --gain {self.gain} --rate {self.rate} --output {datafile_name} --i2c-bus {self.bus}"
         if self.core is not None:
             cmd += f" --core {int(self.core)}"
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid) 
         # Loop until told to close
+        print("KOUKOU")
+
 
         while not shutdown_flag.is_set():
             time.sleep(1)

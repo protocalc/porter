@@ -1,23 +1,5 @@
 local_development: False
 
-camera:
-  name: Sony
-  mode: video
-  program: MovieM
-  ISO: 100
-  shutter_speed: 0.000625
-  focus_distance: infinity
-
-source:
-  name: VALON-5019
-  port: /dev/ttyAMA4
-  baudrate: 115200
-  freq: 93
-  power: -6.5
-  mod_amp: 15
-  mod_freq: 37
-  mult_factor: 6
-
 sensors:
     GPS_1:
       name: ZED-F9P
@@ -69,7 +51,7 @@ sensors:
     
     ADC_1:
       name: ADS1015
-      sensor_core: 1
+      sensor_core: 3
       connection:
         type: I2C
         parameters:
@@ -106,7 +88,7 @@ sensors:
           type: Inertial
           manufacturer: Varios
       configuration: 
-        data_rate: 150
+        data_rate: 200
         
     Inclinometer_1:
       name: Kernel-100
@@ -119,4 +101,14 @@ sensors:
         type: Inclinometer
         manufacturer: Inertial_Labs
       configuration:
-         mode: KERNEL_CalibHR
+         mode: USER_DEFINED_DATA
+         UDD_data: [
+                    "Time_Data",
+                    "Orientation_Angles_HR",
+                    "Gyro_Data_HR",
+                    "Accelerometer_Data_HR",
+                    "Gyro_Bias",
+                    "Temperature",
+                    "USW",
+                    "USW_Extended"
+                  ]
