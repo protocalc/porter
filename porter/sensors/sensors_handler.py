@@ -12,6 +12,7 @@ except ModuleNotFoundError:
     pass
 
 import porter.sensors.mcp4725 as mcp
+from porter.sensors import IMX5SensorModule as imx5
 
 
 class Handler:
@@ -71,6 +72,14 @@ class Handler:
                         self.sensor_params["connection"]["parameters"]["baudrate"],
                         name=self.sensor_params["name"],
                     )
+
+            elif self.sensor_params["sensor_info"]["type"].lower() == "imx5":
+                # Set up IMX5 sensors with USB device, name, and sensor core.
+                self.obj = imx5.IMX5SensorModule(
+                    name=self.sensor_params["name"],
+                    usb_device=self.sensor_params["connection"]["parameters"]["usb_device"],
+                    sensor_core=self.sensor_params["sensor_core"]
+                )
 
     def _configuration(self):
         if "configuration" in self.sensor_params.keys():

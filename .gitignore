@@ -7,3 +7,5 @@
 *.log
 *.bin
 .*
+venv/
+requirements.txt
