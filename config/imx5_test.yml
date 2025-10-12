@@ -8,7 +8,7 @@ sensors:
       connection:
         type: serial
         parameters:
-          usb_device: /dev/ttyUSB0
+          usb_device: /dev/ttyACM0
       sensor_info:
         type: IMX5
         manufacturer: Parker
