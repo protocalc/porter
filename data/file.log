@@ -1,0 +1,54 @@
+2025/10/13 21:29:46.839  [MainThread]  INFO:Loaded configuration config/rover_config.yml
+2025/10/13 21:29:47.842  [MainThread]  INFO:Configuring ZED-F9P
+2025/10/13 21:29:48.344  [MainThread]  INFO:Attempting Baudrate 38400
+2025/10/13 21:29:49.547  [MainThread]  INFO:Attempting Baudrate 57600
+2025/10/13 21:29:50.334  [MainThread]  INFO:Attempting Baudrate 115200
+2025/10/13 21:29:50.566  [MainThread]  INFO:Found Baudrate @ 115200
+2025/10/13 21:29:50.566  [MainThread]  INFO:<class 'str'> ---- MON-VER
+2025/10/13 21:29:50.767  [MainThread]  INFO:Correct baudrate found @ 115200
+2025/10/13 21:29:50.767  [MainThread]  INFO:Baudrate has been changed correctly
+2025/10/13 21:29:50.767  [MainThread]  INFO:Baudrate Set @ 115200
+2025/10/13 21:29:51.268  [MainThread]  INFO:Connected to ublox sensor ZED-F9P @ 115200
+2025/10/13 21:29:51.268  [MainThread]  INFO:Bytes  === 0
+2025/10/13 21:29:51.277  [MainThread]  INFO:Output Configuration ACK-ACK
+2025/10/13 21:29:51.277  [MainThread]  INFO:Configuration [('CFG_UART1OUTPROT_NMEA', 0), ('CFG_UART1OUTPROT_UBX', 1), ('CFG_RATE_MEAS', 500), ('CFG_MSGOUT_UBX_NAV_POSECEF_UART1', 1), ('CFG_MSGOUT_UBX_NAV_POSLLH_UART1', 1), ('CFG_MSGOUT_UBX_NAV_CLOCK_UART1', 1), ('CFG_MSGOUT_UBX_RXM_RAWX_UART1', 1), ('CFG_MSGOUT_UBX_RXM_SFRBX_UART1', 1), ('CFG_MSGOUT_NMEA_ID_RMC_UART2', 1), ('CFG_MSGOUT_NMEA_ID_GST_UART2', 1)]
+2025/10/13 21:29:51.277  [MainThread]  INFO:Bytes  === 0
+2025/10/13 21:29:51.286  [MainThread]  INFO:Output Configuration ACK-ACK
+2025/10/13 21:29:51.286  [MainThread]  INFO:Configuration [('CFG_UART1OUTPROT_NMEA', 0), ('CFG_UART1OUTPROT_UBX', 1), ('CFG_RATE_MEAS', 500), ('CFG_MSGOUT_UBX_NAV_POSECEF_UART1', 1), ('CFG_MSGOUT_UBX_NAV_POSLLH_UART1', 1), ('CFG_MSGOUT_UBX_NAV_CLOCK_UART1', 1), ('CFG_MSGOUT_UBX_RXM_RAWX_UART1', 1), ('CFG_MSGOUT_UBX_RXM_SFRBX_UART1', 1), ('CFG_MSGOUT_NMEA_ID_RMC_UART2', 1), ('CFG_MSGOUT_NMEA_ID_GST_UART2', 1)]
+2025/10/13 21:29:51.286  [Thread-1]  INFO:Sensor ZED-F9P started
+2025/10/13 21:29:51.287  [MainThread]  INFO:Configuring ADS1015
+2025/10/13 21:29:51.287  [MainThread]  INFO:Connected to ADC ADS1015
+2025/10/13 21:29:51.287  [MainThread]  INFO:Configured ADS1015
+2025/10/13 21:29:51.287  [MainThread]  INFO:Current ADC Data Rate: 1600 Hz
+2025/10/13 21:29:51.287  [MainThread]  INFO:Current Gain Setting 16: 0.256
+2025/10/13 21:29:51.288  [Thread-2]  INFO:Sensor ADS1015 started
+2025/10/13 21:29:51.291  [MainThread]  INFO:Configuring MCP4725
+2025/10/13 21:29:51.311  [MainThread]  INFO:Set DAC voltage: 1.02
+2025/10/13 21:29:51.312  [Thread-3]  INFO:Sensor MCP4725 started
+2025/10/13 21:29:51.312  [MainThread]  INFO:Configuring Inertial
+2025/10/13 21:29:51.313  [Thread-4]  INFO:Sensor Inertial started
+2025/10/13 21:29:51.319  [MainThread]  INFO:Configuring IMX5-Sensors
+2025/10/13 21:29:51.321  [Thread-5]  INFO:Sensor IMX5-Sensors started
+2025/10/13 21:29:51.431  [MainThread]  INFO:b''
+2025/10/13 21:29:51.532  [MainThread]  INFO:b''
+2025/10/13 21:29:51.642  [MainThread]  INFO:b''
+2025/10/13 21:29:51.742  [MainThread]  INFO:b''
+2025/10/13 21:29:51.843  [MainThread]  INFO:b''
+2025/10/13 21:29:51.953  [MainThread]  INFO:b''
+2025/10/13 21:29:52.064  [MainThread]  INFO:b''
+2025/10/13 21:29:52.174  [MainThread]  INFO:b''
+2025/10/13 21:29:52.285  [MainThread]  INFO:b''
+2025/10/13 21:29:52.396  [MainThread]  INFO:b''
+2025/10/13 21:29:52.507  [MainThread]  INFO:b''
+2025/10/13 21:29:52.618  [MainThread]  INFO:b''
+2025/10/13 21:29:52.730  [MainThread]  INFO:b''
+2025/10/13 21:29:52.843  [MainThread]  INFO:b''
+2025/10/13 21:30:01.312  [Thread-3]  INFO:Sensor MCP4725 closed
+2025/10/13 21:33:07.875  [MainThread]  INFO:Caught signal Interrupt
+2025/10/13 21:33:07.876  [MainThread]  INFO:Flag has been raise
+2025/10/13 21:33:08.171  [Thread-1]  INFO:Closed ublox sensor ZED-F9P
+2025/10/13 21:33:08.172  [Thread-1]  INFO:Sensor ZED-F9P closed
+2025/10/13 21:33:08.328  [Thread-2]  INFO:Closed sensor ADS1015
+2025/10/13 21:33:08.328  [Thread-2]  INFO:Sensor ADS1015 closed
+2025/10/13 21:33:08.355  [Thread-5]  INFO:Sensor IMX5-Sensors closed
+2025/10/13 21:33:08.356  [Thread-4]  INFO:Sensor Inertial closed
