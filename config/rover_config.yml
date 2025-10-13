@@ -94,7 +94,7 @@ sensors:
 
     IMX5_1:
       name: IMX5-Sensors
-      sensor_core: 1
+      sensor_core: 2
       connection:
         type: serial
         parameters:
