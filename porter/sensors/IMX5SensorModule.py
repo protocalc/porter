@@ -24,13 +24,14 @@ class IMX5SensorModule:
 
     def read_continous_binary(self, shutdown_flag, datafile_name):
         # Start the IMX5SensorModule process through the command line.
-        binary_path = "IMX5SensorModule"
+        binary_path = "bin/IMX5SensorModule"
 
         cmd = f"{binary_path} --imu-rate {self.imu_rate} --ins-rate {self.ins_rate} --outputdir {datafile_name} --usb-device {self.usb_device}"
         if self.core is not None:
             cmd += f" --core {int(self.core)}"
 
         logger.info(f"Running command: {cmd}")
+        print(f"Running command: {cmd}")
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
         # Loop until told to close
 
