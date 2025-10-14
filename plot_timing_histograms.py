@@ -251,7 +251,7 @@ def main():
     if imu_files:
         imu_file = imu_files[0]
         print(f"\nProcessing: {imu_file.name}")
-        intervals = process_csv_file(imu_file, remove_outliers_flag=True)
+        intervals = process_csv_file(imu_file, remove_outliers_flag=False)
         
         if intervals is not None and len(intervals) > 0:
             output_path = None if args.show else output_dir / 'imu_timing_histogram.png'
@@ -265,7 +265,7 @@ def main():
     if ins_files:
         ins_file = ins_files[0]
         print(f"\nProcessing: {ins_file.name}")
-        intervals = process_csv_file(ins_file, remove_outliers_flag=True)
+        intervals = process_csv_file(ins_file, remove_outliers_flag=False)
         
         if intervals is not None and len(intervals) > 0:
             output_path = None if args.show else output_dir / 'ins_timing_histogram.png'
