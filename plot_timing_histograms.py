@@ -11,6 +11,48 @@ import argparse
 from pathlib import Path
 
 
+def remove_outliers(intervals_ms, method='iqr', threshold=3.0):
+    """
+    Remove outliers from timing intervals.
+    
+    Parameters:
+    -----------
+    intervals_ms : array
+        Timing intervals in milliseconds
+    method : str
+        Method for outlier detection: 'iqr' (Interquartile Range) or 'zscore'
+    threshold : float
+        For IQR: multiplier for IQR (default 3.0 for more aggressive filtering)
+        For zscore: number of standard deviations (default 3.0)
+        
+    Returns:
+    --------
+    filtered : array
+        Intervals with outliers removed
+    num_removed : int
+        Number of outliers removed
+    """
+    if method == 'iqr':
+        q1 = np.percentile(intervals_ms, 25)
+        q3 = np.percentile(intervals_ms, 75)
+        iqr = q3 - q1
+        lower_bound = q1 - threshold * iqr
+        upper_bound = q3 + threshold * iqr
+        mask = (intervals_ms >= lower_bound) & (intervals_ms <= upper_bound)
+    elif method == 'zscore':
+        mean = np.mean(intervals_ms)
+        std = np.std(intervals_ms)
+        z_scores = np.abs((intervals_ms - mean) / std)
+        mask = z_scores < threshold
+    else:
+        raise ValueError(f"Unknown method: {method}")
+    
+    filtered = intervals_ms[mask]
+    num_removed = len(intervals_ms) - len(filtered)
+    
+    return filtered, num_removed
+
+
 def plot_timing_histogram(intervals_ms, dataset_name, output_path=None):
     """
     Plot timing histogram with mean, std, and frequency in title.
@@ -63,7 +105,7 @@ def plot_timing_histogram(intervals_ms, dataset_name, output_path=None):
     plt.close()
 
 
-def process_csv_file(filepath):
+def process_csv_file(filepath, remove_outliers_flag=False):
     """
     Process CSV file and extract timestamps.
     
@@ -71,6 +113,8 @@ def process_csv_file(filepath):
     -----------
     filepath : str or Path
         Path to the CSV file
+    remove_outliers_flag : bool
+        Whether to apply outlier rejection (for IMU/INS data)
         
     Returns:
     --------
@@ -98,6 +142,13 @@ def process_csv_file(filepath):
     # Calculate intervals in milliseconds
     intervals_us = np.diff(timestamps)
     intervals_ms = intervals_us / 1000.0
+    
+    # Apply outlier rejection if requested
+    if remove_outliers_flag:
+        filtered, num_removed = remove_outliers(intervals_ms, method='iqr', threshold=3.0)
+        if num_removed > 0:
+            print(f"  Removed {num_removed} outliers ({100*num_removed/len(intervals_ms):.2f}%)")
+        intervals_ms = filtered
     
     return intervals_ms
 
@@ -200,28 +251,28 @@ def main():
     if imu_files:
         imu_file = imu_files[0]
         print(f"\nProcessing: {imu_file.name}")
-        intervals = process_csv_file(imu_file)
+        intervals = process_csv_file(imu_file, remove_outliers_flag=True)
         
         if intervals is not None and len(intervals) > 0:
             output_path = None if args.show else output_dir / 'imu_timing_histogram.png'
             plot_timing_histogram(intervals, 'IMU', output_path)
             print(f"  Records: {len(intervals) + 1}")
             print(f"  Mean interval: {np.mean(intervals):.2f} ms ({1000/np.mean(intervals):.1f} Hz)")
-            print(f"  Std: {np.std(intervals):.2f} ms")
+            print(f"  Std: {np.std(intervals):.4f} ms")
     
     # Process INS CSV file
     ins_files = list(data_dir.glob('*_ins.csv'))
     if ins_files:
         ins_file = ins_files[0]
         print(f"\nProcessing: {ins_file.name}")
-        intervals = process_csv_file(ins_file)
+        intervals = process_csv_file(ins_file, remove_outliers_flag=True)
         
         if intervals is not None and len(intervals) > 0:
             output_path = None if args.show else output_dir / 'ins_timing_histogram.png'
             plot_timing_histogram(intervals, 'INS', output_path)
             print(f"  Records: {len(intervals) + 1}")
             print(f"  Mean interval: {np.mean(intervals):.2f} ms ({1000/np.mean(intervals):.1f} Hz)")
-            print(f"  Std: {np.std(intervals):.2f} ms")
+            print(f"  Std: {np.std(intervals):.4f} ms")
     
     # Process ADS1015 (ADC) file
     ads_files = list(data_dir.glob('ADS*.bin'))
