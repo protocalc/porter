@@ -98,8 +98,8 @@ sensors:
       connection:
         type: serial
         parameters:
-          device: /dev/ttyAMA5
-          baudrate: 230400
+          device: /dev/ttyACM0
+          baudrate: 921600
       sensor_info:
         type: IMX5
         manufacturer: InertialSense
