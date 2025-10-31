@@ -77,7 +77,8 @@ class Handler:
                 # Set up IMX5 sensors with USB device, name, and sensor core.
                 self.obj = imx5.IMX5SensorModule(
                     name=self.sensor_params["name"],
-                    usb_device=self.sensor_params["connection"]["parameters"]["usb_device"],
+                    device=self.sensor_params["connection"]["parameters"]["device"],
+                    baudrate=self.sensor_params["connection"]["parameters"]["baudrate"],
                     sensor_core=self.sensor_params["sensor_core"]
                 )
 

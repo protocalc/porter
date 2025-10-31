@@ -9,14 +9,15 @@ logger = logging.getLogger()
 
 class IMX5SensorModule:
 
-    def __init__(self, name="IMX5 Sensors", usb_device="/dev/ttyUSB0", model="Various", sensor_core=None):
+    def __init__(self, name="IMX5 Sensors", device="/dev/ttyUSB0", baudrate=115200, model="Various", sensor_core=None):
 
         self.name = name
         self.model = model
         self.core = sensor_core
-        self.usb_device = usb_device
+        self.device = device
         self.imu_rate = None
         self.ins_rate = None
+        self.baudrate = baudrate
 
         self.process = None
 
@@ -26,7 +27,7 @@ class IMX5SensorModule:
         # Start the IMX5SensorModule process through the command line.
         binary_path = "bin/IMX5SensorModule"
 
-        cmd = f"{binary_path} --imu-rate {self.imu_rate} --ins-rate {self.ins_rate} --outputdir {datafile_name} --usb-device {self.usb_device}"
+        cmd = f"{binary_path} --imu-rate {self.imu_rate} --ins-rate {self.ins_rate} --baud-rate {self.baudrate} --outputdir {datafile_name} --device {self.device}"
         if self.core is not None:
             cmd += f" --core {int(self.core)}"
 

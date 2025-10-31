@@ -8,10 +8,11 @@ sensors:
       connection:
         type: serial
         parameters:
-          usb_device: /dev/ttyACM0
+          device: /dev/ttyAMA5
+          baudrate: 115200
       sensor_info:
         type: IMX5
-        manufacturer: Parker
+        manufacturer: InertialSense
       configuration:
         imu_data_rate: 1000
         ins_data_rate: 142
