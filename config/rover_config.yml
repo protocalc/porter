@@ -106,3 +106,20 @@ sensors:
       configuration:
         imu_data_rate: 1000
         ins_data_rate: 142
+    LM76_1:
+      name: LM76-Temp
+      sensor_core: 2
+      connection:
+        type: I2C
+        parameters:
+          bus: 1
+          address: 0x4B
+      sensor_info:
+        type: LM76
+        manufacturer: TexasInstruments
+      configuration:
+        interval: 10
+        tcrit: 10
+        thyst: 2
+        tlow: 15
+        thigh: 40

@@ -13,6 +13,7 @@ except ModuleNotFoundError:
 
 import porter.sensors.mcp4725 as mcp
 from porter.sensors import IMX5SensorModule as imx5
+from porter.sensors import LM76SensorModule as lm76
 
 
 class Handler:
@@ -80,6 +81,16 @@ class Handler:
                     device=self.sensor_params["connection"]["parameters"]["device"],
                     baudrate=self.sensor_params["connection"]["parameters"]["baudrate"],
                     sensor_core=self.sensor_params["sensor_core"]
+                )
+                
+            elif self.sensor_params["sensor_info"]["type"].lower() == "lm76":
+                # Set up LM76 temperature sensor with I2C bus, address, name, and sensor core.
+                self.obj = lm76.LM76SensorModule(
+                    name=self.sensor_params["name"],
+                    bus=self.sensor_params["connection"]["parameters"].get("bus"),
+                    address=self.sensor_params["connection"]["parameters"].get("address"),
+                    model=self.sensor_params.get("sensor_info", {}).get("model", "LM76"),
+                    sensor_core=self.sensor_params["sensor_core"],
                 )
 
     def _configuration(self):
