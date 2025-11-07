@@ -106,6 +106,7 @@ sensors:
       configuration:
         imu_data_rate: 1000
         ins_data_rate: 142
+        
     LM76_1:
       name: LM76-Temp
       sensor_core: 2

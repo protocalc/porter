@@ -55,6 +55,7 @@ class LM76SensorModule:
             cmd += f" --core {int(self.core)}"
 
         logger.info(f"Running command: {cmd}")
+        print(f"Running command: {cmd}")
         self.process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
