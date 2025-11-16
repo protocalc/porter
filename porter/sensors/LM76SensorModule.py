@@ -35,11 +35,9 @@ class LM76SensorModule:
 
     def read_continous_binary(self, shutdown_flag, datafile_name):
         # Start the LM76SensorModule process through the command line.
-        # Find the binary relative to this script's location
-        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        binary_path = os.path.join(script_dir, "build", "bin", "LM76SensorModule")
+        binary_path = "bin/LM76SensorModule"
 
-        cmd = f"{binary_path} --bus {self.bus} --address {self.address} --interval {self.interval}"
+        cmd = f"{binary_path} --bus {self.bus} --address {self.address} --interval {self.interval} --outputdir {datafile_name}"
         
         # Add threshold configurations if set
         if self.tcrit is not None:
@@ -51,6 +49,9 @@ class LM76SensorModule:
         if self.thigh is not None:
             cmd += f" --thigh {self.thigh}"
         
+        if self.core is not None:
+            cmd += f" --core {int(self.core)}"
+
         if self.core is not None:
             cmd += f" --core {int(self.core)}"
 
