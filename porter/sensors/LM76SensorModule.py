@@ -52,9 +52,6 @@ class LM76SensorModule:
         if self.core is not None:
             cmd += f" --core {int(self.core)}"
 
-        if self.core is not None:
-            cmd += f" --core {int(self.core)}"
-
         logger.info(f"Running command: {cmd}")
         print(f"Running command: {cmd}")
         self.process = subprocess.Popen(
