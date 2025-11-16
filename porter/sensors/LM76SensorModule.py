@@ -37,7 +37,7 @@ class LM76SensorModule:
         # Start the LM76SensorModule process through the command line.
         binary_path = "bin/LM76SensorModule"
 
-        cmd = f"{binary_path} --bus {self.bus} --address {self.address} --interval {self.interval} --outputdir {datafile_name}"
+        cmd = f"{binary_path} --bus {self.bus} --address {hex(self.address)} --interval {self.interval} --outputdir {datafile_name}"
         
         # Add threshold configurations if set
         if self.tcrit is not None:
