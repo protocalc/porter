@@ -1,54 +1,64 @@
-2025/10/31 18:39:24.892  [MainThread]  INFO:Loaded configuration config/rover_config.yml
-2025/10/31 18:39:25.894  [MainThread]  INFO:Configuring ZED-F9P
-2025/10/31 18:39:26.397  [MainThread]  INFO:Attempting Baudrate 38400
-2025/10/31 18:39:27.364  [MainThread]  INFO:Attempting Baudrate 57600
-2025/10/31 18:39:28.278  [MainThread]  INFO:Attempting Baudrate 115200
-2025/10/31 18:39:28.592  [MainThread]  INFO:Found Baudrate @ 115200
-2025/10/31 18:39:28.593  [MainThread]  INFO:<class 'str'> ---- MON-VER
-2025/10/31 18:39:28.793  [MainThread]  INFO:Correct baudrate found @ 115200
-2025/10/31 18:39:28.794  [MainThread]  INFO:Baudrate has been changed correctly
-2025/10/31 18:39:28.794  [MainThread]  INFO:Baudrate Set @ 115200
-2025/10/31 18:39:29.294  [MainThread]  INFO:Connected to ublox sensor ZED-F9P @ 115200
-2025/10/31 18:39:29.295  [MainThread]  INFO:Bytes  === 0
-2025/10/31 18:39:29.304  [MainThread]  INFO:Output Configuration ACK-ACK
-2025/10/31 18:39:29.304  [MainThread]  INFO:Configuration [('CFG_UART1OUTPROT_NMEA', 0), ('CFG_UART1OUTPROT_UBX', 1), ('CFG_RATE_MEAS', 500), ('CFG_MSGOUT_UBX_NAV_POSECEF_UART1', 1), ('CFG_MSGOUT_UBX_NAV_POSLLH_UART1', 1), ('CFG_MSGOUT_UBX_NAV_CLOCK_UART1', 1), ('CFG_MSGOUT_UBX_RXM_RAWX_UART1', 1), ('CFG_MSGOUT_UBX_RXM_SFRBX_UART1', 1), ('CFG_MSGOUT_NMEA_ID_RMC_UART2', 1), ('CFG_MSGOUT_NMEA_ID_GST_UART2', 1)]
-2025/10/31 18:39:29.304  [MainThread]  INFO:Bytes  === 0
-2025/10/31 18:39:29.313  [MainThread]  INFO:Output Configuration ACK-ACK
-2025/10/31 18:39:29.313  [MainThread]  INFO:Configuration [('CFG_UART1OUTPROT_NMEA', 0), ('CFG_UART1OUTPROT_UBX', 1), ('CFG_RATE_MEAS', 500), ('CFG_MSGOUT_UBX_NAV_POSECEF_UART1', 1), ('CFG_MSGOUT_UBX_NAV_POSLLH_UART1', 1), ('CFG_MSGOUT_UBX_NAV_CLOCK_UART1', 1), ('CFG_MSGOUT_UBX_RXM_RAWX_UART1', 1), ('CFG_MSGOUT_UBX_RXM_SFRBX_UART1', 1), ('CFG_MSGOUT_NMEA_ID_RMC_UART2', 1), ('CFG_MSGOUT_NMEA_ID_GST_UART2', 1)]
-2025/10/31 18:39:29.313  [Thread-1]  INFO:Sensor ZED-F9P started
-2025/10/31 18:39:29.314  [MainThread]  INFO:Configuring ADS1015
-2025/10/31 18:39:29.314  [MainThread]  INFO:Connected to ADC ADS1015
-2025/10/31 18:39:29.314  [MainThread]  INFO:Configured ADS1015
-2025/10/31 18:39:29.314  [MainThread]  INFO:Current ADC Data Rate: 1600 Hz
-2025/10/31 18:39:29.314  [MainThread]  INFO:Current Gain Setting 16: 0.256
-2025/10/31 18:39:29.315  [Thread-2]  INFO:Sensor ADS1015 started
-2025/10/31 18:39:29.318  [MainThread]  INFO:Configuring MCP4725
-2025/10/31 18:39:29.338  [MainThread]  INFO:Set DAC voltage: 1.02
-2025/10/31 18:39:29.339  [Thread-3]  INFO:Sensor MCP4725 started
-2025/10/31 18:39:29.339  [MainThread]  INFO:Configuring Inertial
-2025/10/31 18:39:29.340  [Thread-4]  INFO:Sensor Inertial started
-2025/10/31 18:39:29.346  [MainThread]  INFO:Configuring IMX5-Sensors
-2025/10/31 18:39:29.348  [Thread-5]  INFO:Sensor IMX5-Sensors started
-2025/10/31 18:39:29.461  [MainThread]  INFO:b''
-2025/10/31 18:39:29.562  [MainThread]  INFO:b''
-2025/10/31 18:39:29.668  [MainThread]  INFO:b''
-2025/10/31 18:39:29.774  [MainThread]  INFO:b''
-2025/10/31 18:39:29.875  [MainThread]  INFO:b''
-2025/10/31 18:39:29.986  [MainThread]  INFO:b''
-2025/10/31 18:39:30.096  [MainThread]  INFO:b''
-2025/10/31 18:39:30.207  [MainThread]  INFO:b''
-2025/10/31 18:39:30.318  [MainThread]  INFO:b''
-2025/10/31 18:39:30.428  [MainThread]  INFO:b''
-2025/10/31 18:39:30.539  [MainThread]  INFO:b''
-2025/10/31 18:39:30.653  [MainThread]  INFO:b''
-2025/10/31 18:39:30.764  [MainThread]  INFO:b''
-2025/10/31 18:39:30.874  [MainThread]  INFO:b''
-2025/10/31 18:39:39.339  [Thread-3]  INFO:Sensor MCP4725 closed
-2025/10/31 18:49:07.166  [MainThread]  INFO:Caught signal Interrupt
-2025/10/31 18:49:07.166  [MainThread]  INFO:Flag has been raise
-2025/10/31 18:49:07.189  [Thread-1]  INFO:Closed ublox sensor ZED-F9P
-2025/10/31 18:49:07.190  [Thread-1]  INFO:Sensor ZED-F9P closed
-2025/10/31 18:49:07.401  [Thread-2]  INFO:Closed sensor ADS1015
-2025/10/31 18:49:07.402  [Thread-2]  INFO:Sensor ADS1015 closed
-2025/10/31 18:49:07.411  [Thread-4]  INFO:Sensor Inertial closed
-2025/10/31 18:49:07.421  [Thread-5]  INFO:Sensor IMX5-Sensors closed
+2025/11/16 22:15:54.579  [MainThread]  INFO:Loaded configuration config/rover_config.yml
+2025/11/16 22:15:55.581  [MainThread]  INFO:Configuring ZED-F9P
+2025/11/16 22:15:56.084  [MainThread]  INFO:Attempting Baudrate 38400
+2025/11/16 22:15:56.807  [MainThread]  INFO:Attempting Baudrate 57600
+2025/11/16 22:15:57.556  [MainThread]  INFO:Found Baudrate @ 57600
+2025/11/16 22:15:57.556  [MainThread]  INFO:Message not recorded
+2025/11/16 22:15:57.759  [MainThread]  INFO:Baudrate Message written with current Baudrate @ 57600
+2025/11/16 22:15:59.160  [MainThread]  INFO:Attempting Baudrate 38400
+2025/11/16 22:16:00.237  [MainThread]  INFO:Attempting Baudrate 57600
+2025/11/16 22:16:01.265  [MainThread]  INFO:Attempting Baudrate 115200
+2025/11/16 22:16:01.594  [MainThread]  INFO:Found Baudrate @ 115200
+2025/11/16 22:16:01.595  [MainThread]  INFO:<class 'str'> ---- MON-VER
+2025/11/16 22:16:01.795  [MainThread]  INFO:Correct baudrate found @ 115200
+2025/11/16 22:16:01.796  [MainThread]  INFO:Baudrate has been changed correctly
+2025/11/16 22:16:01.796  [MainThread]  INFO:Baudrate Set @ 115200
+2025/11/16 22:16:02.296  [MainThread]  INFO:Connected to ublox sensor ZED-F9P @ 115200
+2025/11/16 22:16:02.297  [MainThread]  INFO:Bytes  === 0
+2025/11/16 22:16:02.317  [MainThread]  INFO:Output Configuration RXM-SFRBX
+2025/11/16 22:16:02.317  [MainThread]  INFO:Bytes  === 8
+2025/11/16 22:16:02.318  [MainThread]  INFO:Output Configuration ACK-ACK
+2025/11/16 22:16:02.318  [MainThread]  INFO:Configuration [('CFG_UART1OUTPROT_NMEA', 0), ('CFG_UART1OUTPROT_UBX', 1), ('CFG_RATE_MEAS', 500), ('CFG_MSGOUT_UBX_NAV_POSECEF_UART1', 1), ('CFG_MSGOUT_UBX_NAV_POSLLH_UART1', 1), ('CFG_MSGOUT_UBX_NAV_CLOCK_UART1', 1), ('CFG_MSGOUT_UBX_RXM_RAWX_UART1', 1), ('CFG_MSGOUT_UBX_RXM_SFRBX_UART1', 1), ('CFG_MSGOUT_NMEA_ID_RMC_UART2', 1), ('CFG_MSGOUT_NMEA_ID_GST_UART2', 1)]
+2025/11/16 22:16:02.318  [MainThread]  INFO:Bytes  === 0
+2025/11/16 22:16:02.326  [MainThread]  INFO:Output Configuration ACK-ACK
+2025/11/16 22:16:02.327  [MainThread]  INFO:Configuration [('CFG_UART1OUTPROT_NMEA', 0), ('CFG_UART1OUTPROT_UBX', 1), ('CFG_RATE_MEAS', 500), ('CFG_MSGOUT_UBX_NAV_POSECEF_UART1', 1), ('CFG_MSGOUT_UBX_NAV_POSLLH_UART1', 1), ('CFG_MSGOUT_UBX_NAV_CLOCK_UART1', 1), ('CFG_MSGOUT_UBX_RXM_RAWX_UART1', 1), ('CFG_MSGOUT_UBX_RXM_SFRBX_UART1', 1), ('CFG_MSGOUT_NMEA_ID_RMC_UART2', 1), ('CFG_MSGOUT_NMEA_ID_GST_UART2', 1)]
+2025/11/16 22:16:02.327  [Thread-1]  INFO:Sensor ZED-F9P started
+2025/11/16 22:16:02.328  [MainThread]  INFO:Configuring ADS1015
+2025/11/16 22:16:02.328  [MainThread]  INFO:Connected to ADC ADS1015
+2025/11/16 22:16:02.328  [MainThread]  INFO:Configured ADS1015
+2025/11/16 22:16:02.328  [MainThread]  INFO:Current ADC Data Rate: 1600 Hz
+2025/11/16 22:16:02.328  [MainThread]  INFO:Current Gain Setting 16: 0.256
+2025/11/16 22:16:02.328  [Thread-2]  INFO:Sensor ADS1015 started
+2025/11/16 22:16:02.331  [MainThread]  INFO:Configuring MCP4725
+2025/11/16 22:16:02.351  [MainThread]  INFO:Set DAC voltage: 1.02
+2025/11/16 22:16:02.352  [Thread-3]  INFO:Sensor MCP4725 started
+2025/11/16 22:16:02.352  [MainThread]  INFO:Configuring Inertial
+2025/11/16 22:16:02.353  [Thread-4]  INFO:Sensor Inertial started
+2025/11/16 22:16:02.353  [MainThread]  INFO:Configuring IMX5-Sensors
+2025/11/16 22:16:02.364  [Thread-5]  INFO:Sensor IMX5-Sensors started
+2025/11/16 22:16:02.372  [MainThread]  INFO:Configuring LM76-Temp
+2025/11/16 22:16:02.388  [Thread-6]  INFO:Sensor LM76-Temp started
+2025/11/16 22:16:02.499  [MainThread]  INFO:b''
+2025/11/16 22:16:02.600  [MainThread]  INFO:b''
+2025/11/16 22:16:02.701  [MainThread]  INFO:b''
+2025/11/16 22:16:02.801  [MainThread]  INFO:b''
+2025/11/16 22:16:02.902  [MainThread]  INFO:b''
+2025/11/16 22:16:03.012  [MainThread]  INFO:b''
+2025/11/16 22:16:03.123  [MainThread]  INFO:b''
+2025/11/16 22:16:03.234  [MainThread]  INFO:b''
+2025/11/16 22:16:03.344  [MainThread]  INFO:b''
+2025/11/16 22:16:03.455  [MainThread]  INFO:b''
+2025/11/16 22:16:03.565  [MainThread]  INFO:b''
+2025/11/16 22:16:03.682  [MainThread]  INFO:b''
+2025/11/16 22:16:03.792  [MainThread]  INFO:b''
+2025/11/16 22:16:03.903  [MainThread]  INFO:b''
+2025/11/16 22:16:12.352  [Thread-3]  INFO:Sensor MCP4725 closed
+2025/11/16 22:26:24.009  [MainThread]  INFO:Caught signal Interrupt
+2025/11/16 22:26:24.010  [MainThread]  INFO:Flag has been raise
+2025/11/16 22:26:24.183  [Thread-1]  INFO:Closed ublox sensor ZED-F9P
+2025/11/16 22:26:24.183  [Thread-1]  INFO:Sensor ZED-F9P closed
+2025/11/16 22:26:24.403  [Thread-2]  INFO:Closed sensor ADS1015
+2025/11/16 22:26:24.404  [Thread-2]  INFO:Sensor ADS1015 closed
+2025/11/16 22:26:24.427  [Thread-4]  INFO:Sensor Inertial closed
+2025/11/16 22:26:24.437  [Thread-5]  INFO:Sensor IMX5-Sensors closed
+2025/11/16 22:26:24.453  [Thread-6]  INFO:Sensor LM76-Temp closed
