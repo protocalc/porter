@@ -131,17 +131,17 @@ def process_csv_file(filepath, remove_outliers_flag=False):
             parts = line.strip().split(',')
             if parts:
                 try:
-                    # Timestamp is in microseconds
-                    timestamp_us = int(parts[0])
-                    timestamps.append(timestamp_us)
+                    # Timestamp is in nanoseconds in first column
+                    timestamp_ns = int(parts[0])
+                    timestamps.append(timestamp_ns)
                 except (ValueError, IndexError):
                     continue
     
     timestamps = np.array(timestamps)
     
     # Calculate intervals in milliseconds
-    intervals_us = np.diff(timestamps)
-    intervals_ms = intervals_us / 1000.0
+    intervals_ns = np.diff(timestamps)
+    intervals_ms = intervals_ns / 1e6
     
     # Apply outlier rejection if requested
     if remove_outliers_flag:
