@@ -1,21 +1,13 @@
 local_development: False
 
-camera:
-  name: Sony
-  mode: video
-  program: MovieM
-  ISO: 100
-  shutter_speed: 0.000625
-  focus_distance: infinity
-
 source:
   name: VALON-5019
   port: /dev/ttyAMA4
   baudrate: 115200
   freq: 93
-  power: -6.5
+  power: -4
   mod_amp: 15
-  mod_freq: 37
+  mod_freq: 10
   mult_factor: 6
 
 sensors:
@@ -52,6 +44,12 @@ sensors:
             'RAWX',
             'SFRBX'
             ]
+        NMEA_MSG:
+          output_port: UART2
+          ID : [
+            'RMC',
+            'GST'
+          ]
     
     ADC_1:
       name: ADS1015
@@ -93,16 +91,36 @@ sensors:
           manufacturer: Varios
       configuration: 
         data_rate: 150
-        
-    Inclinometer_1:
-      name: Kernel-100
+
+    IMX5_1:
+      name: IMX5-Sensors
+      sensor_core: 2
       connection:
         type: serial
         parameters:
-          port: /dev/ttyAMA5
-          baudrate: 230400
+          device: /dev/ttyACM0
+          baudrate: 921600
       sensor_info:
-        type: Inclinometer
-        manufacturer: Inertial_Labs
+        type: IMX5
+        manufacturer: InertialSense
       configuration:
-         mode: KERNEL_CalibHR
+        imu_data_rate: 1000
+        ins_data_rate: 142
+        
+    LM76_1:
+      name: LM76-Temp
+      sensor_core: 2
+      connection:
+        type: I2C
+        parameters:
+          bus: 1
+          address: 0x4B
+      sensor_info:
+        type: LM76
+        manufacturer: TexasInstruments
+      configuration:
+        interval: 10
+        tcrit: 80
+        thyst: 2
+        tlow: 10
+        thigh: 64

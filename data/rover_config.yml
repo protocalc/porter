@@ -1,0 +1,126 @@
+local_development: False
+
+source:
+  name: VALON-5019
+  port: /dev/ttyAMA4
+  baudrate: 115200
+  freq: 93
+  power: -4
+  mod_amp: 15
+  mod_freq: 10
+  mult_factor: 6
+
+sensors:
+    GPS_1:
+      name: ZED-F9P
+      sensor_core: 3
+      connection:
+        type: serial
+        parameters:
+          port: /dev/ttyAMA0
+          baudrate: 115200
+      sensor_info:
+        type: GPS
+        manufacturer: UBlox
+      configuration:
+        NMEA1:
+          output:
+            port: UART1
+            set: False
+        UBX:
+          output:
+            port: UART1
+            set: True
+        RATE:
+          value: 2
+        UBX_MSG:
+          output_port: UART1
+          NAV: [
+            'POSECEF',
+            'POSLLH',
+            'CLOCK'
+            ]
+          RXM: [
+            'RAWX',
+            'SFRBX'
+            ]
+        NMEA_MSG:
+          output_port: UART2
+          ID : [
+            'RMC',
+            'GST'
+          ]
+    
+    ADC_1:
+      name: ADS1015
+      sensor_core: 1
+      connection:
+        type: I2C
+        parameters:
+          bus: 6
+      sensor_info:
+          type: ADC
+          manufacturer: ADS
+      configuration: 
+        gain: 16
+        data_rate: 1600
+
+    DAC_1:
+      name: MCP4725
+      connection:
+        type: I2C
+        parameters:
+          bus: 1
+          address: 0x60
+      sensor_info:
+          type: DAC
+          manufacturer: MCP
+      configuration: 
+        voltage: 1.02
+        max_voltage: 3.3
+
+    INERTIAL_1:
+      name: Inertial
+      sensor_core: 2
+      connection:
+        type: I2C
+        parameters:
+          bus: 4
+      sensor_info:
+          type: Inertial
+          manufacturer: Varios
+      configuration: 
+        data_rate: 150
+
+    IMX5_1:
+      name: IMX5-Sensors
+      sensor_core: 2
+      connection:
+        type: serial
+        parameters:
+          device: /dev/ttyACM0
+          baudrate: 921600
+      sensor_info:
+        type: IMX5
+        manufacturer: InertialSense
+      configuration:
+        imu_data_rate: 1000
+        ins_data_rate: 142
+        
+    LM76_1:
+      name: LM76-Temp
+      sensor_core: 2
+      connection:
+        type: I2C
+        parameters:
+          bus: 1
+          address: 0x4B
+      sensor_info:
+        type: LM76
+        manufacturer: TexasInstruments
+      configuration:
+        interval: 10
+        tcrit: 10
+        thyst: 2
+        tlow: 15
+        thigh: 40
