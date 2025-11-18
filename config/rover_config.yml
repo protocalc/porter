@@ -120,7 +120,7 @@ sensors:
         manufacturer: TexasInstruments
       configuration:
         interval: 10
-        tcrit: 10
+        tcrit: 80
         thyst: 2
-        tlow: 15
-        thigh: 40
+        tlow: 10
+        thigh: 64
