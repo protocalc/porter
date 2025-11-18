@@ -245,6 +245,20 @@ def main():
     
     print("\nProcessing sensor data files...")
     print("=" * 60)
+
+    # Process LM76 CSV file
+    lm76_files = list(data_dir.glob('LM76-Temp_*.csv'))
+    if lm76_files:
+        lm76_file = lm76_files[0]
+        print(f"\nProcessing: {lm76_file.name}")
+        intervals = process_csv_file(lm76_file, remove_outliers_flag=False)
+        
+        if intervals is not None and len(intervals) > 0:
+            output_path = None if args.show else output_dir / 'lm76_timing_histogram.png'
+            plot_timing_histogram(intervals, 'LM76', output_path)
+            print(f"  Records: {len(intervals) + 1}")
+            print(f"  Mean interval: {np.mean(intervals):.2f} ms ({1000/np.mean(intervals):.1f} Hz)")
+            print(f"  Std: {np.std(intervals):.4f} ms")
     
     # Process IMU CSV file
     imu_files = list(data_dir.glob('*_imu.csv'))
@@ -270,6 +284,20 @@ def main():
         if intervals is not None and len(intervals) > 0:
             output_path = None if args.show else output_dir / 'ins_timing_histogram.png'
             plot_timing_histogram(intervals, 'INS', output_path)
+            print(f"  Records: {len(intervals) + 1}")
+            print(f"  Mean interval: {np.mean(intervals):.2f} ms ({1000/np.mean(intervals):.1f} Hz)")
+            print(f"  Std: {np.std(intervals):.4f} ms")
+
+    # Process INL2 CSV file
+    inl2_files = list(data_dir.glob('*_inl2.csv'))
+    if inl2_files:
+        inl2_file = inl2_files[0]
+        print(f"\nProcessing: {inl2_file.name}")
+        intervals = process_csv_file(inl2_file, remove_outliers_flag=False)
+        
+        if intervals is not None and len(intervals) > 0:
+            output_path = None if args.show else output_dir / 'inl2_timing_histogram.png'
+            plot_timing_histogram(intervals, 'INL2', output_path)
             print(f"  Records: {len(intervals) + 1}")
             print(f"  Mean interval: {np.mean(intervals):.2f} ms ({1000/np.mean(intervals):.1f} Hz)")
             print(f"  Std: {np.std(intervals):.4f} ms")
