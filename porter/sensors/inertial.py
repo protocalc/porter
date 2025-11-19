@@ -30,7 +30,7 @@ class Inertial:
         if self.core is not None:
             cmd += f" --core {int(self.core)}"
             
-        print(f"Running command: {cmd}")
+        # print(f"Running command: {cmd}")
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid) 
         # Loop until told to close
 

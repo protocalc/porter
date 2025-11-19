@@ -32,7 +32,7 @@ class IMX5SensorModule:
             cmd += f" --core {int(self.core)}"
 
         logger.info(f"Running command: {cmd}")
-        print(f"Running command: {cmd}")
+        # print(f"Running command: {cmd}")
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
         # Loop until told to close
 
