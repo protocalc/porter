@@ -6,5 +6,6 @@
 *.pck
 .*
 plot_venv/
+venv/
 requirements.txt
 data/
