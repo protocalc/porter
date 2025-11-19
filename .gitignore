@@ -5,6 +5,6 @@
 *.pyc
 *.pck
 .*
-venv/
+plot_venv/
 requirements.txt
 data/
