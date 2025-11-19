@@ -113,6 +113,7 @@ def main():
     if not os.path.exists(home_dir + "/data/" + date + "/sensors_data"):
         os.mkdir(home_dir + "/data/" + date + "/sensors_data")
         sensor_path = home_dir + "/data/" + date + "/sensors_data/"
+        camera_path = home_dir + "/data/" + date + "/camera_data/"
 
     for sig in signal_to_catch:
         signal.signal(sig, handler)
@@ -178,11 +179,20 @@ def main():
         if "camera" in config.keys() and not config["local_development"]:
 
             try:
-                threads.Camera(
-                    camera_config=config["camera"],
-                    flag=flag,
-                    daemon=True,
-                ).start()
+                if config["camera"]["name"] == 'Alvium':   
+                    threads.AlviumCamera(
+                        camera_config=config["camera"],
+                        flag=flag,
+                        path=camera_path,
+                        daemon=False,
+                    ).start()
+                elif config["camera"]["name"] == 'Sony':
+                    threads.SonyCamera(
+                        camera_config=config["camera"],
+                        flag=flag,
+                        path=camera_path,
+                        daemon=True,
+                    ).start()
 
                 time.sleep(2)
 

@@ -5,6 +5,8 @@ import threading
 import time
 import multiprocessing
 import queue
+import subprocess
+import signal
 
 try:
     from sour_core import sony
@@ -57,8 +59,71 @@ class Sensors(threading.Thread):
         # Can only get here if shutdown flag is set
         logger.info(f"Sensor {self.sensor_name} closed")
 
+class AlviumCamera(threading.Thread):
 
-class Camera(threading.Thread):
+    def __init__(
+        self,
+        camera_config,
+        path,
+        flag,
+        *args,
+        **kwargs,
+    ):
+        '''
+        Class to create a thread for the camera
+
+        Parameters:
+            camera (Object): camera object
+            flag (threading.Event): flag to communicate to the thread a particular event happened
+            camera_mode (str): camera mode
+            fps (float): number of fps in case of photo mode
+        '''
+        super().__init__(*args, **kwargs)
+
+        self.camera_config = camera_config
+        self.path = path
+
+        self.camera_name = self.camera_config["name"]
+        self.shutdown_flag = flag
+
+    def run(self):
+        self.frame_rate = self.camera_config.get("frame_rate", 5)
+        self.mode = self.camera_config.get("mode", 'trigger')
+        self.core = self.camera_config.get("core", None)
+        self.verbosity = self.camera_config.get("verbosity", False)
+        self.roi = self.camera_config.get("roi", None)
+        self.processing = self.camera_config.get("processing", False)
+        self.exposure = self.camera_config.get("exposure", None)
+        self.output = self.path
+
+        cmd = f"alvium --framerate {self.frame_rate} --mode {self.mode}"
+        if self.verbosity == True:
+            cmd += f" --debug"
+        if self.processing == True:
+            cmd += f" --processing"
+        if self.exposure is not None:
+            cmd += f" --exposure {self.exposure}"
+        if self.roi is not None:
+            cmd += f" --roi {str(self.roi)}"
+        if self.output is not None:
+            cmd += f" --output {self.output}"
+        if self.core is not None:
+            cmd += f" --core {int(self.core)}"
+        self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+
+        while not self.shutdown_flag.is_set():
+            time.sleep(1)
+
+        self.close()
+
+    def close(self):
+        if self.process is not None:
+            os.killpg(os.getpgid(self.process.pid), signal.SIGINT)
+            self.process = None
+
+        logger.info(f"Closed sensor {self.name}")
+
+class SonyCamera(threading.Thread):
 
     def __init__(
         self,
