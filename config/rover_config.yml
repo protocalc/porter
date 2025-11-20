@@ -124,3 +124,17 @@ sensors:
         thyst: 2
         tlow: 10
         thigh: 64
+
+camera:
+  name: Sony
+  mode: video
+  program: MovieM
+  ISO: 100
+  shutter_speed: 0.001
+  focus_distance: infinity#camera:
+  name: Sony
+  mode: video
+  program: MovieM
+  ISO: 100
+  shutter_speed: 0.001
+  focus_distance: infinity
