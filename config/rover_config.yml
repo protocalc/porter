@@ -131,4 +131,4 @@ camera:
   program: MovieM
   ISO: 100
   shutter_speed: 0.001
-  focus_distance: infinity#camera:
+  focus_distance: infinity
