@@ -126,7 +126,9 @@ sensors:
         thigh: 64
 
 camera:
-   name: Alvium
-   framerate: 5
-   mode: trigger
-   core: 3
+  name: Sony
+  mode: video
+  program: MovieM
+  ISO: 100
+  shutter_speed: 0.001
+  focus_distance: infinity
