@@ -190,7 +190,6 @@ def main():
                     threads.SonyCamera(
                         camera_config=config["camera"],
                         flag=flag,
-                        path=camera_path,
                         daemon=True,
                     ).start()
 
