@@ -1,14 +1,14 @@
 local_development: False
 
-source:
-  name: VALON-5019
-  port: /dev/ttyAMA4
-  baudrate: 115200
-  freq: 93
-  power: -4
-  mod_amp: 15
-  mod_freq: 10
-  mult_factor: 6
+# source:
+#   name: VALON-5019
+#   port: /dev/ttyAMA4
+#   baudrate: 115200
+#   freq: 93
+#   power: -4
+#   mod_amp: 15
+#   mod_freq: 10
+#   mult_factor: 6
 
 sensors:
     GPS_1:
