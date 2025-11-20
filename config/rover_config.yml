@@ -122,7 +122,7 @@ sensors:
         interval: 10
         tcrit: 80
         thyst: 2
-        tlow: 27
+        tlow: 33
         thigh: 64
 
 camera:
