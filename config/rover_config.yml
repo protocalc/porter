@@ -76,7 +76,7 @@ sensors:
           type: DAC
           manufacturer: MCP
       configuration: 
-        voltage: 1.02
+        voltage: 2.0
         max_voltage: 3.3
 
     INERTIAL_1:
@@ -122,7 +122,7 @@ sensors:
         interval: 10
         tcrit: 80
         thyst: 2
-        tlow: 10
+        tlow: 27
         thigh: 64
 
 camera:
