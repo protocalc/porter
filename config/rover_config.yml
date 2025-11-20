@@ -121,8 +121,8 @@ sensors:
       configuration:
         interval: 10
         tcrit: 80
-        thyst: 2
-        tlow: 33
+        thyst: 0
+        tlow: 37
         thigh: 64
 
 camera:
