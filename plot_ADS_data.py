@@ -139,6 +139,7 @@ def plot_ads_data(ads_file, output_dir, gain=8):
             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
     
     plt.tight_layout()
+    plt.xlim(100, 100.5) 
     
     # Save the plot
     output_path = Path(output_dir) / 'ads1015_voltage.png'
