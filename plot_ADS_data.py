@@ -121,7 +121,7 @@ def plot_ads_data(ads_file, output_dir, gain=8):
     
     ax.set_xlabel('Time (s)', fontsize=11)
     ax.set_ylabel('Voltage (V)', fontsize=11)
-    ax.set_title(f'ADS1015 ADC Data (Gain={gain}, Range=±{ADS1015_VALUE_GAIN[gain]} V)', 
+    ax.set_title(f'ADS1015 ADC Data', 
                  fontsize=12, fontweight='bold')
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=10)
