@@ -213,8 +213,8 @@ def main():
     
     parser.add_argument(
         '--data-dir',
-        default='data/sensors_data',
-        help='Directory containing sensor data files (default: data/sensors_data)'
+        default='data/',
+        help='Directory containing sensor data files (default: data/)'
     )
     
     parser.add_argument(
