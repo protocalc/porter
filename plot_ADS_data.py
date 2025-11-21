@@ -99,7 +99,7 @@ def plot_ads_data(ads_file, output_dir, gain=8):
     time_s = (timestamps - timestamps[0]) / 1e6
     
     # Convert to voltage
-    voltages = convert_to_voltage(values, gain)
+    voltages = values
     
     # Calculate statistics
     mean_voltage = np.mean(voltages)
@@ -134,9 +134,9 @@ def plot_ads_data(ads_file, output_dir, gain=8):
     stats_text += f'Min: {min_voltage:.4f} V\n'
     stats_text += f'Max: {max_voltage:.4f} V'
     
-    ax.text(0.02, 0.98, stats_text, transform=ax.transAxes,
-            fontsize=9, verticalalignment='top',
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    #ax.text(0.02, 0.98, stats_text, transform=ax.transAxes,
+    #        fontsize=9, verticalalignment='top',
+    #        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
     
     plt.tight_layout()
     plt.xlim(100, 100.5) 
