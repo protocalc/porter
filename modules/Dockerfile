@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     libusb-1.0-0-dev:arm64 \
     libudev-dev \
     libudev-dev:arm64 \
+    libopencv-dev:arm64 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Rust via rustup
@@ -47,6 +48,10 @@ ENV PKG_CONFIG_SYSROOT_DIR=/
 # Copy the CMake toolchain file for C++ cross-compilation
 COPY toolchain-rpi.cmake /opt/toolchain-rpi.cmake
 ENV CMAKE_TOOLCHAIN_FILE=/opt/toolchain-rpi.cmake
+
+# Set Vimba X SDK path for Alvium Camera Module
+# The SDK is mounted via volume at /workspace/Alvium-Camera-Module/alvium-sdk
+ENV VIMBA_X_HOME=/workspace/Alvium-Camera-Module/alvium-sdk
 
 WORKDIR /workspace
 
