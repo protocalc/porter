@@ -1,9 +1,0 @@
-2025-11-20T17:13:59.35867616Z [INFO] Logging to: ./LM76.csv
-2025-11-20T17:13:59.359470103Z [INFO] Temperature: 35.00°C, Critical: false, High: false, Low: false
-2025-11-20T17:14:00.359549268Z [INFO] Temperature: 35.00°C, Critical: false, High: false, Low: false
-2025-11-20T17:14:01.359632453Z [INFO] Temperature: 35.00°C, Critical: false, High: false, Low: false
-2025-11-20T17:14:02.359687952Z [INFO] Temperature: 34.94°C, Critical: false, High: false, Low: false
-2025-11-20T17:14:03.359772006Z [INFO] Temperature: 35.06°C, Critical: false, High: false, Low: false
-2025-11-20T17:14:04.359832987Z [INFO] Temperature: 35.00°C, Critical: false, High: false, Low: false
-2025-11-20T17:14:05.35940095Z [INFO] Shutting down gracefully...
-2025-11-20T17:14:05.359482875Z [INFO] CSV data flushed successfully
