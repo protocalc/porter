@@ -1,16 +1,19 @@
 local_development: False
 
-camera:
-  name: Sony
-  mode: video
-  program: MovieM
-  ISO: 100
-  shutter_speed: 0.001
-  focus_distance: infinity
+# source:
+#   name: VALON-5019
+#   port: /dev/ttyAMA4
+#   baudrate: 115200
+#   freq: 93
+#   power: -4
+#   mod_amp: 15
+#   mod_freq: 10
+#   mult_factor: 6
 
 sensors:
     GPS_1:
       name: ZED-F9P
+      sensor_core: 3
       connection:
         type: serial
         parameters:
@@ -24,10 +27,6 @@ sensors:
           output:
             port: UART1
             set: False
-        NMEA2:
-          output:
-            port: UART2
-            set: True
         UBX:
           output:
             port: UART1
@@ -38,7 +37,8 @@ sensors:
           output_port: UART1
           NAV: [
             'POSECEF',
-            'POSLLH'
+            'POSLLH',
+            'CLOCK'
             ]
           RXM: [
             'RAWX',
@@ -47,44 +47,24 @@ sensors:
         NMEA_MSG:
           output_port: UART2
           ID : [
-            'GGA',
-            'GSV',
-            'GSA',
-            'GST',
-            'GNS',
-            'ZDA'
+            'RMC',
+            'GST'
           ]
-
-    Inclinometer_1:
-      name: Kernel-100
-      connection:
-        type: serial
-        parameters:
-          port: /dev/ttyAMA5
-          baudrate: 115200
-      sensor_info:
-        type: Inclinometer
-        manufacturer: Inertial_Labs
-      configuration:
-        mode: KERNEL_CalibHR
     
     ADC_1:
       name: ADS1015
+      sensor_core: 1
       connection:
         type: I2C
         parameters:
           bus: 6
-          address: 0x48
-          mode: differential
-          channels: [0,1]
       sensor_info:
           type: ADC
           manufacturer: ADS
       configuration: 
         gain: 16
-        adc_rate: 1600
-        reading_rate: 350
-        
+        data_rate: 1600
+
     DAC_1:
       name: MCP4725
       connection:
@@ -96,16 +76,59 @@ sensors:
           type: DAC
           manufacturer: MCP
       configuration: 
-        voltage: 1.8
+        voltage: 2.0
         max_voltage: 3.3
 
-source:
-  name: VALON-5019
-  port: /dev/ttyAMA4
-  baudrate: 115200
-  freq: 90
-  power: -6.5
-  mod_amp: 15
-  mod_freq: 37
-  mult_factor: 6
+    INERTIAL_1:
+      name: Inertial
+      sensor_core: 2
+      connection:
+        type: I2C
+        parameters:
+          bus: 4
+      sensor_info:
+          type: Inertial
+          manufacturer: Varios
+      configuration: 
+        data_rate: 150
 
+    IMX5_1:
+      name: IMX5-Sensors
+      sensor_core: 2
+      connection:
+        type: serial
+        parameters:
+          device: /dev/ttyACM0
+          baudrate: 921600
+      sensor_info:
+        type: IMX5
+        manufacturer: InertialSense
+      configuration:
+        imu_data_rate: 1000
+        ins_data_rate: 142
+        
+    LM76_1:
+      name: LM76-Temp
+      sensor_core: 2
+      connection:
+        type: I2C
+        parameters:
+          bus: 1
+          address: 0x4B
+      sensor_info:
+        type: LM76
+        manufacturer: TexasInstruments
+      configuration:
+        interval: 10
+        tcrit: 80
+        thyst: 0
+        tlow: 37
+        thigh: 64
+
+camera:
+  name: Sony
+  mode: video
+  program: MovieM
+  ISO: 100
+  shutter_speed: 0.001
+  focus_distance: infinity

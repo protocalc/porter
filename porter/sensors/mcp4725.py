@@ -1,10 +1,11 @@
 import board
 import busio
 import time
+import logging
 
 import adafruit_mcp4725
 
-
+logger = logging.getLogger("mainlogger")
 
 class MCP4725:
 
@@ -22,11 +23,13 @@ class MCP4725:
 
         bits = 4095
         
-        print(int(bits*config['voltage']/config['max_voltage']))
+        volt = config['voltage']
+        
+        logger.info(f'Set DAC voltage: {volt}')
 
         self.dac.raw_value = int(bits*config['voltage']/config['max_voltage'])
 
-    def read_continous_binary(self, fs, flag, sensor_lock):
+    def read_continous_binary(self, fs, flag):
         
         time.sleep(10)
         

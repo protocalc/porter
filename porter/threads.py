@@ -1,16 +1,26 @@
+import os
 import copy
 import logging
 import threading
 import time
+import multiprocessing
+import queue
+import subprocess
+import signal
 
-logger = logging.getLogger()
+try:
+    from sour_core import sony
+except ModuleNotFoundError:
+    pass
+
+logger = logging.getLogger("mainlogger")
+
 
 class Sensors(threading.Thread):
 
     def __init__(
         self,
         handler,
-        sensor_lock,
         flag,
         date,
         path,
@@ -22,8 +32,6 @@ class Sensors(threading.Thread):
 
         Parameters:
             conn (Object): object with the connection to a specific sensor
-            sensor_lock (threading.lock): lock to preserve multiple attempts to
-                                          access the sensor queue
             flag (threading.Event): flag to communicate to the thread a
                                     particular event happened
             date (str): string with the date and time at the program start
@@ -32,44 +40,95 @@ class Sensors(threading.Thread):
 
         super().__init__(*args, **kwargs)
 
-        self.sensor_lock = sensor_lock
-        
-        self.sensor_handler = handler
-        
         self.sensor_name = sensor_name
-        
-        name = path + self.sensor_name + "_" + date + ".bin"
-        try:
-            self.datafile = open(name, "r+b")
-        except FileNotFoundError:
-            self.datafile = open(name, "x+b")
 
+        self.datafile_name = path + self.sensor_name + "_" + date + ".bin"
         self.shutdown_flag = flag
+        self.handler = handler
+
+        # Initialize the sensor and start the sensor handler thread
+        logger.info(f"Configuring {self.sensor_name}")
+        self.handler._connection()
+        self.handler._configuration()
 
     def run(self):
-        
-        self.sensor_handler._connection()
+        # Block forever, getting data from the handler thread through the queue, until shutdown
+        logger.info(f"Sensor {self.sensor_name} started")
+        self.handler.obj.read_continous_binary(self.shutdown_flag, self.datafile_name)
 
-        logging.info(f'Configuring {self.sensor_name}')
-        
-        self.sensor_handler._configuration()
+        # Can only get here if shutdown flag is set
+        logger.info(f"Sensor {self.sensor_name} closed")
 
-        logging.info(f"Sensor {self.sensor_name} started")
-        
-        with self.datafile as binary:
-            self.sensor_handler.obj.read_continous_binary(binary, self.shutdown_flag, self.sensor_lock)
-
-class Camera(threading.Thread):
+class AlviumCamera(threading.Thread):
 
     def __init__(
         self,
-        camera,
+        camera_config,
+        path,
         flag,
-        mode,
-        camera_name=None,
-        fps=2,
-        frames=None,
-        duration=None,
+        *args,
+        **kwargs,
+    ):
+        '''
+        Class to create a thread for the camera
+
+        Parameters:
+            camera (Object): camera object
+            flag (threading.Event): flag to communicate to the thread a particular event happened
+            camera_mode (str): camera mode
+            fps (float): number of fps in case of photo mode
+        '''
+        super().__init__(*args, **kwargs)
+
+        self.camera_config = camera_config
+        self.path = path
+
+        self.camera_name = self.camera_config["name"]
+        self.shutdown_flag = flag
+
+    def run(self):
+        self.frame_rate = self.camera_config.get("frame_rate", 5)
+        self.mode = self.camera_config.get("mode", 'trigger')
+        self.core = self.camera_config.get("core", None)
+        self.verbosity = self.camera_config.get("verbosity", False)
+        self.roi = self.camera_config.get("roi", None)
+        self.processing = self.camera_config.get("processing", False)
+        self.exposure = self.camera_config.get("exposure", None)
+        self.output = self.path
+
+        cmd = f"alvium --framerate {self.frame_rate} --mode {self.mode}"
+        if self.verbosity == True:
+            cmd += f" --debug"
+        if self.processing == True:
+            cmd += f" --processing"
+        if self.exposure is not None:
+            cmd += f" --exposure {self.exposure}"
+        if self.roi is not None:
+            cmd += f" --roi {str(self.roi)}"
+        if self.output is not None:
+            cmd += f" --output {self.output}"
+        if self.core is not None:
+            cmd += f" --core {int(self.core)}"
+        self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+
+        while not self.shutdown_flag.is_set():
+            time.sleep(1)
+
+        self.close()
+
+    def close(self):
+        if self.process is not None:
+            os.killpg(os.getpgid(self.process.pid), signal.SIGINT)
+            self.process = None
+
+        logger.info(f"Closed sensor {self.name}")
+
+class SonyCamera(threading.Thread):
+
+    def __init__(
+        self,
+        camera_config,
+        flag,
         *args,
         **kwargs,
     ):
@@ -87,63 +146,106 @@ class Camera(threading.Thread):
 
         super().__init__(*args, **kwargs)
 
-        self.camera = camera
+        self.camera_config = camera_config
 
-        self.camera_name = camera_name
-        self.mode = mode
-
-        if fps is not None:
-            self.timing = 1 / fps
-        else:
-            self.timing = None
-
-        if frames is not None:
-            self.frames = int(frames)
-        else:
-            self.frames = int(1e9)
-
-        if duration is not None:
-            self.duration = duration
-        else:
-            self.duration = 20 * 60
+        self.camera_name = self.camera_config["name"]
 
         self.shutdown_flag = flag
 
     def run(self):
+        try:
+            camera = sony.SONYconn(self.camera_name, log=logger)
+        except IndexError:
+            self.shutdown_flag.set()
+            logger.info("Camera not Found, stopping the code")
+        
+        if not self.shutdown_flag.is_set():
+            camera.initialize_camera()
 
-        logging.info(f"Camera {self.camera_name} started")
+            time.sleep(0.2)
 
-        if self.mode == "video":
+            camera.messageHandler(["datetime", 0.04, 1e-3])
+
+            time.sleep(0.1)
+
+            camera.messageHandler(["programmode", self.camera_config["program"]])
+
+            time.sleep(0.1)
+
+            if "ISO" in self.camera_config.keys():
+                camera.messageHandler(["iso", self.camera_config["ISO"]])
+                time.sleep(0.1)
+
+            if "shutter_speed" in self.camera_config.keys():
+                camera.messageHandler(["shutterspeed", self.camera_config["shutter_speed"]])
+                time.sleep(0.1)
+
+            if "focus_distance" in self.camera_config.keys():
+                camera.messageHandler(
+                    ["focusdistance", self.camera_config["focus_distance"]]
+                )
+                time.sleep(0.1)
+
+            logger.info(f"Camera {self.camera_name} Configured")
+
+        if self.camera_config["mode"] == "video":
+            if "duration" in self.camera_config.keys():
+                duration = self.camera_config["duration"]
+            else:
+                duration = 20 * 60
+
             flag = True
-            video_chunks = 30 * 60 
-            secs_remaining = copy.copy(self.duration)
+            video_chunks = 30 * 60
+            secs_remaining = copy.copy(duration)
             while not self.shutdown_flag.is_set():
                 time.sleep(0.1)
-                self.camera.messageHandler(["videocontrol"])
+                camera.messageHandler(["videocontrol"])
                 if flag:
                     if secs_remaining < video_chunks:
-                        logging.info(f"RECORDING {secs_remaining}")
+                        logger.info(
+                            f"Camera {self.camera_name} starts recording, remaining {secs_remaining} s"
+                        )
                         self.shutdown_flag.wait(secs_remaining)
-                        self.camera.messageHandler(["videocontrol"])
+                        camera.messageHandler(["videocontrol"])
                         self.shutdown_flag.set()
                         flag = not flag
-                        logging.info("STOPPING")
+                        logger.info(f"Camera {self.camera_name} stops recording")
                         break
-                    else: 
+                    else:
                         self.shutdown_flag.wait(video_chunks)
-                        self.camera.messageHandler(["videocontrol"])
+                        camera.messageHandler(["videocontrol"])
                         time.sleep(2)
                         secs_remaining -= video_chunks
                 else:
                     flag = not flag
 
-        elif self.mode == "photo":
+        elif self.camera_config["mode"] == "photo":
+            if "fps" in self.camera_config.keys():
+                fps = self.camera_config["fps"]
+            else:
+                fps = 1
+
+            if "frames" in self.camera_config.keys():
+                frames = self.camera_config["frames"]
+            else:
+                frames = 1e9
+
+            timing = 1 / fps
+
             photo_count = 0
             while not self.shutdown_flag.is_set():
                 t = time.time()
-                self.camera.messageHandler(["capture"])
-                time.sleep(self.timing - (time.time() - t))
+                camera.messageHandler(["capture"])
+
+                while (time.time() - t) < timing:
+                    pass
 
                 photo_count += 1
-                if photo_count > self.frames:
+                if photo_count > frames:
                     break
+
+        logger.info(f"Camera {self.camera_name} stopped")
+        try:
+            camera.close_usb_connection()
+        except UnboundLocalError:
+            pass
