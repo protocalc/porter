@@ -1,194 +1,193 @@
 import datetime
 import logging
 import os
-import queue
 import signal
 import sys
 import threading
 import time
-
-import subprocess
-
 import yaml
+import argparse
 
+from exceptions import ServiceExitError, FlagSetError
+import parameters as params
+
+# define timestamp for data saving
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+# create paths
+path = os.path.dirname(os.path.realpath(__file__))
+home_directory = os.environ["HOME"]
+data_directory = os.path.join(home_directory, "data")
+working_data_directory = os.path.join(data_directory, timestamp)
+logfile_path = os.path.join(working_data_directory, params.logfile_name)
+current_symlink_path = os.path.join(data_directory, params.current_symlink_name)
+
+
+# create directories if they do not exist
+if not os.path.exists(data_directory):
+    os.mkdir(data_directory)
+if not os.path.exists(working_data_directory):
+    os.mkdir(working_data_directory)
+
+# set up logging
+logging.basicConfig(
+    format=params.LOGGING_FORMAT_FILE,
+    datefmt=params.LOGGING_DATE_FORMAT,
+    level=params.LOGGING_LEVEL,
+    handlers=[
+        logging.FileHandler(logfile_path),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+
+# create a symlink to the current data directory
+if os.path.exists(current_symlink_path):
+    os.remove(current_symlink_path)
+    logger.info(f"Removed existing symlink {current_symlink_path}")
+os.symlink(working_data_directory, current_symlink_path)
+logger.info(f"Created symlink {current_symlink_path} -> {working_data_directory}")
+
+# import modules that use the logger
 import porter.sensors.sensors_handler as sh
 import porter.threads as threads
 import porter.valon as valon
 
-path = os.path.dirname(os.path.realpath(__file__))
-home_dir = os.environ["HOME"]
-
-date = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-
-if not os.path.exists(home_dir + "/data"):
-    os.mkdir(home_dir + "/data")
-if not os.path.exists(path + "/data/" + date):
-    os.mkdir(home_dir + "/data/" + date)
-
-logging.basicConfig(
-    filename=home_dir + "/data/" + date + "/file.log",
-    filemode="w",
-    format="%(asctime)s.%(msecs)03d  [%(threadName)s]  %(levelname)s:%(message)s",
-    datefmt="%Y/%m/%d %H:%M:%S",
-    level=logging.DEBUG,
-)
-
-logger = logging.getLogger("mainlogger")
-logger.setLevel(logging.DEBUG)
-
-logfile = logging.FileHandler(home_dir + "/data/" + date + "/file.log")
-logfile.setLevel(logging.DEBUG)
-
-formatter = logging.Formatter(
-    "%(asctime)s.%(msecs)03d  [%(threadName)s]  %(levelname)s:%(message)s",
-    datefmt="%Y/%m/%d %H:%M:%S"
-    )
-logfile.setFormatter(formatter)
-
-logger.addHandler(logfile)
-
-log_path = home_dir + "/data/" + date + "/file.log"
-
-try:
-    from sour_core import sony
-except ModuleNotFoundError:
-    pass
-
-"""
-Classes and Function to deal with interrupting the code
-"""
-
-
-class ServiceExitError(Exception):
-    """
-    Custom exception which is used to trigger the clean exit
-    of all running threads and the main program.
-    """
-
-    pass
-
-
-class FlagSetError(Exception):
-
-    pass
-
 
 def handler(signum, frame):
-    print("Signal Sent")
-    logger.info(f"Caught signal {signal.strsignal(signum)}")
+    logger.exception(f"Caught signal {signal.strsignal(signum)}")
     raise ServiceExitError
 
 
 def capture_flag(flag):
-    logger.info(f"Flag has been set in a Thread")
     if flag.is_set():
+        logger.exception(f"Flag has been set in a Thread")
         raise FlagSetError
 
-
-signal_to_catch = [
-    signal.SIGINT,
-    signal.SIGTERM,
-]
-
+# arg parser for command line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("-c", "--config_file", type=str, help="Path to the config file", default="config/default.yml")
 
 def main():
-    cfg_name = sys.argv[1]
-    
-    print(datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+    logger.info("Starting main program...")
+
+    args = parser.parse_args()
+    config_file = args.config_file
 
     flag = threading.Event()
 
-    cfg_path = path + "/" + cfg_name
-    
-    cfg_path_copy = home_dir + "/data/" + date + "/" + cfg_name.split("/")[-1]
-
-    status = True
-
-    with open(cfg_path, "r") as cfg:
+    # opening config file
+    config_path = f"{path}/{config_file}"
+    with open(config_path, "r") as cfg:
         config = yaml.safe_load(cfg)
-        logger.info(f"Loaded configuration {cfg_name}")
+        logger.info(f"Loaded configuration {config_file}")
     
-    os.popen(f"cp {cfg_path} {cfg_path_copy}")
-    
-    if not os.path.exists(home_dir + "/data/" + date + "/sensors_data"):
-        os.mkdir(home_dir + "/data/" + date + "/sensors_data")
-        sensor_path = home_dir + "/data/" + date + "/sensors_data/"
-        camera_path = home_dir + "/data/" + date + "/camera_data/"
+    # saving a copy of the config file in the data directory
+    config_path_copy = f"{working_data_directory}/{config_file.split('/')[-1]}"
+    with open(config_path_copy, "w") as cfg:
+        yaml.dump(config, cfg)
+        logger.info(f"Saved configuration {config_file} copy to {config_path_copy}")
 
-    for sig in signal_to_catch:
+    # define paths for sensors and camera data
+    sensor_path = f"{working_data_directory}/{params.sensors_folder_name}/"
+    camera_path = f"{working_data_directory}/{params.camera_folder_name}/"
+    if not os.path.exists(sensor_path):
+        os.mkdir(sensor_path)
+    if not os.path.exists(camera_path):
+        os.mkdir(camera_path)
+
+    # set up signal handlers
+    for sig in params.signal_to_catch:
         signal.signal(sig, handler)
-        
-    counter = 0
-    
-    # while True:
-        # try:
-            # result = subprocess.run(["gpsctl"], check=True, capture_output=True, text=True)
-            # logger.info(f"Current GPS devices connected to GPSD: {result.stdout}")
-            # break
-        # except:
-            # logger.info(f"Trying to recconect to GPSD")
-            # time.sleep(0.1)
-            # counter += 1
-            # if counter > 100:
-                # break
-
 
     time.sleep(1)
 
     try:
-        if "sensors" in config.keys():
+        local_development = config.get("local_development", False)
+        logging.info(f"Local development mode: {local_development}")
+
+        sensors = config.get("sensors", None)
+        source = config.get("source", None)
+        camera = config.get("camera", None)
+    
+        if sensors is not None:
+            logging.info("Starting sensor threads...")
             sensor_names = {}
             sensor_handler = {}
 
-            for i in config["sensors"].keys():
-                sensors_handler = sh.Handler(
-                    config["sensors"][i], local=config["local_development"]
-                )
+            for i in sensors.keys():
+                logging.info(f"Initializing sensor {i}")
+                sensors_handler = sh.Handler(sensors[i], local=local_development)
 
-                name = config["sensors"][i]["name"]
-
+                name = sensors[i]["name"]
                 sensor_handler[name] = sensors_handler
                 sensor_names[name] = name
 
             for i in sensor_handler.keys():
+                logging.info(f"Starting thread for sensor {i}")
                 threads.Sensors(
                     handler=sensor_handler[i],
                     flag=flag,
-                    date=date,
+                    date=timestamp,
                     path=sensor_path,
                     sensor_name=sensor_names[i],
                     daemon=False,
                 ).start()
-                
+                logging.info(f"Thread started for sensor {i}")
 
-        if "source" in config.keys():
-            synt = valon.Valon(config["source"]["port"], config["source"]["baudrate"])
-            synt.set_freq(config["source"]["freq"] / config["source"]["mult_factor"])
-            synt.set_pwr(config["source"]["power"])
-            if config["source"]["mod_freq"] > 0:
-                synt.set_amd(config["source"]["mod_amp"], config["source"]["mod_freq"])
+        if source is not None:
+            logging.info(f"Starting Valon synthesizer on port {source['port']} and baudrate {source['baudrate']}")
+            synt = valon.Valon(source["port"], source["baudrate"])
+            
+            logging.info(f"Setting Valon frequency to {source['freq'] / source['mult_factor']} Hz and power to {source['power']} dBm")
+            synt.set_freq(source["freq"] / source["mult_factor"])
+            synt.set_pwr(source["power"])
+
+            if source["mod_freq"] > 0:
+                logging.info(f"Setting Valon modulation frequency to {source['mod_freq']} Hz and amplitude to {source['mod_amp']}")
+                synt.set_amd(source["mod_amp"], source["mod_freq"])
             else:
+                logging.info(f"Disabling Valon amplitude modulation")
                 synt.set_amd(0, 0)
 
-            for i in range(10):
+            ATTEMPS = 10
+            valon_id = None
+            for i in range(ATTEMPS):
+                logging.info(f"Attempt {i+1}/{ATTEMPS} to get Valon ID...")
                 valon_id = synt.get_id()
                 time.sleep(0.01)
-            
+
+                if valon_id is not None:
+                    break
+            if valon_id is None:
+                logging.error("Failed to get Valon ID after multiple attempts.")
+                # raise Exception?
+            else:
+                logging.info(f"Valon synthesizer initialized with ID: {valon_id}")
+
             time.sleep(2)
 
-        if "camera" in config.keys() and not config["local_development"]:
-
+        if camera is not None and not local_development:
             try:
-                if config["camera"]["name"] == 'Alvium':   
-                    threads.AlviumCamera(
-                        camera_config=config["camera"],
+                if camera["name"] == 'Alvium_Starspec':   
+                    threads.AlviumCameraStarspec(
+                        camera_config=camera,
                         flag=flag,
                         path=camera_path,
                         daemon=False,
                     ).start()
-                elif config["camera"]["name"] == 'Sony':
+                elif camera["name"] == 'Alvium':
+                    threads.AlviumCamera(
+                        camera_config=camera,
+                        flag=flag,
+                        path=camera_path,
+                        daemon=False,
+                    ).start()
+                elif camera["name"] == 'Sony':
                     threads.SonyCamera(
-                        camera_config=config["camera"],
+                        camera_config=camera,
                         flag=flag,
                         daemon=True,
                     ).start()
@@ -196,32 +195,32 @@ def main():
                 time.sleep(2)
 
             except IndexError:
-                status = False
                 flag.set()
-                logger.info("Camera not Found, deleting data folder")
-                logger.info("This command is sent so that when the code")
-                logger.info("run at startup, we do not fill the data directory")
-
-                original_log_name = home_dir + "/data/" + date + "/file.log"
-
-                new_log_name = home_dir + "/data/file_" + date + ".log"
-                time.sleep(1)
-                os.popen(f"cp {original_log_name} {new_log_name}")
-                time.sleep(2)
-
-                import shutil
-
-                shutil.rmtree(home_dir + "/data/" + date)
 
         while not flag.is_set():
-            time.sleep(0.1)
+            time.sleep(0.2)
         
-        capture_flag(flag)
+        #capture_flag(flag)
 
     except (ServiceExitError, FlagSetError) as err:
-        logger.info(f"Flag has been raise")
+        logger.exception(f"Exiting main program due to {err.__class__.__name__}")
         flag.set()
 
+    # reset signal handlers to default
+    for sig in params.signal_to_catch:
+        signal.signal(sig, signal.SIG_DFL)
+
+    logger.info("Waiting for threads to finish...")
+    time.sleep(0.5)
+    for thread in threading.enumerate():
+        if thread is threading.current_thread():
+            continue
+        logger.info(f"Joining thread {thread.name}...")
+        thread.join(timeout=params.THREAD_JOIN_TIMEOUT)
+        if thread.is_alive():
+            logger.warning(f"Thread {thread.name} did not finish in time and is still alive.")
+        else:
+            logger.info(f"Thread {thread.name} has finished.")
 
 if __name__ == "__main__":
     main()

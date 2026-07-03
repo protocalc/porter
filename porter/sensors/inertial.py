@@ -1,14 +1,9 @@
 import logging
-import random
-import struct
-import time
-import array
-import queue
 import subprocess
 import os
 import signal
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 class Inertial:
 
@@ -26,7 +21,8 @@ class Inertial:
 
     def read_continous_binary(self, shutdown_flag, datafile_name):
         # Start the inertial process through the command line.
-        cmd = f"bin/inertial --rate {self.rate} --outputdir {datafile_name} --i2c-bus {self.bus}"
+        cmd = f"bin/inertial --rate {self.rate} --outputdir {datafile_name} --i2c-bus {self.bus} --no-imu"
+        logger.warning("Inertial sensors: IMU is disabled (hardcoded in porter/sensors/inertial.py)")
         if self.core is not None:
             cmd += f" --core {int(self.core)}"
             
@@ -35,7 +31,7 @@ class Inertial:
         # Loop until told to close
 
         while not shutdown_flag.is_set():
-            time.sleep(1)
+            shutdown_flag.wait(1)
 
         self.close()
 

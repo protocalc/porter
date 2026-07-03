@@ -2,16 +2,14 @@ import logging
 import time
 from datetime import datetime
 import io
-
 import copy
+import serial
 
 import pyubx2 as ubx
 from pynmeagps import NMEA_HDR
 
-import serial
 
-
-logger = logging.getLogger("mainlogger")
+logger = logging.getLogger(__name__)
 
 HEADER = b"\xb5\x62"
 

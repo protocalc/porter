@@ -6,11 +6,6 @@ import porter.sensors.ads1015 as ads
 import porter.sensors.inertial as inertial
 #import porter.sensors.ads1x15 as ads
 
-try:
-    import porter.sensors.ads1015 as ads
-except ModuleNotFoundError:
-    pass
-
 import porter.sensors.mcp4725 as mcp
 from porter.sensors import IMX5SensorModule as imx5
 from porter.sensors import LM76SensorModule as lm76

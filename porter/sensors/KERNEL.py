@@ -9,7 +9,7 @@ import struct
 import porter.sensors.KERNEL_utils as utils
 import porter.sensors.sensors_db.KERNEL as Kdb
 
-logger = logging.getLogger("mainlogger")
+logger = logging.getLogger(__name__)
 
 
 class KernelInertial:

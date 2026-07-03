@@ -3,18 +3,28 @@ import copy
 import logging
 import threading
 import time
-import multiprocessing
-import queue
 import subprocess
 import signal
 
+logger = logging.getLogger(__name__)
+
 try:
     from sour_core import sony
+    logger.info("Sony Camera module imported successfully")
 except ModuleNotFoundError:
+    logger.info("Sony Camera module not found")
+except Exception as e:
+    logger.error(f"Error importing Sony Camera module: {e}")
     pass
 
-logger = logging.getLogger("mainlogger")
-
+try:
+    import pyalvium
+    logger.info("Alvium Camera module imported successfully")
+except ModuleNotFoundError:
+    logger.info("Alvium Camera module not found")
+except Exception as e:
+    logger.error(f"Error importing Alvium Camera module: {e}")
+    pass
 
 class Sensors(threading.Thread):
 
@@ -59,7 +69,7 @@ class Sensors(threading.Thread):
         # Can only get here if shutdown flag is set
         logger.info(f"Sensor {self.sensor_name} closed")
 
-class AlviumCamera(threading.Thread):
+class AlviumCameraStarspec(threading.Thread):
 
     def __init__(
         self,
@@ -85,6 +95,7 @@ class AlviumCamera(threading.Thread):
 
         self.camera_name = self.camera_config["name"]
         self.shutdown_flag = flag
+        self.process = None
 
     def run(self):
         self.frame_rate = self.camera_config.get("frame_rate", 5)
@@ -112,16 +123,86 @@ class AlviumCamera(threading.Thread):
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
 
         while not self.shutdown_flag.is_set():
-            time.sleep(1)
+            self.shutdown_flag.wait(1)
 
         self.close()
 
     def close(self):
         if self.process is not None:
-            os.killpg(os.getpgid(self.process.pid), signal.SIGINT)
-            self.process = None
+            try:
+                os.killpg(os.getpgid(self.process.pid), signal.SIGINT)
+                try:
+                    self.process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    logger.warning(f"Process did not terminate in time, sending SIGTERM.")
+                    os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+                    try:
+                        self.process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        logger.error(f"Process did not terminate after SIGTERM, sending SIGKILL.")
+                        os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
+                        self.process.wait()
+            except ProcessLookupError:
+                pass
+            finally:
+                self.process = None
 
         logger.info(f"Closed sensor {self.name}")
+
+class AlviumCamera(threading.Thread):
+
+    def __init__(
+        self,
+        camera_config,
+        path,
+        flag,
+        *args,
+        **kwargs,
+    ):
+        '''
+        Class to create a thread for the camera
+
+        Parameters:
+            camera (Object): camera object
+            flag (threading.Event): flag to communicate to the thread a particular event happened
+            camera_mode (str): camera mode
+            fps (float): number of fps in case of photo mode
+        '''
+        super().__init__(*args, **kwargs)
+
+        self.camera_config = camera_config
+        self.path = path
+
+        self.camera_name = self.camera_config["name"]
+        self.shutdown_flag = flag
+
+        self.core = self.camera_config.get("core", None)
+        self.exposure = self.camera_config.get("exposure", None)
+        self.gain = self.camera_config.get("gain", None)
+        self.format = self.camera_config.get("format", None)
+        self.max_framerate = self.camera_config.get("max_framerate", None)
+        self.writing_threads = self.camera_config.get("writing_threads", None)
+        self.verbosity = self.camera_config.get("verbosity", None)
+        self.output = self.path
+
+        self.settings = {
+            "exposure": self.exposure,
+            "gain": self.gain,
+            "format": self.format,
+            "max_framerate": self.max_framerate,
+        }
+
+    def run(self):
+        with pyalvium.Camera(output_path=self.output, writing_threads=self.writing_threads, settings=self.settings, verbose=self.verbosity) as camera:
+            camera.log_all_features()
+            camera.start_acquisition()
+
+            while not self.shutdown_flag.is_set():
+                self.shutdown_flag.wait(1)
+
+            camera.stop_acquisition()
+            logger.info(f"Closed sensor {self.name}")
+            self.stats = camera.get_streaming_stats()
 
 class SonyCamera(threading.Thread):
 
@@ -147,9 +228,7 @@ class SonyCamera(threading.Thread):
         super().__init__(*args, **kwargs)
 
         self.camera_config = camera_config
-
         self.camera_name = self.camera_config["name"]
-
         self.shutdown_flag = flag
 
     def run(self):
@@ -163,13 +242,9 @@ class SonyCamera(threading.Thread):
             camera.initialize_camera()
 
             time.sleep(0.2)
-
             camera.messageHandler(["datetime", 0.04, 1e-3])
-
             time.sleep(0.1)
-
             camera.messageHandler(["programmode", self.camera_config["program"]])
-
             time.sleep(0.1)
 
             if "ISO" in self.camera_config.keys():
@@ -194,13 +269,13 @@ class SonyCamera(threading.Thread):
             else:
                 duration = 20 * 60
 
-            flag = True
+            recording = True
             video_chunks = 30 * 60
             secs_remaining = copy.copy(duration)
             while not self.shutdown_flag.is_set():
-                time.sleep(0.1)
+                self.shutdown_flag.wait(1)
                 camera.messageHandler(["videocontrol"])
-                if flag:
+                if recording:
                     if secs_remaining < video_chunks:
                         logger.info(
                             f"Camera {self.camera_name} starts recording, remaining {secs_remaining} s"
@@ -208,7 +283,7 @@ class SonyCamera(threading.Thread):
                         self.shutdown_flag.wait(secs_remaining)
                         camera.messageHandler(["videocontrol"])
                         self.shutdown_flag.set()
-                        flag = not flag
+                        recording = not recording
                         logger.info(f"Camera {self.camera_name} stops recording")
                         break
                     else:
@@ -217,7 +292,7 @@ class SonyCamera(threading.Thread):
                         time.sleep(2)
                         secs_remaining -= video_chunks
                 else:
-                    flag = not flag
+                    recording = not recording
 
         elif self.camera_config["mode"] == "photo":
             if "fps" in self.camera_config.keys():
@@ -238,7 +313,7 @@ class SonyCamera(threading.Thread):
                 camera.messageHandler(["capture"])
 
                 while (time.time() - t) < timing:
-                    pass
+                    self.shutdown_flag.wait(0.1)
 
                 photo_count += 1
                 if photo_count > frames:

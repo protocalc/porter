@@ -1,9 +1,5 @@
 import logging
-import random
-import struct
 import time
-import array
-import queue
 import subprocess
 import os
 import signal
@@ -16,12 +12,11 @@ ADS1015_VALUE_GAIN = {
     16: 0.256,
 }
 
-logger = logging.getLogger("mainlogger")
+logger = logging.getLogger(__name__)
 
 class ADS1015:
 
     def __init__(self, name="Generic ADC", bus=6, model="ADS1015", sensor_core=None):
-
         self.name = name 
         self.model = model 
         self.core = sensor_core
@@ -44,7 +39,7 @@ class ADS1015:
         # Loop until told to close
 
         while not shutdown_flag.is_set():
-            time.sleep(1)
+            shutdown_flag.wait(1)
 
         self.close()
 

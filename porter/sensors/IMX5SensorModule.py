@@ -4,7 +4,7 @@ import os
 import signal
 import time
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class IMX5SensorModule:
@@ -37,7 +37,7 @@ class IMX5SensorModule:
         # Loop until told to close
 
         while not shutdown_flag.is_set():
-            time.sleep(1)
+            shutdown_flag.wait(1)
 
         self.close()
 

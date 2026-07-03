@@ -13,7 +13,7 @@ sys.path.insert(0, "/home/polocalc/Documents/porter/porter/sensors/sensors_db")
 import KERNEL_utils_test as utils
 import KERNEL_test as Kdb
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class KernelInertial:

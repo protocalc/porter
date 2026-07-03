@@ -5,7 +5,7 @@ import logging
 
 import adafruit_mcp4725
 
-logger = logging.getLogger("mainlogger")
+logger = logging.getLogger(__name__)
 
 class MCP4725:
 
