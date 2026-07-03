@@ -13,3 +13,12 @@
 [submodule "modules/Alvium-Camera-Module"]
 	path = modules/Alvium-Camera-Module
 	url = git@github.com:POLOCALC/Alvium-Camera-Module.git
+[submodule "modules/Alvium-Camera-Module-Python"]
+	path = modules/Alvium-Camera-Module-Python
+	url = https://github.com/federico-cacciotti/Alvium-Camera-Module-Python
+[submodule "modules/VmbPy"]
+	path = modules/VmbPy
+	url = https://github.com/alliedvision/VmbPy
+[submodule "modules/sour_core"]
+	path = modules/sour_core
+	url = https://github.com/protocalc/sour_core
