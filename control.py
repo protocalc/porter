@@ -17,7 +17,7 @@ timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 # create paths
 path = os.path.dirname(os.path.realpath(__file__))
 home_directory = os.environ["HOME"]
-data_directory = os.path.join(home_directory, "data")
+data_directory = os.path.join(home_directory, params.data_directory)
 working_data_directory = os.path.join(data_directory, timestamp)
 logfile_path = os.path.join(working_data_directory, params.logfile_name)
 current_symlink_path = os.path.join(data_directory, params.current_symlink_name)
@@ -54,16 +54,20 @@ logger.info(f"Created symlink {current_symlink_path} -> {working_data_directory}
 import porter.sensors.sensors_handler as sh
 import porter.threads as threads
 import porter.valon as valon
+from porter.telemetry.StatusBoard import StatusBoard
+
+# initialize the status board
+status_board = StatusBoard()
 
 
 def handler(signum, frame):
-    logger.exception(f"Caught signal {signal.strsignal(signum)}")
+    logger.error(f"Caught signal {signal.strsignal(signum)}")
     raise ServiceExitError
 
 
 def capture_flag(flag):
     if flag.is_set():
-        logger.exception(f"Flag has been set in a Thread")
+        logger.error(f"Flag has been set in a Thread")
         raise FlagSetError
 
 # arg parser for command line arguments
@@ -77,6 +81,7 @@ def main():
     config_file = args.config_file
 
     flag = threading.Event()
+    owned_threads = []  # track only threads we start ourselves
 
     # opening config file
     config_path = f"{path}/{config_file}"
@@ -106,19 +111,35 @@ def main():
 
     try:
         local_development = config.get("local_development", False)
-        logging.info(f"Local development mode: {local_development}")
+        logger.info(f"Local development mode: {local_development}")
 
         sensors = config.get("sensors", None)
         source = config.get("source", None)
         camera = config.get("camera", None)
-    
+        status_writer_cfg = config.get("status_writer", None)
+
+        # start the StatusWriter thread if configured
+        # (telemd.py owns the XBee and reads the file written here)
+        if status_writer_cfg is not None and status_writer_cfg.get("enabled", False):
+            update_rate = status_writer_cfg.get("update_rate", 1.0)
+            t = threads.StatusWriter(
+                status_board=status_board,
+                update_rate=update_rate,
+                flag=flag,
+                daemon=False,
+            )
+            t.start()
+            owned_threads.append(t)
+            logger.info(f"StatusWriter started at {update_rate} Hz")
+
+        # start sensor threads if sensors are configured
         if sensors is not None:
-            logging.info("Starting sensor threads...")
+            logger.info("Starting sensor threads...")
             sensor_names = {}
             sensor_handler = {}
 
             for i in sensors.keys():
-                logging.info(f"Initializing sensor {i}")
+                logger.info(f"Initializing sensor {i}")
                 sensors_handler = sh.Handler(sensors[i], local=local_development)
 
                 name = sensors[i]["name"]
@@ -126,71 +147,90 @@ def main():
                 sensor_names[name] = name
 
             for i in sensor_handler.keys():
-                logging.info(f"Starting thread for sensor {i}")
-                threads.Sensors(
+                logger.info(f"Starting thread for sensor {i}")
+                t = threads.Sensors(
                     handler=sensor_handler[i],
                     flag=flag,
                     date=timestamp,
                     path=sensor_path,
                     sensor_name=sensor_names[i],
+                    status_board=status_board,
                     daemon=False,
-                ).start()
-                logging.info(f"Thread started for sensor {i}")
+                )
+                t.start()
+                owned_threads.append(t)
+                logger.info(f"Thread started for sensor {i}")
 
+        # start Valon synthesizer if source is configured
         if source is not None:
-            logging.info(f"Starting Valon synthesizer on port {source['port']} and baudrate {source['baudrate']}")
+            logger.info(f"Starting Valon synthesizer on port {source['port']} and baudrate {source['baudrate']}")
             synt = valon.Valon(source["port"], source["baudrate"])
             
-            logging.info(f"Setting Valon frequency to {source['freq'] / source['mult_factor']} Hz and power to {source['power']} dBm")
+            logger.info(f"Setting Valon frequency to {source['freq'] / source['mult_factor']} Hz and power to {source['power']} dBm")
             synt.set_freq(source["freq"] / source["mult_factor"])
             synt.set_pwr(source["power"])
 
             if source["mod_freq"] > 0:
-                logging.info(f"Setting Valon modulation frequency to {source['mod_freq']} Hz and amplitude to {source['mod_amp']}")
+                logger.info(f"Setting Valon modulation frequency to {source['mod_freq']} Hz and amplitude to {source['mod_amp']}")
                 synt.set_amd(source["mod_amp"], source["mod_freq"])
             else:
-                logging.info(f"Disabling Valon amplitude modulation")
+                logger.info(f"Disabling Valon amplitude modulation")
                 synt.set_amd(0, 0)
 
-            ATTEMPS = 10
+            ATTEMPTS = 10
             valon_id = None
-            for i in range(ATTEMPS):
-                logging.info(f"Attempt {i+1}/{ATTEMPS} to get Valon ID...")
+            for i in range(ATTEMPTS):
+                logger.info(f"Attempt {i+1}/{ATTEMPTS} to get Valon ID...")
                 valon_id = synt.get_id()
                 time.sleep(0.01)
 
                 if valon_id is not None:
                     break
             if valon_id is None:
-                logging.error("Failed to get Valon ID after multiple attempts.")
+                logger.error("Failed to get Valon ID after multiple attempts.")
                 # raise Exception?
             else:
-                logging.info(f"Valon synthesizer initialized with ID: {valon_id}")
+                logger.info(f"Valon synthesizer initialized with ID: {valon_id}")
 
             time.sleep(2)
 
+        # start camera thread if camera is configured
         if camera is not None and not local_development:
             try:
-                if camera["name"] == 'Alvium_Starspec':   
-                    threads.AlviumCameraStarspec(
+                if camera["name"] == 'Alvium_Starspec':
+                    t = threads.AlviumCameraStarspec(
                         camera_config=camera,
                         flag=flag,
                         path=camera_path,
+                        status_board=status_board,
                         daemon=False,
-                    ).start()
+                    )
+                    t.start()
+                    owned_threads.append(t)
+                    logger.info(f"Thread started for camera {camera['name']}")
                 elif camera["name"] == 'Alvium':
-                    threads.AlviumCamera(
+                    t = threads.AlviumCamera(
                         camera_config=camera,
                         flag=flag,
                         path=camera_path,
+                        status_board=status_board,
                         daemon=False,
-                    ).start()
+                    )
+                    t.start()
+                    owned_threads.append(t)
+                    logger.info(f"Thread started for camera {camera['name']}")
                 elif camera["name"] == 'Sony':
-                    threads.SonyCamera(
+                    t = threads.SonyCamera(
                         camera_config=camera,
                         flag=flag,
                         daemon=True,
-                    ).start()
+                    )
+                    t.start()
+                    owned_threads.append(t)
+                    logger.info(f"Thread started for camera {camera['name']}")
+                else:
+                    logger.error(f"Unknown camera name: {camera['name']}")
+                    flag.set()
 
                 time.sleep(2)
 
@@ -199,11 +239,9 @@ def main():
 
         while not flag.is_set():
             time.sleep(0.2)
-        
-        #capture_flag(flag)
 
     except (ServiceExitError, FlagSetError) as err:
-        logger.exception(f"Exiting main program due to {err.__class__.__name__}")
+        logger.error(f"Exception occurred: {err.__class__.__name__}")
         flag.set()
 
     # reset signal handlers to default
@@ -212,8 +250,9 @@ def main():
 
     logger.info("Waiting for threads to finish...")
     time.sleep(0.5)
-    for thread in threading.enumerate():
-        if thread is threading.current_thread():
+    for thread in owned_threads:
+        if not thread.is_alive():
+            logger.info(f"Thread {thread.name} already finished.")
             continue
         logger.info(f"Joining thread {thread.name}...")
         thread.join(timeout=params.THREAD_JOIN_TIMEOUT)

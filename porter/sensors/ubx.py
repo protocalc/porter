@@ -269,7 +269,7 @@ class UBX:
 
             logger.info(f"Configuration {keys}")
 
-    def read_continous_binary(self, shutdown_flag, datafile_name):
+    def read_continous_binary(self, shutdown_flag, datafile_name, status_board):
 
         # Capture loop start time for logging printouts.
         loop_start = time.time()
@@ -282,22 +282,45 @@ class UBX:
         
 
         # data_path = '/'.join(datafile_name.split('/')[:-1])
-
         # timing_path = data_path + '/gps_timing.txt'
-
         # logger.info(f'Timing path : {timing_path}')
+
+        # persistent metadata: only updated when a NAV-STATUS message arrives
+        metadata = {}
 
         while not shutdown_flag.is_set():
             # Read from the GPS and measure the amount of time taken.
-            t_start = time.perf_counter_ns()
-            msg, parsed = self.read(parsing=None)
-            t_end = time.perf_counter_ns()
+            try:
+                t_start = time.perf_counter_ns()
+                msg, parsed = self.read(parsing=None)
+                t_end = time.perf_counter_ns()
+            except Exception as e:
+                logger.error(f"{self.name} read error, sensor may have disconnected: {e}")
+                break
 
             read_time = t_end - t_start
             t = time.time()
 
-            # Push the data to the queue
+            # push the data to the queue
             datafile.write(msg)
+            
+            # update fix status only when a NAV-STATUS message arrives;
+            # all other message types leave the last known status intact
+            if parsed is not None and parsed.identity == "NAV-STATUS":
+                metadata.update({"status": parsed.gpsFix, "status_ok": parsed.gpsFixOk})
+
+            # add lat lon and alt to metadata if available
+            if parsed is not None and parsed.identity == "NAV-POSLLH":
+                metadata.update(
+                    {
+                        "lat": parsed.lat,
+                        "lon": parsed.lon,
+                        "alt": parsed.height
+                    }
+                )
+
+            # update the status board
+            status_board.beat(self.name, metadata)
 
             # Logging timestamp and GPS messages
             # print_time = datetime.fromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -315,10 +338,8 @@ class UBX:
         self.close()
 
     def read(self, parsing=False):
-
         # Read from the UBX reader
         raw, parsed = self.reader.read()
-
         if parsing is None:
             return raw, parsed
         elif parsing:
@@ -327,8 +348,6 @@ class UBX:
             return raw
 
     def close(self):
-
         # Turn off the serial connection
         self.conn.close()
-
         logger.info(f"Closed ublox sensor {self.name}")

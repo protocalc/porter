@@ -4,7 +4,6 @@ import porter.sensors.ubx as ubx
 
 import porter.sensors.ads1015 as ads
 import porter.sensors.inertial as inertial
-#import porter.sensors.ads1x15 as ads
 
 import porter.sensors.mcp4725 as mcp
 from porter.sensors import IMX5SensorModule as imx5

@@ -33,7 +33,7 @@ class LM76SensorModule:
 
         logger.info(f"Connected to LM76 sensor {self.name}")
 
-    def read_continous_binary(self, shutdown_flag, datafile_name):
+    def read_continous_binary(self, shutdown_flag, datafile_name, status_board):
         # Start the LM76SensorModule process through the command line.
         binary_path = "bin/LM76SensorModule"
 
@@ -61,11 +61,25 @@ class LM76SensorModule:
             shell=True,
             preexec_fn=os.setsid,
         )
+        launch_time = time.monotonic()
         # Loop until told to close
 
         while not shutdown_flag.is_set():
             shutdown_flag.wait(1)
-
+            # Check if the process exited on its own
+            if self.process is not None and self.process.poll() is not None:
+                logger.error(f"{self.name} process exited unexpectedly (exit code {self.process.returncode})")
+                break
+            # After startup grace period, verify data is still flowing to the output directory
+            if time.monotonic() - launch_time > 10.0:
+                try:
+                    if time.time() - os.path.getmtime(datafile_name) > 5.0:
+                        logger.error(f"{self.name}: no new data written for >5s, sensor may be disconnected")
+                        break
+                except OSError:
+                    pass
+            status_board.beat(self.name)
+            
         self.close()
 
     def configure(self, config):
@@ -90,7 +104,10 @@ class LM76SensorModule:
 
         # Kill the process
         if self.process is not None:
-            os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+            try:
+                os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+            except (ProcessLookupError, OSError):
+                pass  # process already gone
             self.process = None
 
         logger.info(f"Closed sensor {self.name}")

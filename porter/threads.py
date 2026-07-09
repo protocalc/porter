@@ -1,3 +1,4 @@
+import json
 import os
 import copy
 import logging
@@ -5,6 +6,7 @@ import threading
 import time
 import subprocess
 import signal
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,7 @@ except Exception as e:
     logger.error(f"Error importing Alvium Camera module: {e}")
     pass
 
+
 class Sensors(threading.Thread):
 
     def __init__(
@@ -34,6 +37,7 @@ class Sensors(threading.Thread):
         flag,
         date,
         path,
+        status_board,
         sensor_name=None,
         *args,
         **kwargs,
@@ -46,27 +50,28 @@ class Sensors(threading.Thread):
                                     particular event happened
             date (str): string with the date and time at the program start
             path (str): path for file storage
+            status_board (StatusBoard): board to track sensor status
         """
 
         super().__init__(*args, **kwargs)
 
         self.sensor_name = sensor_name
+        self.status_board = status_board
 
         self.datafile_name = path + self.sensor_name + "_" + date + ".bin"
         self.shutdown_flag = flag
         self.handler = handler
 
-        # Initialize the sensor and start the sensor handler thread
-        logger.info(f"Configuring {self.sensor_name}")
+        # initialize the sensor and start the sensor handler thread
         self.handler._connection()
         self.handler._configuration()
 
     def run(self):
-        # Block forever, getting data from the handler thread through the queue, until shutdown
+        # block forever, getting data from the handler thread through the queue, until shutdown
         logger.info(f"Sensor {self.sensor_name} started")
-        self.handler.obj.read_continous_binary(self.shutdown_flag, self.datafile_name)
+        self.handler.obj.read_continous_binary(self.shutdown_flag, self.datafile_name, self.status_board)
 
-        # Can only get here if shutdown flag is set
+        # can only get here if shutdown flag is set
         logger.info(f"Sensor {self.sensor_name} closed")
 
 class AlviumCameraStarspec(threading.Thread):
@@ -76,6 +81,7 @@ class AlviumCameraStarspec(threading.Thread):
         camera_config,
         path,
         flag,
+        status_board,
         *args,
         **kwargs,
     ):
@@ -87,6 +93,7 @@ class AlviumCameraStarspec(threading.Thread):
             flag (threading.Event): flag to communicate to the thread a particular event happened
             camera_mode (str): camera mode
             fps (float): number of fps in case of photo mode
+            status_board (StatusBoard): board to track camera health
         '''
         super().__init__(*args, **kwargs)
 
@@ -95,6 +102,7 @@ class AlviumCameraStarspec(threading.Thread):
 
         self.camera_name = self.camera_config["name"]
         self.shutdown_flag = flag
+        self.status_board = status_board
         self.process = None
 
     def run(self):
@@ -121,9 +129,22 @@ class AlviumCameraStarspec(threading.Thread):
         if self.core is not None:
             cmd += f" --core {int(self.core)}"
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+        launch_time = time.monotonic()
 
         while not self.shutdown_flag.is_set():
             self.shutdown_flag.wait(1)
+            if self.process is not None and self.process.poll() is not None:
+                logger.error(f"{self.camera_name} process exited unexpectedly (exit code {self.process.returncode})")
+                break
+            # After startup grace period, check that the output directory is receiving new files
+            if time.monotonic() - launch_time > 10.0:
+                try:
+                    if time.time() - os.path.getmtime(self.output) > 5.0:
+                        logger.error(f"{self.camera_name}: no new data written for >5s, camera may be disconnected")
+                        break
+                except OSError:
+                    pass
+            self.status_board.beat(self.camera_name)
 
         self.close()
 
@@ -150,12 +171,12 @@ class AlviumCameraStarspec(threading.Thread):
         logger.info(f"Closed sensor {self.name}")
 
 class AlviumCamera(threading.Thread):
-
     def __init__(
         self,
         camera_config,
         path,
         flag,
+        status_board,
         *args,
         **kwargs,
     ):
@@ -167,6 +188,7 @@ class AlviumCamera(threading.Thread):
             flag (threading.Event): flag to communicate to the thread a particular event happened
             camera_mode (str): camera mode
             fps (float): number of fps in case of photo mode
+            status_board (StatusBoard): board to track camera health
         '''
         super().__init__(*args, **kwargs)
 
@@ -175,6 +197,7 @@ class AlviumCamera(threading.Thread):
 
         self.camera_name = self.camera_config["name"]
         self.shutdown_flag = flag
+        self.status_board = status_board
 
         self.core = self.camera_config.get("core", None)
         self.exposure = self.camera_config.get("exposure", None)
@@ -197,15 +220,23 @@ class AlviumCamera(threading.Thread):
             camera.log_all_features()
             camera.start_acquisition()
 
+            prev_frame_count = 0
             while not self.shutdown_flag.is_set():
                 self.shutdown_flag.wait(1)
+                # read live frame count directly from the streaming stats accumulator
+                frame_count = len(camera._streaming_stats.get('host_timestamps_ns', []))
+                if frame_count == prev_frame_count and frame_count > 0:
+                    # count has not advanced since last check - camera stalled or disconnected
+                    logger.error(f"{self.camera_name}: frame count stalled at {frame_count}, camera may be disconnected")
+                    break
+                prev_frame_count = frame_count
+                self.status_board.beat(self.camera_name, {"frames_captured": frame_count})
 
             camera.stop_acquisition()
             logger.info(f"Closed sensor {self.name}")
             self.stats = camera.get_streaming_stats()
 
 class SonyCamera(threading.Thread):
-
     def __init__(
         self,
         camera_config,
@@ -305,7 +336,7 @@ class SonyCamera(threading.Thread):
             else:
                 frames = 1e9
 
-            timing = 1 / fps
+            timing = 1/fps
 
             photo_count = 0
             while not self.shutdown_flag.is_set():
@@ -324,3 +355,66 @@ class SonyCamera(threading.Thread):
             camera.close_usb_connection()
         except UnboundLocalError:
             pass
+
+class StatusWriter(threading.Thread):
+    """Write the status board snapshot to a JSON file for telemd to read.
+
+    Replaces the Telemetry thread inside control.py.  telemd.py reads the file
+    and forwards the payload over the XBee link, keeping radio ownership
+    entirely outside the flight software.
+
+    Parameters
+    ----------
+    status_board : StatusBoard
+        Shared status board populated by all sensor threads.
+    update_rate : float
+        How many times per second to refresh the status file.
+    flag : threading.Event
+        Shutdown flag; the thread exits when it is set.
+    status_file : str
+        Path of the JSON file to write (must match telemd STATUS_FILE).
+    """
+
+    STATUS_FILE = "/tmp/porter_status.json"
+
+    def __init__(self, status_board, update_rate, flag, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.status_board = status_board
+        self.update_rate  = update_rate
+        self.shutdown_flag = flag
+
+    def run(self):
+        logger.info(f"StatusWriter started, writing to {self.STATUS_FILE} at {self.update_rate} Hz")
+        while not self.shutdown_flag.is_set():
+            self.shutdown_flag.wait(1.0 / self.update_rate)
+
+            root = "/"
+            total, used, free = shutil.disk_usage(root)
+            system = {
+                "time":    time.time(),
+                "hddusd":  round(used  / (1024 ** 3), 2),
+                "hddfree": round(free  / (1024 ** 3), 2),
+                "hddtot":  round(total / (1024 ** 3), 2),
+            }
+
+            payload = {
+                "system": system,
+                "health": self.status_board.get_health(),
+                "meta":   self.status_board.get_metadata(),
+            }
+
+            try:
+                # Write atomically via a temp file to avoid partial reads by telemd
+                tmp = self.STATUS_FILE + ".tmp"
+                with open(tmp, "w") as f:
+                    json.dump(payload, f, separators=(",", ":"))
+                os.replace(tmp, self.STATUS_FILE)
+            except OSError as e:
+                logger.warning(f"StatusWriter: could not write status file: {e}")
+
+        # Remove the status file on clean shutdown so telemd knows control.py is done
+        try:
+            os.remove(self.STATUS_FILE)
+        except FileNotFoundError:
+            pass
+        logger.info("StatusWriter stopped")

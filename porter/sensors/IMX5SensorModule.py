@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 class IMX5SensorModule:
 
     def __init__(self, name="IMX5 Sensors", device="/dev/ttyUSB0", baudrate=115200, model="Various", sensor_core=None):
-
         self.name = name
         self.model = model
         self.core = sensor_core
@@ -18,13 +17,11 @@ class IMX5SensorModule:
         self.imu_rate = None
         self.ins_rate = None
         self.baudrate = baudrate
-
         self.process = None
-
         logger.info(f"Connected to IMX5 sensors {self.name}")
 
-    def read_continous_binary(self, shutdown_flag, datafile_name):
-        # Start the IMX5SensorModule process through the command line.
+    def read_continous_binary(self, shutdown_flag, datafile_name, status_board):
+        # start the IMX5SensorModule process through the command line.
         binary_path = "bin/IMX5SensorModule"
 
         cmd = f"{binary_path} --imu-rate {self.imu_rate} --ins-rate {self.ins_rate} --baud-rate {self.baudrate} --outputdir {datafile_name} --device {self.device}"
@@ -34,10 +31,28 @@ class IMX5SensorModule:
         logger.info(f"Running command: {cmd}")
         # print(f"Running command: {cmd}")
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
-        # Loop until told to close
+        launch_time = time.monotonic()
+        # loop until told to close
 
         while not shutdown_flag.is_set():
             shutdown_flag.wait(1)
+            # check if the process exited on its own
+            if self.process is not None and self.process.poll() is not None:
+                logger.error(f"{self.name} process exited unexpectedly (exit code {self.process.returncode})")
+                break
+            # after startup grace period, verify data is still flowing to the output directory
+            if time.monotonic() - launch_time > 10.0:
+                try:
+                    # get list of files in the output directory that start with "IMX5"
+                    files = [f for f in os.listdir(os.path.dirname(datafile_name)) if f.startswith("IMX5")]
+                    # check if any file has been modified in the last 5 seconds
+                    if not any(time.time() - os.path.getmtime(os.path.join(os.path.dirname(datafile_name), f)) < 5.0 for f in files):
+                        logger.error(f"{self.name}: no new data written for >5s, sensor may be disconnected")
+                        break
+                except OSError:
+                    logger.error(f"Failed to read sensor output directory: {datafile_name}")
+                    pass
+            status_board.beat(self.name)
 
         self.close()
 
