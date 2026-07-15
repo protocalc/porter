@@ -65,8 +65,9 @@ class UBX:
     def __init__(self, port, baudrate, name):
 
         self.name = name
-
         self.__new_baudrate = False
+        # persistent metadata: only updated when a NAV-STATUS message arrives
+        self.metadata = {}
 
         if baudrate != 38400:
             # Set parameters for updating baudrate of the GPS.
@@ -271,7 +272,7 @@ class UBX:
 
     def read_continous_binary(self, shutdown_flag, datafile_name, status_board):
 
-        # Capture loop start time for logging printouts.
+        # capture loop start time for logging printouts.
         loop_start = time.time()
         t_prev = loop_start
 
@@ -285,11 +286,8 @@ class UBX:
         # timing_path = data_path + '/gps_timing.txt'
         # logger.info(f'Timing path : {timing_path}')
 
-        # persistent metadata: only updated when a NAV-STATUS message arrives
-        metadata = {}
-
         while not shutdown_flag.is_set():
-            # Read from the GPS and measure the amount of time taken.
+            # read from the GPS and measure the amount of time taken.
             try:
                 t_start = time.perf_counter_ns()
                 msg, parsed = self.read(parsing=None)
@@ -307,20 +305,20 @@ class UBX:
             # update fix status only when a NAV-STATUS message arrives;
             # all other message types leave the last known status intact
             if parsed is not None and parsed.identity == "NAV-STATUS":
-                metadata.update({"status": parsed.gpsFix, "status_ok": parsed.gpsFixOk})
+                self.metadata.update({"status": parsed.gpsFix, "status_ok": parsed.gpsFixOk})
 
             # add lat lon and alt to metadata if available
             if parsed is not None and parsed.identity == "NAV-POSLLH":
-                metadata.update(
+                self.metadata.update(
                     {
-                        "lat": parsed.lat,
-                        "lon": parsed.lon,
-                        "alt": parsed.height
+                        "latitude": parsed.lat,
+                        "longitude": parsed.lon,
+                        "altitude": parsed.height/1000.0,  # convert mm to m
                     }
                 )
 
             # update the status board
-            status_board.beat(self.name, metadata)
+            status_board.beat(self.name, self.metadata)
 
             # Logging timestamp and GPS messages
             # print_time = datetime.fromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -336,6 +334,9 @@ class UBX:
             # break
 
         self.close()
+
+    def get_gnss_source(self):
+        return self.metadata
 
     def read(self, parsing=False):
         # Read from the UBX reader

@@ -1,26 +1,20 @@
 import porter.sensors.FakeSensor as fake
 import porter.sensors.KERNEL as KERNEL
 import porter.sensors.ubx as ubx
-
 import porter.sensors.ads1015 as ads
 import porter.sensors.inertial as inertial
-
 import porter.sensors.mcp4725 as mcp
 from porter.sensors import IMX5SensorModule as imx5
 from porter.sensors import LM76SensorModule as lm76
 
 
 class Handler:
-
     def __init__(self, sensor_params, local=False):
-
         self.sensor_params = sensor_params
         self.local = local
 
     def _connection(self):
-        
-
-        # For local development, set up a fake connection.
+        # for local development, set up a fake connection.
         if self.local:
             self.obj = fake.FakeConnection(self.sensor_params["name"])
 
@@ -32,7 +26,6 @@ class Handler:
                     baudrate=self.sensor_params["connection"]["parameters"]["baudrate"],
                     name=self.sensor_params["name"],
                 )
-
 
             elif self.sensor_params["sensor_info"]["type"].lower() == "adc":
                 # Set up ADC with name and I2C bus specifications.

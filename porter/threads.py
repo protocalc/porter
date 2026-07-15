@@ -28,6 +28,15 @@ except Exception as e:
     logger.error(f"Error importing Alvium Camera module: {e}")
     pass
 
+try:
+    from lager import PointingController as PC
+    logger.info("Lager module imported successfully")
+except ModuleNotFoundError:
+    logger.info("Lager module not found")
+except Exception as e:
+    logger.error(f"Error importing Lager module: {e}")
+    pass
+
 
 class Sensors(threading.Thread):
 
@@ -220,16 +229,10 @@ class AlviumCamera(threading.Thread):
             camera.log_all_features()
             camera.start_acquisition()
 
-            prev_frame_count = 0
             while not self.shutdown_flag.is_set():
                 self.shutdown_flag.wait(1)
-                # read live frame count directly from the streaming stats accumulator
-                frame_count = len(camera._streaming_stats.get('host_timestamps_ns', []))
-                if frame_count == prev_frame_count and frame_count > 0:
-                    # count has not advanced since last check - camera stalled or disconnected
-                    logger.error(f"{self.camera_name}: frame count stalled at {frame_count}, camera may be disconnected")
-                    break
-                prev_frame_count = frame_count
+                # read live frame count directly from the folder
+                frame_count = len([f for f in os.listdir(self.output) if f.endswith(".raw")])
                 self.status_board.beat(self.camera_name, {"frames_captured": frame_count})
 
             camera.stop_acquisition()
@@ -356,6 +359,117 @@ class SonyCamera(threading.Thread):
         except UnboundLocalError:
             pass
 
+class PointingController(threading.Thread):
+    """Class to create a thread for the pointing controller"""
+    def __init__(
+        self,
+        pointing_controller_config,
+        path,
+        flag,
+        status_board,
+        gnss_source=None,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+
+        self.pointing_controller_config = pointing_controller_config
+        self.name = self.pointing_controller_config["name"]
+        self.path = path
+        self.status_board = status_board
+        self.gnss_source = gnss_source
+        self.pointing_controller_name = self.pointing_controller_config["name"]
+        self.shutdown_flag = flag
+        self.pc = None
+        self.start_track_flag = False
+        self.start_track_flag_old = False
+
+
+    def run(self):
+        try:
+            self.pc = PC(configuration=self.pointing_controller_config, data_folder=self.path)
+            self.pc.connect()
+            self.pc.start_telemetry()
+        except Exception as e:
+            self.shutdown_flag.set()
+            logger.error(f"Error initializing pointing controller: {e}")
+            self.pc = None
+            pass
+
+        while not self.shutdown_flag.is_set():
+            self.shutdown_flag.wait(1)
+
+            if self.pc is not None:
+                if self.pc.poi is not None:
+                    if self.start_track_flag and not self.start_track_flag_old:
+                        self.pc.poi.start_tracking(gimbal=self.pc.gimbal, gnss_source=self.gnss_source, forward_heading=True)
+                        logger.info(f"Pointing controller {self.pointing_controller_name} started tracking POI")
+                        self.start_track_flag_old = self.start_track_flag
+                    elif not self.start_track_flag and self.start_track_flag_old:
+                        self.pc.poi.stop_tracking()
+                        logger.info(f"Pointing controller {self.pointing_controller_name} stopped tracking POI")
+                        self.start_track_flag_old = self.start_track_flag
+                else:
+                    logger.warning(f"Pointing controller {self.pointing_controller_name} has no POI defined, cannot start tracking")
+
+            data = self.pc.gimbal.telemetry_state.get()
+            yaw = data.get("yaw", None)
+            pitch = data.get("pitch", None)
+            roll = data.get("roll", None)
+            meta = {"yaw": round(yaw, 2) if yaw is not None else None, 
+                    "pitch": round(pitch, 2) if pitch is not None else None, 
+                    "roll": round(roll, 2) if roll is not None else None}
+            self.status_board.beat("Gimbal", meta)
+
+            if self.pc.poi is not None:
+                data = self.pc.poi.get_data()
+                distance = data.get("current_distance", None)
+                tracking = data.get("is_tracking", None)
+                meta = {"tracking": tracking, 
+                        "distance": round(distance, 2) if distance is not None else None}
+                self.status_board.beat("POI", meta)
+
+        logger.info(f"Stopping Pointing Controller {self.pointing_controller_name}")
+        try:
+            if self.pc is not None:
+                if self.pc.poi is not None:
+                    self.pc.poi.stop_tracking()
+                self.pc.stop_telemetry()
+                self.pc.disconnect()
+        except Exception as e:
+            logger.error(f"Error stopping pointing controller: {e}")
+            pass
+
+    def start_tracking(self):
+        self.start_track_flag = True
+    
+    def stop_tracking(self):
+        self.start_track_flag = False
+
+class PowerMonitor(threading.Thread):
+    """Class to create a thread for the power monitor"""
+    def __init__(
+        self,
+        power_monitor_config,
+        path,
+        flag,
+        status_board,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+
+        self.power_monitor_config = power_monitor_config
+        self.name = self.power_monitor_config["name"]
+        self.path = path
+        self.status_board = status_board
+        self.shutdown_flag = flag
+        self.pm = None
+
+    def run(self):
+        return  # power monitor functionality is not implemented yet
+
+
 class StatusWriter(threading.Thread):
     """Write the status board snapshot to a JSON file for telemd to read.
 
@@ -404,7 +518,7 @@ class StatusWriter(threading.Thread):
             }
 
             try:
-                # Write atomically via a temp file to avoid partial reads by telemd
+                # write atomically via a temp file to avoid partial reads by telemd
                 tmp = self.STATUS_FILE + ".tmp"
                 with open(tmp, "w") as f:
                     json.dump(payload, f, separators=(",", ":"))
@@ -412,7 +526,7 @@ class StatusWriter(threading.Thread):
             except OSError as e:
                 logger.warning(f"StatusWriter: could not write status file: {e}")
 
-        # Remove the status file on clean shutdown so telemd knows control.py is done
+        # remove the status file on clean shutdown so telemd knows control.py is done
         try:
             os.remove(self.STATUS_FILE)
         except FileNotFoundError:

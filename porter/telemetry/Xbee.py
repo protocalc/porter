@@ -9,6 +9,7 @@ IDs = {
     "LUKE": "0013A20041C2B524"
 }
 
+POWER_LEVEL = 4  # 4 is the maximum (+5dBm)
 MAX_PACKET_SIZE = 80
 END_OF_MESSAGE_BYTE = b'\x00'
 
@@ -29,7 +30,7 @@ class Xbee:
         self.device = XBeeDevice(self.port, self.baudrate)
 
     def set_param(self, parameter, value):
-        self.device.set_parameter(parameter, bytearray(value, 'utf-8'))
+        self.device.set_parameter(parameter, bytearray([value]))
 
     def set_role(self, role):
         available_roles = ['join', 'form']
@@ -49,6 +50,9 @@ class Xbee:
             self.remote_device = RemoteXBeeDevice(self.device, addr_64bit)
         else:
             self.remote_device = None
+
+        # set maxium power level
+        self.set_param("PL", POWER_LEVEL)
 
     def close(self):
         self.device.close()

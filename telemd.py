@@ -8,13 +8,18 @@ concurrent-access issues with the digi-xbee library.
 
 Supported commands (uplink, ground → payload):
   ping             reply "pong"
-  getlog           send last 4kB of flight.log (base64-encoded)
+  getlog           send last 40kB of flight.log (base64-encoded)
   reboot           reboot the computer
   setconfig <path> overwrite config/default.yml with base64-encoded data
   shutdown         shut down the computer
   start            start control.py in the project venv
   stop             gracefully stop control.py
-  camcap [-e <exposure>] [-g <gain>]  capture a single frame from the Alvium camera
+  camera.start     start a camera thread (Alvium only)
+  camera.capture [-e <exposure>] [-g <gain>]  capture a single frame from the Alvium camera
+  gimbal.goto <yaw> <pitch> <roll>  move gimbal to specified angles (degrees)
+  gimbal.mode <mode>  set gimbal mode (off, lock, or follow)
+  gimbal.starttrack  start pointing controller POI tracking (if configured)
+  gimbal.stoptrack   stop pointing controller POI tracking
   $<shell command> run a shell command and return its output (base64-encoded
 Every message ends with END_OF_MESSAGE_BYTE (0x00) as defined in Xbee.py.
 """
@@ -29,6 +34,15 @@ import sys
 import queue
 import signal
 import threading
+import socket
+import tempfile
+import time
+import uuid
+
+# global state for jobs that are running in the background (e.g. shell commands)
+_jobs: dict[str, dict] = {}     # job_id -> {"proc", "outfile", "cmd", "start"}
+_jobs_lock = threading.Lock()
+JOB_POLL_INTERVAL = 0.5
 
 # path setup
 TELEMD_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -51,10 +65,15 @@ LOG_FILE      = os.path.join(os.environ["HOME"], params.data_directory, params.c
 CONFIG_FILE   = os.path.join(TELEMD_DIR, "config", "default.yml")
 LOG_TAIL_BYTES    = 40960  # bytes sent in response to 'getlog'
 SHELL_CMD_TIMEOUT = 10     # seconds before a shell command is killed
+SHELL_QUICK_WAIT = 2.0     # seconds to wait before treating a command as a background job
 CMDOUT_MAX_BYTES  = 2000   # output cap before base64 encoding
 CAPTURE_SCRIPT  = os.path.join(TELEMD_DIR, "porter", "telemetry", "alvium_capture.py")
 CAPTURE_OUTPUT  = os.path.join(TELEMD_DIR, "porter", "telemetry", "captured_frame.jpg")
-CAPTURE_TIMEOUT = 30       # seconds to wait for a frame to be captured
+CAPTURE_TIMEOUT = 60       # seconds to wait for a frame to be captured
+
+CMD_SOCKET_PATH = "/tmp/porter_cmd.sock"
+CMD_TIMEOUT = 5.0
+
 
 # logging
 _log_formatter = logging.Formatter("%(asctime)s [%(levelname)-8s] %(name)s: %(message)s")
@@ -70,6 +89,19 @@ _outbound: "queue.Queue[str]" = queue.Queue()   # messages to send
 _porter_process: "subprocess.Popen | None" = None
 _porter_lock = threading.Lock()
 
+
+def _send_command(cmd: str, params: dict | None = None) -> dict:
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+        sock.settimeout(CMD_TIMEOUT)
+        sock.connect(CMD_SOCKET_PATH)
+        sock.sendall((json.dumps({"cmd": cmd, "params": params or {}}) + "\n").encode("utf-8"))
+        data = b""
+        while not data.endswith(b"\n"):
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            data += chunk
+        return json.loads(data.decode("utf-8"))
 
 def _porter_start() -> str:
     global _porter_process
@@ -153,7 +185,17 @@ def _handle(raw: bytes, antenna: Xbee) -> None:
         except Exception as e:
             _outbound.put(f"ERR:getlog failed: {e}")
 
-    elif cmd.startswith("camcap"):
+    elif cmd.startswith("camera.start"):
+        try:
+            resp = _send_command("camera.start")
+            _outbound.put(f"ACK:camera.start {resp.get('detail','')}" if resp.get("ok")
+                        else f"ERR:camera.start {resp.get('error','unknown error')}")
+        except (ConnectionRefusedError, FileNotFoundError):
+            _outbound.put("ERR:camera.start: command socket unavailable")
+        except Exception as e:
+            _outbound.put(f"ERR:camera.start: {e}")
+
+    elif cmd.startswith("camera.capture"):
         raw_str = raw.decode("utf-8", errors="replace").strip()
         try:
             tokens = shlex.split(raw_str)
@@ -177,7 +219,7 @@ def _handle(raw: bytes, antenna: Xbee) -> None:
             else:
                 i += 1
         logger.info(f"Camera capture: exposure={exposure} gain={gain}")
-        _outbound.put(f"ACK:camcap exposure={exposure} gain={gain} - capturing...")
+        _outbound.put(f"ACK:camera.capture exposure={exposure} gain={gain} - capturing...")
         try:
             result = subprocess.run(
                 ["bash", "--login", "-c",
@@ -189,7 +231,7 @@ def _handle(raw: bytes, antenna: Xbee) -> None:
             )
             if result.returncode != 0:
                 err = (result.stderr or result.stdout or "no output").strip()[:300]
-                _outbound.put(f"ERR:camcap failed: {err}")
+                _outbound.put(f"ERR:camera.capture failed: {err}")
             else:
                 with open(CAPTURE_OUTPUT, "rb") as f:
                     img_bytes = f.read()
@@ -197,38 +239,152 @@ def _handle(raw: bytes, antenna: Xbee) -> None:
                 _outbound.put(f"IMGDATA:{encoded}")
                 logger.info(f"Sending captured frame ({len(img_bytes)} bytes JPEG)")
         except subprocess.TimeoutExpired:
-            _outbound.put("ERR:camcap timed out")
+            _outbound.put("ERR:camera.capture timed out")
         except FileNotFoundError:
-            _outbound.put("ERR:captured_frame.jpg not found after capture")
+            _outbound.put("ERR:camera.capture: captured_frame.jpg not found after capture")
         except Exception as e:
-            _outbound.put(f"ERR:camcap: {e}")
+            _outbound.put(f"ERR:camera.capture: {e}")
+
+    elif raw.startswith(b"gimbal.goto"):
+        raw_str = raw.decode("utf-8", errors="replace").strip()
+        try:
+            tokens = shlex.split(raw_str)
+        except ValueError:
+            tokens = raw_str.split()
+        yaw, pitch, roll = 0, 0, 0
+        if len(tokens) >= 4:
+            try:
+                yaw = float(tokens[1])
+                pitch = float(tokens[2])
+                roll = float(tokens[3])
+            except ValueError:
+                _outbound.put("ERR:gimbal.goto: invalid angles")
+                return
+        try:
+            resp = _send_command("gimbal.goto", {"yaw": yaw, "pitch": pitch, "roll": roll})
+            _outbound.put(f"ACK:gimbal.goto {resp.get('detail','')}" if resp.get("ok")
+                        else f"ERR:gimbal.goto {resp.get('error','unknown error')}")
+        except (ConnectionRefusedError, FileNotFoundError):
+            _outbound.put("ERR:gimbal.goto: command socket unavailable")
+        except Exception as e:
+            _outbound.put(f"ERR:gimbal.goto: {e}")
+
+    elif raw.startswith(b"gimbal.mode"):
+        raw_str = raw.decode("utf-8", errors="replace").strip()
+        try:
+            tokens = shlex.split(raw_str)
+        except ValueError:
+            tokens = raw_str.split()
+        mode = "follow"
+        if len(tokens) >= 2:
+            mode = tokens[1]
+        try:
+            resp = _send_command("gimbal.mode", {"mode": mode})
+            _outbound.put(f"ACK:gimbal.mode {resp.get('detail','')}" if resp.get("ok")
+                        else f"ERR:gimbal.mode {resp.get('error','unknown error')}")
+        except (ConnectionRefusedError, FileNotFoundError):
+            _outbound.put("ERR:gimbal.mode: command socket unavailable")
+        except Exception as e:
+            _outbound.put(f"ERR:gimbal.mode: {e}")
+
+    elif raw.startswith(b"gimbal.starttrack"):
+        try:
+            resp = _send_command("gimbal.starttrack")
+            _outbound.put(f"ACK:gimbal.starttrack {resp.get('detail','')}" if resp.get("ok")
+                        else f"ERR:gimbal.starttrack {resp.get('error','unknown error')}")
+        except (ConnectionRefusedError, FileNotFoundError):
+            _outbound.put("ERR:gimbal.starttrack: command socket unavailable")
+        except Exception as e:
+            _outbound.put(f"ERR:gimbal.starttrack: {e}")
+
+    elif raw.startswith(b"gimbal.stoptrack"):
+        try:
+            resp = _send_command("gimbal.stoptrack")
+            _outbound.put(f"ACK:gimbal.stoptrack {resp.get('detail','')}" if resp.get("ok")
+                        else f"ERR:gimbal.stoptrack {resp.get('error','unknown error')}")
+        except (ConnectionRefusedError, FileNotFoundError):
+            _outbound.put("ERR:gimbal.stoptrack: command socket unavailable")
+        except Exception as e:
+            _outbound.put(f"ERR:gimbal.stoptrack: {e}")
 
     elif raw.startswith(b"$"):
         shell_cmd = raw[1:].decode("utf-8", errors="replace").strip()
-        logger.info(f"Shell cmd: {shell_cmd!r}")
+        job_id = uuid.uuid4().hex[:8]
+        logger.info(f"Shell cmd {job_id}: {shell_cmd!r}")
         try:
-            result = subprocess.run(
+            outfile = tempfile.NamedTemporaryFile(
+                delete=False, prefix=f"job_{job_id}_", suffix=".log", dir="/tmp"
+            )
+            proc = subprocess.Popen(
                 shell_cmd,
                 shell=True,
-                capture_output=True,
-                text=True,
-                timeout=SHELL_CMD_TIMEOUT,
+                stdout=outfile,
+                stderr=subprocess.STDOUT,
                 cwd=TELEMD_DIR,
+                start_new_session=True,
             )
-            output = result.stdout + result.stderr
-            if not output:
-                output = f"(exit {result.returncode}, no output)"
-            output = output[:CMDOUT_MAX_BYTES]
-            encoded = base64.b64encode(output.encode("utf-8")).decode("ascii")
-            _outbound.put(f"CMDOUT:{encoded}")
-        except subprocess.TimeoutExpired:
-            _outbound.put("ERR:command timed out")
+            outfile.close()
+
+            try:
+                retcode = proc.wait(timeout=SHELL_QUICK_WAIT)
+                # finished quickly -> behave exactly like the old synchronous path
+                with open(outfile.name, "rb") as f:
+                    output = f.read()
+                os.unlink(outfile.name)
+                if not output:
+                    output = f"(exit {retcode}, no output)".encode("utf-8")
+                output = output[:CMDOUT_MAX_BYTES]
+                encoded = base64.b64encode(output).decode("ascii")
+                _outbound.put(f"CMDOUT:{encoded}")
+
+            except subprocess.TimeoutExpired:
+                # still running -> hand off to the background job tracker
+                with _jobs_lock:
+                    _jobs[job_id] = {
+                        "proc": proc,
+                        "outfile": outfile.name,
+                        "cmd": shell_cmd,
+                        "start": time.monotonic(),
+                    }
+                _outbound.put(f"ACK:job {job_id} started (PID {proc.pid}, still running): {shell_cmd}")
+
         except Exception as e:
             _outbound.put(f"ERR:shell failed: {e}")
 
-    elif raw.startswith(b"setconfig:"):
+    elif cmd == "jobs":
+        with _jobs_lock:
+            if not _jobs:
+                _outbound.put("ACK:jobs none running")
+            else:
+                lines = []
+                for jid, info in _jobs.items():
+                    elapsed = time.monotonic() - info["start"]
+                    lines.append(f"{jid} ({info['cmd'][:40]}) running {elapsed:.0f}s")
+                _outbound.put("ACK:jobs" + " | ".join(lines))
+
+    elif cmd.startswith("canceljob"):
+        raw_str = raw.decode("utf-8", errors="replace").strip()
+        tokens = raw_str.split()
+        if len(tokens) < 2:
+            _outbound.put("ERR:canceljob: missing job id")
+        else:
+            jid = tokens[1]
+            with _jobs_lock:
+                info = _jobs.get(jid)
+            if info is None:
+                _outbound.put(f"ERR:canceljob: no such job '{jid}'")
+            else:
+                try:
+                    os.killpg(os.getpgid(info["proc"].pid), signal.SIGTERM)
+                    _outbound.put(f"ACK:canceljob {jid} sent SIGTERM")
+                except ProcessLookupError:
+                    _outbound.put(f"ERR:canceljob {jid}: process already gone")
+                except Exception as e:
+                    _outbound.put(f"ERR:canceljob {jid}: {e}")
+
+    elif raw.startswith(b"setconfig"):
         try:
-            encoded = raw[len(b"setconfig:"):]
+            encoded = raw[len(b"setconfig"):]
             data = base64.b64decode(encoded)
             os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
             tmp = CONFIG_FILE + ".tmp"
@@ -320,6 +476,48 @@ def _telemetry_scheduler() -> None:
         status["porter"] = "running" if porter_running else "stopped"
         _outbound.put(f"TEL:{json.dumps(status, separators=(',', ':'))}")
 
+def _job_monitor() -> None:
+    """Poll running background jobs; report + clean up finished ones."""
+    logger.info("Job monitor started")
+    while not _shutdown.is_set():
+        _shutdown.wait(JOB_POLL_INTERVAL)
+
+        with _jobs_lock:
+            job_ids = list(_jobs.keys())
+
+        for jid in job_ids:
+            with _jobs_lock:
+                info = _jobs.get(jid)
+            if info is None:
+                continue
+
+            proc = info["proc"]
+            retcode = proc.poll()
+            if retcode is None:
+                continue   # still running
+
+            try:
+                with open(info["outfile"], "rb") as f:
+                    output = f.read()
+            except FileNotFoundError:
+                output = b""
+            finally:
+                try:
+                    os.unlink(info["outfile"])
+                except FileNotFoundError:
+                    pass
+
+            elapsed = time.monotonic() - info["start"]
+            output = output[:CMDOUT_MAX_BYTES]
+            encoded = base64.b64encode(output).decode("ascii")
+            status = "ok" if retcode == 0 else f"exit {retcode}"
+            _outbound.put(f"ACK:job done {jid}:{status}:{elapsed:.1f}s:{encoded}")
+            logger.info(f"Job {jid} finished ({status}, {elapsed:.1f}s)")
+
+            with _jobs_lock:
+                _jobs.pop(jid, None)
+
+    logger.info("Job monitor stopped")
 
 # main
 def main() -> None:
@@ -341,6 +539,7 @@ def main() -> None:
     threads = [
         threading.Thread(target=_io_thread,           args=(antenna,), daemon=True),
         threading.Thread(target=_telemetry_scheduler,                  daemon=True),
+        threading.Thread(target=_job_monitor,                          daemon=True),
     ]
     for t in threads:
         t.start()

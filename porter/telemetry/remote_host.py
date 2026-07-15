@@ -12,10 +12,19 @@ Commands:
   ping              payload replies "pong" with RSSI
   reboot            reboot the payload computer
   shutdown          shut down the payload computer
-  getlog            download last 4 KB of flight.log (base64-encoded)
+  getlog            download last 40KiB of flight.log (base64-encoded)
   setconfig <path>  upload config file to payload
   start             start control.py on the payload
   stop              stop control.py on the payload
+  camera.start      start a camera thread (Alvium only)
+  camera.capture [-e <exposure>] [-g <gain>]  capture a single frame from the Alvium camera
+  gimbal.goto <yaw> <pitch> <roll>  move gimbal to specified angles (degrees)
+  gimbal.mode <mode>  set gimbal mode (off, lock, or follow)
+  gimbal.starttrack   start pointing controller POI tracking (if configured)
+  gimbal.stoptrack    stop pointing controller POI tracking
+  $<cmd>            run shell command on payload, e.g. $ls -la
+  jobs              list running background jobs
+  canceljob <jid>   cancel a running background job
   help              list commands
   quit / q          exit
 """
@@ -47,10 +56,17 @@ COMMANDS = {
     "shutdown":  "Shut down payload computer",
     "start":     "Start control.py on payload",
     "stop":      "Stop control.py on payload",
-    "getlog":    "Download last 4 KB of flight.log",
+    "getlog":    "Download last 40KiB of flight.log",
     "setconfig": "Upload config file  →  setconfig <local_path>",
+    "camera.start": "Start a camera thread (Alvium only)",
+    "camera.capture": "Capture frame  e.g. camera.capture -e 10000 -g 30.0 - very slow data transfer",
+    "gimbal.goto": "Move gimbal to specified y, p, r angles (degrees)",
+    "gimbal.starttrack": "Start pointing controller POI tracking (if configured)",
+    "gimbal.stoptrack": "Stop pointing controller POI tracking",
+    "gimbal.mode": "Set gimbal mode (off, lock, or follow)",
     "$<cmd>":    "Run shell command on payload  e.g. $ls -la",
-    "camcap":    "Capture frame  e.g. camcap -e 10000 -g 30.0 - very slow data transfer",
+    "jobs":       "List running background jobs",
+    "canceljob":  "Cancel a running background job",
 }
 
 # shared state
@@ -304,11 +320,19 @@ def _tui(stdscr, antenna: Xbee) -> None:
                 _push_log("Available commands:")
                 for c, desc in COMMANDS.items():
                     _push_log(f"  {c:<12} {desc}")
-            elif cmd == "getlog":
-                _outbound.put("getlog")
             elif original_input.startswith("$"):
                 _outbound.put(original_input)
-            elif cmd.startswith("camcap"):
+            elif original_input.startswith("gimbal.goto"):
+                _outbound.put(original_input)
+            elif original_input.startswith("gimbal.mode"):
+                _outbound.put(original_input)
+            elif original_input.startswith("gimbal.starttrack"):
+                _outbound.put(original_input)
+            elif original_input.startswith("gimbal.stoptrack"):
+                _outbound.put(original_input)
+            elif cmd.startswith("camera.start"):
+                _outbound.put(original_input)
+            elif cmd.startswith("camera.capture"):
                 _outbound.put(original_input)
             elif cmd.startswith("setconfig"):
                 parts = original_input.split(None, 1)  # preserve original case for path

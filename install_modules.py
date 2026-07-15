@@ -7,7 +7,7 @@ print("Installing required modules in the folder ./modules...")
 # VmbPy
 print(" Installing VmbPy")
 try:
-    os.system(f"pip install -e {current_dir}/modules/VmbPy/.")
+    os.system(f"pip install {current_dir}/modules/vmbpy-1.2.1-py3-none-any.whl")
 except:
     print("Error installing VmbPy")
 
@@ -17,6 +17,55 @@ try:
     os.system(f"pip install -e {current_dir}/modules/Alvium-Camera-Module-Python/.")
 except:
     print("Error installing Pyalvium")
+
+# digi-Xbee
+print(" Installing digi-xbee")
+try:
+    os.system(f"pip install digi-xbee==1.5.0")
+except:
+    print("Error installing digi-xbee")
+
+# ina228 
+print(" Installing ina228")
+try:
+    os.system(f"pip install adafruit-circuitpython-ina228")
+except:
+    print("Error installing ina228")
+
+# pyubx2
+print(" Installing pyubx2")
+try:
+    os.system(f"pip install pyubx2")
+except:
+    print("Error installing pyubx2")
+
+# adafruit-circuitpython-mcp4725
+print(" Installing adafruit-circuitpython-mcp4725")
+try:
+    os.system(f"pip install adafruit-circuitpython-mcp4725")
+except:
+    print("Error installing adafruit-circuitpython-mcp4725")
+
+# pyUSB
+print(" Installing pyusb")
+try:
+    os.system(f"pip install pyusb")
+except:
+    print("Error installing pyusb")
+
+# pyyaml
+print(" Installing pyyaml")
+try:
+    os.system(f"pip install pyyaml")
+except:
+    print("Error installing pyyaml")
+
+# lager
+print(" Installing lager")
+try:
+    os.system(f"pip install -e {current_dir}/modules/lager/.")
+except:
+    print("Error installing lager")
 
 # SourCore
 print(" Installing SourCore")
@@ -47,4 +96,13 @@ try:
 except:
     print("Error installing LM76-Temperature-Sensor")
 
-print("Done")
+print("Done installing packages.")
+
+print("Installing systemd services...")
+try:
+    os.system(f"sudo cp {current_dir}/startup/telemd.service /etc/systemd/system/")
+    os.system("sudo systemctl daemon-reload")
+    os.system("sudo systemctl enable telemd.service")
+    os.system("sudo systemctl start telemd.service")
+except:
+    print("Error installing systemd services")

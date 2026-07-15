@@ -11,6 +11,8 @@ import argparse
 from exceptions import ServiceExitError, FlagSetError
 import parameters as params
 
+from porter.telemetry.command_server import CommandServer
+
 # define timestamp for data saving
 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -42,13 +44,13 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-
-# create a symlink to the current data directory
-if os.path.exists(current_symlink_path):
+# remove existing symlink and create a new one to the current data directory
+if os.path.islink(current_symlink_path):
     os.remove(current_symlink_path)
     logger.info(f"Removed existing symlink {current_symlink_path}")
 os.symlink(working_data_directory, current_symlink_path)
 logger.info(f"Created symlink {current_symlink_path} -> {working_data_directory}")
+
 
 # import modules that use the logger
 import porter.sensors.sensors_handler as sh
@@ -74,13 +76,17 @@ def capture_flag(flag):
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--config_file", type=str, help="Path to the config file", default="config/default.yml")
 
+
 def main():
     logger.info("Starting main program...")
-
     args = parser.parse_args()
     config_file = args.config_file
 
-    flag = threading.Event()
+    # global flags
+    shutdown_flag = threading.Event()
+    autostart_camera_flag = True
+    autostart_poi_tracking_flag = True
+
     owned_threads = []  # track only threads we start ourselves
 
     # opening config file
@@ -110,37 +116,72 @@ def main():
     time.sleep(1)
 
     try:
-        local_development = config.get("local_development", False)
-        logger.info(f"Local development mode: {local_development}")
-
+        global_config = config.get("global", {})
         sensors = config.get("sensors", None)
         source = config.get("source", None)
         camera = config.get("camera", None)
-        status_writer_cfg = config.get("status_writer", None)
+        pointing_controller = config.get("pointing_controller", None)
+        status_writer = config.get("status_writer", None)
+        power_monitor = config.get("power_monitor", None)
+
+        # check for global configuration autostart parameters
+        if global_config:
+            logger.info(f"Found global configuration parameters")
+            autostart_camera_flag       = global_config.get("autostart_camera",       True)
+            autostart_poi_tracking_flag = global_config.get("autostart_poi_tracking", True)
+            if autostart_camera_flag:
+                logger.info(f"Global config: autostart_camera is enabled")
+            else:
+                logger.info(f"Global config: autostart_camera is disabled")
+            if autostart_poi_tracking_flag:
+                logger.info(f"Global config: autostart_poi_tracking is enabled")
+            else:
+                logger.info(f"Global config: autostart_poi_tracking is disabled")
 
         # start the StatusWriter thread if configured
         # (telemd.py owns the XBee and reads the file written here)
-        if status_writer_cfg is not None and status_writer_cfg.get("enabled", False):
-            update_rate = status_writer_cfg.get("update_rate", 1.0)
+        cmd_server = None
+        if status_writer is not None and status_writer.get("enabled", False):
+            logger.info(f"Found status writer key in config")
+            update_rate = status_writer.get("update_rate", 1.0)
             t = threads.StatusWriter(
                 status_board=status_board,
                 update_rate=update_rate,
-                flag=flag,
+                flag=shutdown_flag,
                 daemon=False,
             )
             t.start()
             owned_threads.append(t)
             logger.info(f"StatusWriter started at {update_rate} Hz")
 
+            # start command server thread for handling commands from remote telemetry clients
+            cmd_server = CommandServer(shutdown_flag=shutdown_flag)
+
+        # start the PowerMonitor thread if configured
+        if power_monitor is not None:
+            logger.info(f"Found power monitor key in config")
+            t = threads.PowerMonitor(
+                power_monitor_config=power_monitor,
+                flag=shutdown_flag,
+                path=sensor_path,
+                status_board=status_board,
+                daemon=False,
+            )
+            t.start()
+            owned_threads.append(t)
+            logger.info(f"PowerMonitor started")
+
         # start sensor threads if sensors are configured
         if sensors is not None:
+            logger.info(f"Found sensor key in config")
+
             logger.info("Starting sensor threads...")
             sensor_names = {}
             sensor_handler = {}
 
             for i in sensors.keys():
                 logger.info(f"Initializing sensor {i}")
-                sensors_handler = sh.Handler(sensors[i], local=local_development)
+                sensors_handler = sh.Handler(sensors[i])
 
                 name = sensors[i]["name"]
                 sensor_handler[name] = sensors_handler
@@ -150,7 +191,7 @@ def main():
                 logger.info(f"Starting thread for sensor {i}")
                 t = threads.Sensors(
                     handler=sensor_handler[i],
-                    flag=flag,
+                    flag=shutdown_flag,
                     date=timestamp,
                     path=sensor_path,
                     sensor_name=sensor_names[i],
@@ -161,8 +202,19 @@ def main():
                 owned_threads.append(t)
                 logger.info(f"Thread started for sensor {i}")
 
+        # get the onboard gnss source if configured
+        gnss_source = None
+        for i in sensors.keys():
+            if i.lower().startswith("gps"):
+                name = sensors[i]["name"]
+                gnss_source = sensor_handler[name].obj.get_gnss_source()
+                logger.info(f"GNSS source initialized from GPS sensor")
+                break
+
         # start Valon synthesizer if source is configured
         if source is not None:
+            logger.info(f"Found source key in config")
+
             logger.info(f"Starting Valon synthesizer on port {source['port']} and baudrate {source['baudrate']}")
             synt = valon.Valon(source["port"], source["baudrate"])
             
@@ -177,10 +229,10 @@ def main():
                 logger.info(f"Disabling Valon amplitude modulation")
                 synt.set_amd(0, 0)
 
-            ATTEMPTS = 10
+            attempts = params.ATTEMPTS
             valon_id = None
-            for i in range(ATTEMPTS):
-                logger.info(f"Attempt {i+1}/{ATTEMPTS} to get Valon ID...")
+            for i in range(attempts):
+                logger.info(f"Attempt {i+1}/{attempts} to get Valon ID...")
                 valon_id = synt.get_id()
                 time.sleep(0.01)
 
@@ -195,12 +247,13 @@ def main():
             time.sleep(2)
 
         # start camera thread if camera is configured
-        if camera is not None and not local_development:
+        if camera is not None:
+            logger.info(f"Found camera key in config")
             try:
                 if camera["name"] == 'Alvium_Starspec':
                     t = threads.AlviumCameraStarspec(
                         camera_config=camera,
-                        flag=flag,
+                        flag=shutdown_flag,
                         path=camera_path,
                         status_board=status_board,
                         daemon=False,
@@ -211,18 +264,20 @@ def main():
                 elif camera["name"] == 'Alvium':
                     t = threads.AlviumCamera(
                         camera_config=camera,
-                        flag=flag,
+                        flag=shutdown_flag,
                         path=camera_path,
                         status_board=status_board,
                         daemon=False,
                     )
-                    t.start()
+                    cmd_server.register("camera.start", t.start)
+                    if autostart_camera_flag:
+                        t.start()
                     owned_threads.append(t)
                     logger.info(f"Thread started for camera {camera['name']}")
                 elif camera["name"] == 'Sony':
                     t = threads.SonyCamera(
                         camera_config=camera,
-                        flag=flag,
+                        flag=shutdown_flag,
                         daemon=True,
                     )
                     t.start()
@@ -230,19 +285,59 @@ def main():
                     logger.info(f"Thread started for camera {camera['name']}")
                 else:
                     logger.error(f"Unknown camera name: {camera['name']}")
-                    flag.set()
+                    shutdown_flag.set()
 
                 time.sleep(2)
 
             except IndexError:
-                flag.set()
+                shutdown_flag.set()
 
-        while not flag.is_set():
+        # start pointing controller threads and pass configuration file
+        if pointing_controller is not None:
+            logger.info(f"Found pointing controller key in config")
+            if pointing_controller["name"] == 'lager':
+                t = threads.PointingController(
+                    pointing_controller_config=pointing_controller,
+                    path=working_data_directory,
+                    flag=shutdown_flag,
+                    status_board=status_board,
+                    gnss_source=gnss_source,
+                    daemon=False,
+                )
+                t.start()
+                logger.info(f"Registering POI tracking commands for pointing controller {pointing_controller['name']} with command server...")
+                cmd_server.register("gimbal.starttrack", t.start_tracking)
+                cmd_server.register("gimbal.stoptrack", t.stop_tracking)
+                if autostart_poi_tracking_flag:
+                    t.start_tracking()
+                owned_threads.append(t)
+                logger.info(f"Thread started for pointing controller {pointing_controller['name']}")
+
+                # register commands for gimbal control with the command server, retrying if necessary
+                # due to serial connection latency and protocol initialization time
+                if cmd_server is not None:
+                    attempts = params.ATTEMPTS
+                    while attempts > 0:
+                        try:
+                            logger.info(f"Registering gimbal commands for pointing controller {pointing_controller['name']} with command server... attempt {params.ATTEMPTS - attempts + 1}/{params.ATTEMPTS}")
+                            cmd_server.register("gimbal.goto", t.pc.gimbal.goto)
+                            cmd_server.register("gimbal.mode", t.pc.gimbal.set_mode)
+                            attempts = 0  # exit loop if successful
+                        except Exception as e:
+                            logger.error(f"Error registering commands for pointing controller {pointing_controller['name']}: {e}")
+                        attempts -= 1
+                        time.sleep(1)
+
+        # start command server thread for handling commands from remote telemetry clients
+        if cmd_server is not None:
+            cmd_server.start()
+
+        while not shutdown_flag.is_set():
             time.sleep(0.2)
 
     except (ServiceExitError, FlagSetError) as err:
         logger.error(f"Exception occurred: {err.__class__.__name__}")
-        flag.set()
+        shutdown_flag.set()
 
     # reset signal handlers to default
     for sig in params.signal_to_catch:

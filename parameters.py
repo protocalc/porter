@@ -6,6 +6,8 @@ LOGGING_FORMAT_FILE = "[%(asctime)s.%(msecs)03d - %(levelname)s] name: %(name)s 
 LOGGING_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOGGING_LEVEL = "INFO"
 
+ATTEMPTS = 10 
+
 # define signal to catch
 signal_to_catch = [SIGINT, SIGTERM]
 
