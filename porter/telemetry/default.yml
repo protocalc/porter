@@ -13,7 +13,7 @@ sensors:
       type: serial
       parameters:
         port: /dev/ttyAMA0
-        baudrate: 38400
+        baudrate: 115200
     sensor_info:
       type: GPS
       manufacturer: UBlox

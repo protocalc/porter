@@ -20,7 +20,28 @@ timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 path = os.path.dirname(os.path.realpath(__file__))
 home_directory = os.environ["HOME"]
 data_directory = os.path.join(home_directory, params.data_directory)
-working_data_directory = os.path.join(data_directory, timestamp)
+
+# check if there are other files with same name structure
+if params.INCREMENTAL_FILE_SUFFIX:
+    suffix = 0
+    folder_list = os.listdir(data_directory)
+    # parse the suffix and timestamp from the folder names
+    for folder in folder_list:
+        # split at _
+        parts = folder.split("_")
+        if len(parts) == 3:
+            try:
+                # check if the first part is an integer
+                suffix = int(parts[0])
+                # check if the second part is a valid timestamp
+                datetime.datetime.strptime(parts[1] + "_" + parts[2], "%Y%m%d_%H%M%S")
+                # if both checks pass, increment the suffix
+                suffix += 1
+            except ValueError:
+                pass
+    working_data_directory = os.path.join(data_directory, f"{suffix:03d}_{timestamp}")
+else:
+    working_data_directory = os.path.join(data_directory, timestamp)
 logfile_path = os.path.join(working_data_directory, params.logfile_name)
 current_symlink_path = os.path.join(data_directory, params.current_symlink_name)
 
