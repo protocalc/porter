@@ -38,6 +38,7 @@ import socket
 import tempfile
 import time
 import uuid
+import re
 
 # global state for jobs that are running in the background (e.g. shell commands)
 _jobs: dict[str, dict] = {}     # job_id -> {"proc", "outfile", "cmd", "start"}
@@ -49,7 +50,7 @@ TELEMD_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, TELEMD_DIR)
 
 from digi.xbee.exception import TimeoutException
-from porter.telemetry.Xbee import Xbee, TransmitException, END_OF_MESSAGE_BYTE
+from Xbee import Xbee, TransmitException, END_OF_MESSAGE_BYTE
 import parameters as params
 
 # configuration 
@@ -67,13 +68,18 @@ LOG_TAIL_BYTES    = 40960  # bytes sent in response to 'getlog'
 SHELL_CMD_TIMEOUT = 10     # seconds before a shell command is killed
 SHELL_QUICK_WAIT = 2.0     # seconds to wait before treating a command as a background job
 CMDOUT_MAX_BYTES  = 2000   # output cap before base64 encoding
-CAPTURE_SCRIPT  = os.path.join(TELEMD_DIR, "porter", "telemetry", "alvium_capture.py")
-CAPTURE_OUTPUT  = os.path.join(TELEMD_DIR, "porter", "telemetry", "captured_frame.jpg")
-CAPTURE_TIMEOUT = 60       # seconds to wait for a frame to be captured
+CAPTURE_SCRIPT  = os.path.join(TELEMD_DIR, "telemetry", "alvium_capture.py")
+CAPTURE_OUTPUT  = os.path.join(TELEMD_DIR, "telemetry", "captured_frame.jpg")
+CAPTURE_TIMEOUT = 60        # seconds to wait for a frame to be captured
+CHRONY_TIMEOUT        = 2   # seconds to wait for a chronyc call
+CHRONY_POLL_INTERVAL  = 5   # seconds between chrony status polls
 
 CMD_SOCKET_PATH = "/tmp/porter_cmd.sock"
 CMD_TIMEOUT = 5.0
 
+# status of powerd daemon
+POWER_CONTROLLER_ENABLED = True
+POWER_CONTROLLER_STATUS_PATH = "/tmp/power_cmd.json"
 
 # logging
 _log_formatter = logging.Formatter("%(asctime)s [%(levelname)-8s] %(name)s: %(message)s")
@@ -88,6 +94,9 @@ _outbound: "queue.Queue[str]" = queue.Queue()   # messages to send
 
 _porter_process: "subprocess.Popen | None" = None
 _porter_lock = threading.Lock()
+
+_chrony_lock  = threading.Lock()
+_chrony_cache: dict = {"ok": False, "error": "not polled yet"}
 
 
 def _send_command(cmd: str, params: dict | None = None) -> dict:
@@ -142,6 +151,63 @@ def _porter_stop() -> str:
         logger.error(f"Failed to stop porter: {e}")
         return f"ERR:porter_stop failed: {e}"
 
+# chrony 
+def _query_chrony() -> dict:
+    """Ask chronyd what it's currently synced to and whether it's PPS."""
+    try:
+        result = subprocess.run(
+            ["chronyc", "tracking"],
+            capture_output=True, text=True, timeout=CHRONY_TIMEOUT,
+        )
+        if result.returncode != 0:
+            return {"ok": False, "error": (result.stderr or "chronyc failed").strip()}
+
+        info = {}
+        for line in result.stdout.splitlines():
+            if ":" not in line:
+                continue
+            key, _, val = line.partition(":")
+            info[key.strip()] = val.strip()
+
+        refid_line = info.get("Reference ID", "")
+        m = re.search(r"\(([^)]+)\)", refid_line)
+        ref_name = m.group(1) if m else refid_line or "unknown"
+
+        offset_m = re.search(r"[-+]?\d*\.?\d+", info.get("Last offset", ""))
+        offset_s = float(offset_m.group()) if offset_m else None
+
+        try:
+            stratum = int(info.get("Stratum", ""))
+        except ValueError:
+            stratum = None
+
+        return {
+            "ok": True,
+            "ref": ref_name,
+            "pps_selected": "pps" in ref_name.lower(),
+            "stratum": stratum,
+            "offset_s": offset_s,
+            "leap_status": info.get("Leap status"),
+        }
+    except FileNotFoundError:
+        return {"ok": False, "error": "chronyc not found"}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "chronyc timed out"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def _chrony_monitor() -> None:
+    logger.info("Chrony monitor started")
+    while not _shutdown.is_set():
+        result = _query_chrony()
+        with _chrony_lock:
+            global _chrony_cache
+            _chrony_cache = result
+        if not result.get("ok"):
+            logger.warning(f"chrony query failed: {result.get('error')}")
+        _shutdown.wait(CHRONY_POLL_INTERVAL)
+    logger.info("Chrony monitor stopped")
 
 # command handler
 def _handle(raw: bytes, antenna: Xbee) -> None:
@@ -462,6 +528,13 @@ def _read_status() -> dict:
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
+def _read_powerd_status() -> dict:
+    try:
+        with open(POWER_CONTROLLER_STATUS_PATH, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
 
 def _telemetry_scheduler() -> None:
     """Send a TEL packet every second. No device access — only enqueues."""
@@ -469,11 +542,16 @@ def _telemetry_scheduler() -> None:
     while not _shutdown.is_set():
         _shutdown.wait(1.0)
         status = _read_status()
+        if POWER_CONTROLLER_ENABLED:
+            powerd_status = _read_powerd_status()
+            status["power_controller"] = powerd_status
         with _porter_lock:
             porter_running = (
                 _porter_process is not None and _porter_process.poll() is None
             )
         status["porter"] = "running" if porter_running else "stopped"
+        with _chrony_lock:
+            status["chrony"] = dict(_chrony_cache)
         _outbound.put(f"TEL:{json.dumps(status, separators=(',', ':'))}")
 
 def _job_monitor() -> None:
@@ -537,9 +615,10 @@ def main() -> None:
     _outbound.put("telemd started")   # announce we are alive
 
     threads = [
-        threading.Thread(target=_io_thread,           args=(antenna,), daemon=True),
-        threading.Thread(target=_telemetry_scheduler,                  daemon=True),
-        threading.Thread(target=_job_monitor,                          daemon=True),
+        threading.Thread(target=_io_thread, args=(antenna,), daemon=True),
+        threading.Thread(target=_telemetry_scheduler,        daemon=True),
+        threading.Thread(target=_job_monitor,                daemon=True),
+        threading.Thread(target=_chrony_monitor,             daemon=True),
     ]
     for t in threads:
         t.start()

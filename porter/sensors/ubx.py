@@ -86,24 +86,18 @@ class UBX:
         self.identities = ""
 
     def configure(self, config):
-
         layers = 1
         transaction = 0
-
         keys = []
 
         # Parsing yaml config file keys and converting them to configuration keys that the ZED-F9P can interpret.
-
         for i in config.keys():
-
             if i.lower() == "rate":
-
                 # Add rate configuration
                 rate = int(1 / config["RATE"]["value"] * 1000)
                 keys.append(("CFG_RATE_MEAS", rate))
 
             elif i.lower() == "ubx_msg":
-
                 # Add output port for UBX messages.
                 output_port = config["UBX_MSG"]["output_port"]
 
@@ -113,7 +107,6 @@ class UBX:
                     port_string = output_port
 
                 string = "CFG_MSGOUT_UBX_"
-
                 # Enable options for logging different UBX messages.
                 for j in config["UBX_MSG"].keys():
                     if j.lower() == "output_port":
@@ -121,7 +114,6 @@ class UBX:
                     else:
                         for k in config["UBX_MSG"][j]:
                             msg = string + j + "_" + k + "_" + port_string
-
                             keys.append((msg, 1))
 
             elif i.lower() == "nmea_msg":
@@ -160,7 +152,6 @@ class UBX:
                     output = 0
 
                 string = "CFG_" + config[i]["output"]["port"] + "OUTPROT_" + p
-
                 keys.append((string, output))
 
             else:
@@ -208,9 +199,7 @@ class UBX:
             )
 
             time.sleep(0.5)
-
             baudrate_temp = 0
-
             count = 0
             loops = 10
 
@@ -226,9 +215,7 @@ class UBX:
                 self.conn = serial.Serial(self.__port, baudrate_temp, timeout=1)
                 self.conn.write(msg_baud.serialize())
 
-                logger.info(
-                    f"Baudrate Message written with current Baudrate @ {baudrate_temp}"
-                )
+                logger.info(f"Baudrate Message written with current Baudrate @ {baudrate_temp}")
                 time.sleep(0.2)
 
                 t0 = time.perf_counter()
@@ -237,7 +224,6 @@ class UBX:
 
                 self.conn.close()
                 time.sleep(0.2)
-
                 count += 1
 
             if count >= loops:
@@ -251,7 +237,6 @@ class UBX:
 
             if self.conn.is_open:
                 logger.info(f"Connected to ublox sensor {self.name} @ {self.__brate}")
-
                 self.reader = ubx.UBXReader(self.conn, protfilter=2)
         
         for i in range(2):
@@ -280,7 +265,6 @@ class UBX:
             datafile = open(datafile_name, "r+b")
         except FileNotFoundError:
             datafile = open(datafile_name, "x+b")
-        
 
         # data_path = '/'.join(datafile_name.split('/')[:-1])
         # timing_path = data_path + '/gps_timing.txt'
@@ -319,19 +303,6 @@ class UBX:
 
             # update the status board
             status_board.beat(self.name, self.metadata)
-
-            # Logging timestamp and GPS messages
-            # print_time = datetime.fromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S.%f")
-            # self.timing_results += f"{print_time} {read_time / 1e6} {(t - t_prev) * 1e3} \n"
-
-            # t_prev = t
-            # current_time = time.time()
-
-            # Write to output file
-            # if current_time - loop_start >= 3600:
-            # with open(timing_path, 'w') as f:
-            #    f.write(self.timing_results)
-            # break
 
         self.close()
 

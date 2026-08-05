@@ -1,10 +1,6 @@
 import serial
-
 import pyubx2 as ubx
-
 import time
-
-conn = serial.Serial('/dev/ttyAMA0', 38400, timeout=2)
 
 cfg = [
     ('CFG_UART2OUTPROT_NMEA', 1),
@@ -24,12 +20,10 @@ cfg = [
     ('CFG_MSGOUT_UBX_RXM_SFRBX_UART1', 1)
 ]
 
-cfg_msg = ubx.UBXMessage.config_set(1,0,cfg)
-
+conn = serial.Serial('/dev/ttyAMA0', 38400, timeout=2)
+cfg_msg = ubx.UBXMessage.config_set(1, 0, cfg)
 conn.write(cfg_msg.serialize())
-
 time.sleep(0.5)
-
 conn.close()
 
 

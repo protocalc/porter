@@ -11,7 +11,7 @@ import argparse
 from exceptions import ServiceExitError, FlagSetError
 import parameters as params
 
-from porter.telemetry.command_server import CommandServer
+from telemetry.command_server import CommandServer
 
 # define timestamp for data saving
 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -77,7 +77,7 @@ logger.info(f"Created symlink {current_symlink_path} -> {working_data_directory}
 import porter.sensors.sensors_handler as sh
 import porter.threads as threads
 import porter.valon as valon
-from porter.telemetry.StatusBoard import StatusBoard
+from telemetry.StatusBoard import StatusBoard
 
 # initialize the status board
 status_board = StatusBoard()
@@ -142,8 +142,6 @@ def main():
         source = config.get("source", None)
         camera = config.get("camera", None)
         pointing_controller = config.get("pointing_controller", None)
-        status_writer = config.get("status_writer", None)
-        power_monitor = config.get("power_monitor", None)
 
         # check for global configuration autostart parameters
         if global_config:
@@ -159,38 +157,23 @@ def main():
             else:
                 logger.info(f"Global config: autostart_poi_tracking is disabled")
 
-        # start the StatusWriter thread if configured
+        # start the StatusWriter thread
         # (telemd.py owns the XBee and reads the file written here)
         cmd_server = None
-        if status_writer is not None and status_writer.get("enabled", False):
-            logger.info(f"Found status writer key in config")
-            update_rate = status_writer.get("update_rate", 1.0)
-            t = threads.StatusWriter(
-                status_board=status_board,
-                update_rate=update_rate,
-                flag=shutdown_flag,
-                daemon=False,
-            )
-            t.start()
-            owned_threads.append(t)
-            logger.info(f"StatusWriter started at {update_rate} Hz")
+        logger.info(f"Found status writer key in config")
+        update_rate = 1.0/params.STATUS_WRITER_UPDATE_RATE
+        t = threads.StatusWriter(
+            status_board=status_board,
+            update_rate=update_rate,
+            flag=shutdown_flag,
+            daemon=False,
+        )
+        t.start()
+        owned_threads.append(t)
+        logger.info(f"StatusWriter started at {update_rate} Hz")
 
-            # start command server thread for handling commands from remote telemetry clients
-            cmd_server = CommandServer(shutdown_flag=shutdown_flag)
-
-        # start the PowerMonitor thread if configured
-        if power_monitor is not None:
-            logger.info(f"Found power monitor key in config")
-            t = threads.PowerMonitor(
-                power_monitor_config=power_monitor,
-                flag=shutdown_flag,
-                path=sensor_path,
-                status_board=status_board,
-                daemon=False,
-            )
-            t.start()
-            owned_threads.append(t)
-            logger.info(f"PowerMonitor started")
+        # start command server thread for handling commands from remote telemetry clients
+        cmd_server = CommandServer(shutdown_flag=shutdown_flag)
 
         # start sensor threads if sensors are configured
         if sensors is not None:

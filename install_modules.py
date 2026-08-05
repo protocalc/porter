@@ -106,3 +106,11 @@ try:
     os.system("sudo systemctl start telemd.service")
 except:
     print("Error installing systemd services")
+
+try:
+    os.system(f"sudo cp {current_dir}/startup/powerd.service /etc/systemd/system/")
+    os.system("sudo systemctl daemon-reload")
+    os.system("sudo systemctl enable powerd.service")
+    os.system("sudo systemctl start powerd.service")
+except:
+    print("Error installing systemd services")

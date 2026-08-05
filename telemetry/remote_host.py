@@ -42,7 +42,7 @@ import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from digi.xbee.exception import TimeoutException
-from porter.telemetry.Xbee import Xbee, END_OF_MESSAGE_BYTE
+from Xbee import Xbee, END_OF_MESSAGE_BYTE
 
 # configuration
 DEFAULT_PORT     = "/dev/ttyUSB0"
@@ -251,6 +251,41 @@ def _draw(stdscr, input_buf: str) -> None:
     _safe_addstr(stdscr, row, x_porter, porter.upper(), porter_attr)
     row += 1
 
+    # chrony status
+    chrony = tel.get("chrony", {})
+    chrony_state = chrony.get("ok", False)
+    chrony_ref = chrony.get("ref", "")
+    chrony_attr = C_OK() if chrony_state else C_DEAD()
+    row = _safe_addstr(stdscr, row, 2, f"Chrony: ", C_NORMAL())
+    row -= 1
+    x_chrony = 2 + len(f"Chrony: ")
+    _safe_addstr(stdscr, row, x_chrony, "OK" if chrony_state else "ERR", chrony_attr)
+    if chrony_ref:
+        row = _safe_addstr(stdscr, row, x_chrony + 4, f"Reference: {chrony_ref}", C_NORMAL())
+    row += 1
+
+    # power controller status
+    powerd = tel.get("power_controller", {})
+    powerd_state = powerd.get("ok", False)
+    powerd_bus_voltage = powerd.get("reading", {}).get("bus_voltage", None)
+    powerd_shunt_voltage = powerd.get("reading", {}).get("shunt_voltage", None)
+    powerd_current = powerd.get("reading", {}).get("current", None)
+    powerd_temperature = powerd.get("reading", {}).get("temperature", None)
+    powerd_attr = C_OK() if powerd_state else C_DEAD()
+    row = _safe_addstr(stdscr, row, 2, f"Power Controller: ", C_NORMAL())
+    row -= 1
+    x_powerd = 2 + len(f"Power Controller: ")
+    _safe_addstr(stdscr, row, x_powerd, "OK" if powerd_state else "ERR", powerd_attr)
+    if powerd_bus_voltage is not None:
+        row = _safe_addstr(stdscr, row, x_powerd + 4, f"Bus Voltage: {powerd_bus_voltage:.2f} V", C_NORMAL())
+    if powerd_shunt_voltage is not None:
+        row = _safe_addstr(stdscr, row, x_powerd + 4, f"Shunt Voltage: {powerd_shunt_voltage:.2f} V", C_NORMAL())
+    if powerd_current is not None:
+        row = _safe_addstr(stdscr, row, x_powerd + 4, f"Current: {powerd_current:.2f} A", C_NORMAL())
+    if powerd_temperature is not None:
+        row = _safe_addstr(stdscr, row, x_powerd + 4, f"Temperature: {powerd_temperature:.2f} °C", C_NORMAL())
+    row += 1
+
     # health
     row = _safe_addstr(stdscr, row, 0, "─" * w, C_DIM())
     row = _safe_addstr(stdscr, row, 2, "HEALTH", C_HEADER())
@@ -367,16 +402,26 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Porter ground station")
     parser.add_argument("--port",     default=DEFAULT_PORT,    help="Local XBee serial port")
     parser.add_argument("--baudrate", default=DEFAULT_BAUDRATE, type=int)
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
 
-    print(f"Connecting to {args.port} @ {args.baudrate} baud ...")
-    antenna = Xbee(port=args.port, baudrate=args.baudrate)
-    antenna.open(force_settings=True, remote_name=PAYLOAD_NAME)
-    print(f"Connected. Remote: {antenna.remote_device}\nStarting TUI...")
-    time.sleep(0.5)
+    if args.debug:
+        print("Skipping connection to XBee for debug mode. Use --debug only for testing the TUI.")
+        antenna = None 
 
-    t = threading.Thread(target=_io_thread, args=(antenna,), daemon=True)
-    t.start()
+    else:
+        print(f"Connecting to {args.port} @ {args.baudrate} baud ...")
+        try:
+            antenna = Xbee(port=args.port, baudrate=args.baudrate)
+            antenna.open(force_settings=True, remote_name=PAYLOAD_NAME)
+        except Exception as e:
+            print(f"Failed to open XBee: {e}")
+            sys.exit(1)
+        print(f"Connected. Remote: {antenna.remote_device}\nStarting TUI...")
+        time.sleep(0.5)
+
+        t = threading.Thread(target=_io_thread, args=(antenna,), daemon=True)
+        t.start()
 
     try:
         curses.wrapper(_tui, antenna)

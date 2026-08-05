@@ -446,29 +446,6 @@ class PointingController(threading.Thread):
     def stop_tracking(self):
         self.start_track_flag = False
 
-class PowerMonitor(threading.Thread):
-    """Class to create a thread for the power monitor"""
-    def __init__(
-        self,
-        power_monitor_config,
-        path,
-        flag,
-        status_board,
-        *args,
-        **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
-
-        self.power_monitor_config = power_monitor_config
-        self.name = self.power_monitor_config["name"]
-        self.path = path
-        self.status_board = status_board
-        self.shutdown_flag = flag
-        self.pm = None
-
-    def run(self):
-        return  # power monitor functionality is not implemented yet
-
 
 class StatusWriter(threading.Thread):
     """Write the status board snapshot to a JSON file for telemd to read.

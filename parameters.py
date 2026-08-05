@@ -14,6 +14,7 @@ ATTEMPTS = 10
 signal_to_catch = [SIGINT, SIGTERM]
 
 THREAD_JOIN_TIMEOUT = 10  # seconds
+STATUS_WRITER_UPDATE_RATE = 1  # Hz
 
 # define paths and file/folder naming
 INCREMENTAL_FILE_SUFFIX = True
