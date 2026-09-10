@@ -6,8 +6,12 @@ import time
 
 logger = logging.getLogger(__name__)
 
-class Inertial:
+# get the absolute path to this file's directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# get the absolute path to the binary in the bin folder relative to this file's directory
+binary_path = os.path.join(current_dir, "..", "..", "bin", "inertial")
 
+class Inertial:
     def __init__(self, name="Inertial Sensors", bus=4, model="Various", sensor_core=None):
         self.name = name 
         self.model = model 
@@ -18,8 +22,8 @@ class Inertial:
         logger.info(f"Connected to inertial sensors {self.name}")
 
     def read_continous_binary(self, shutdown_flag, datafile_name, status_board):
-        # start the inertial process through the command line.
-        cmd = f"bin/inertial --rate {self.rate} --outputdir {datafile_name} --i2c-bus {self.bus} --no-imu"
+        # start the inertial process through the command line
+        cmd = f"{binary_path} --rate {self.rate} --outputdir {datafile_name} --i2c-bus {self.bus} --no-imu"
         logger.warning("Inertial sensors: IMU is disabled (hardcoded in porter/sensors/inertial.py)")
         if self.core is not None:
             cmd += f" --core {int(self.core)}"

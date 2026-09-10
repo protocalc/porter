@@ -9,7 +9,7 @@ Type=simple
 User=polocalc
 WorkingDirectory=/home/polocalc/flight/porter
 # Use the project venv so porter.* packages are importable
-ExecStart=/home/polocalc/porter_venv/bin/python3 /home/polocalc/flight/porter/telemd.py
+ExecStart=/home/polocalc/porter_venv/bin/python3 /home/polocalc/flight/porter/telemetry/telemd.py
 # Wait for the XBee USB device to enumerate after boot
 ExecStartPre=/bin/sleep 5
 # Restart automatically if telemd crashes

@@ -6,6 +6,10 @@ import time
 
 logger = logging.getLogger(__name__)
 
+# get the absolute path to this file's directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# get the absolute path to the binary in the bin folder relative to this file's directory
+binary_path = os.path.join(current_dir, "..", "..", "bin", "LM76SensorModule")
 
 class LM76SensorModule:
 
@@ -35,8 +39,6 @@ class LM76SensorModule:
 
     def read_continous_binary(self, shutdown_flag, datafile_name, status_board):
         # Start the LM76SensorModule process through the command line.
-        binary_path = "bin/LM76SensorModule"
-
         cmd = f"{binary_path} --bus {self.bus} --address {hex(self.address)} --interval {self.interval} --outputdir {datafile_name}"
         
         # Add threshold configurations if set

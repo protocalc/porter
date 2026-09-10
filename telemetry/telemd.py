@@ -49,9 +49,13 @@ JOB_POLL_INTERVAL = 0.5
 TELEMD_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, TELEMD_DIR)
 
+# add porter_venv to sys.path so we can import parameters.py
+PORTER_DIR = os.path.join(TELEMD_DIR, "..")
+sys.path.insert(1, PORTER_DIR)
+import parameters as params
+
 from digi.xbee.exception import TimeoutException
 from Xbee import Xbee, TransmitException, END_OF_MESSAGE_BYTE
-import parameters as params
 
 # configuration 
 XBEE_PORT     = "/dev/ttyUSB0"
@@ -59,17 +63,17 @@ XBEE_BAUDRATE = 38400
 REMOTE_NAME   = "OBI"    # key in Xbee.IDs for the ground station
 READ_TIMEOUT  = 0.2      # seconds per read_data call
 
-FLIGHT_SCRIPT = os.path.join(TELEMD_DIR, "control.py")
-VENV_PYTHON   = "/home/polocalc/porter_venv/bin/python3"
+FLIGHT_SCRIPT = os.path.join(TELEMD_DIR, "..", "control.py")
+VENV_PYTHON   = os.path.join(params.home_directory, "porter_venv", "bin", "python3")
 STATUS_FILE   = "/tmp/porter_status.json"
-LOG_FILE      = os.path.join(os.environ["HOME"], params.data_directory, params.current_symlink_name, params.logfile_name)
-CONFIG_FILE   = os.path.join(TELEMD_DIR, "config", "default.yml")
+LOG_FILE      = os.path.join(params.home_directory, params.data_folder_name, params.current_symlink_name, params.logfile_name)
+CONFIG_FILE   = os.path.join(TELEMD_DIR, "..", "config", "default.yml")
 LOG_TAIL_BYTES    = 40960  # bytes sent in response to 'getlog'
 SHELL_CMD_TIMEOUT = 10     # seconds before a shell command is killed
 SHELL_QUICK_WAIT = 2.0     # seconds to wait before treating a command as a background job
 CMDOUT_MAX_BYTES  = 2000   # output cap before base64 encoding
-CAPTURE_SCRIPT  = os.path.join(TELEMD_DIR, "telemetry", "alvium_capture.py")
-CAPTURE_OUTPUT  = os.path.join(TELEMD_DIR, "telemetry", "captured_frame.jpg")
+CAPTURE_SCRIPT  = os.path.join(TELEMD_DIR, "alvium_capture.py")
+CAPTURE_OUTPUT  = os.path.join(TELEMD_DIR, "captured_frame.jpg")
 CAPTURE_TIMEOUT = 60        # seconds to wait for a frame to be captured
 CHRONY_TIMEOUT        = 2   # seconds to wait for a chronyc call
 CHRONY_POLL_INTERVAL  = 5   # seconds between chrony status polls

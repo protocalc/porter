@@ -2,7 +2,7 @@ global:
   name: porter
   version: 4.0
   description: Telemetry configuration for Porter
-  autostart_camera: False
+  autostart_camera: True
   autostart_poi_tracking: False
 
 sensors:
@@ -107,10 +107,10 @@ sensors:
 camera:
   name: Alvium
   core: 3
-  exposure: 10000
-  gain: 30.0
+  exposure: 5000
+  gain: 0.0
   format: BayerRG8
-  max_framerate: 15
+  max_framerate: 5
   writing_threads: 2
   verbosity: False
 
@@ -132,10 +132,10 @@ pointing_controller:
 
   poi:
     name: POI
-    latitude: 45.513511
-    longitude: 9.211680
-    altitude: 124
-    max_distance: 700.0  # meters
+    latitude: 50.9601079
+    longitude: -1.8971433
+    altitude: 139
+    max_distance: 1000.0  # meters
 
 status_writer:
   enabled: True

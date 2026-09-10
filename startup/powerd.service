@@ -9,7 +9,7 @@ Type=simple
 User=polocalc
 WorkingDirectory=/home/polocalc/flight/porter
 # Use the project venv so porter.* packages are importable
-ExecStart=/home/polocalc/porter_venv/bin/python3 /home/polocalc/flight/power_monitor/powerd.py
+ExecStart=/home/polocalc/porter_venv/bin/python3 /home/polocalc/flight/porter/power_monitor/powerd.py
 # Wait for the power controller module to configure
 ExecStartPre=/bin/sleep 5
 # Restart automatically if powerd crashes

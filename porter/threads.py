@@ -70,12 +70,22 @@ class Sensors(threading.Thread):
         self.datafile_name = path + self.sensor_name + "_" + date + ".bin"
         self.shutdown_flag = flag
         self.handler = handler
-
-        # initialize the sensor and start the sensor handler thread
-        self.handler._connection()
-        self.handler._configuration()
+        # set once _connection()/_configuration() have been attempted (success or failure),
+        # so other threads can wait for this sensor to be ready without polling
+        self.ready = threading.Event()
 
     def run(self):
+        # initialize the sensor here (not in __init__) so a connection/configuration
+        # failure only takes down this sensor's thread, not the whole process
+        try:
+            self.handler._connection()
+            self.handler._configuration()
+        except Exception as e:
+            logger.error(f"Sensor {self.sensor_name} failed to initialize, skipping: {e}")
+            self.ready.set()
+            return
+        self.ready.set()
+
         # block forever, getting data from the handler thread through the queue, until shutdown
         logger.info(f"Sensor {self.sensor_name} started")
         self.handler.obj.read_continous_binary(self.shutdown_flag, self.datafile_name, self.status_board)

@@ -18,11 +18,10 @@ timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # create paths
 path = os.path.dirname(os.path.realpath(__file__))
-home_directory = os.environ["HOME"]
-data_directory = os.path.join(home_directory, params.data_directory)
+data_directory = os.path.join(params.home_directory, params.data_folder_name)
 
 # check if there are other files with same name structure
-if params.INCREMENTAL_FILE_SUFFIX:
+if params.INCREMENTAL_FILE_PREFIX:
     suffix = 0
     folder_list = os.listdir(data_directory)
     # parse the suffix and timestamp from the folder names
@@ -32,7 +31,7 @@ if params.INCREMENTAL_FILE_SUFFIX:
         if len(parts) == 3:
             try:
                 # check if the first part is an integer
-                suffix = int(parts[0])
+                is_int = int(parts[0])
                 # check if the second part is a valid timestamp
                 datetime.datetime.strptime(parts[1] + "_" + parts[2], "%Y%m%d_%H%M%S")
                 # if both checks pass, increment the suffix
@@ -182,6 +181,7 @@ def main():
             logger.info("Starting sensor threads...")
             sensor_names = {}
             sensor_handler = {}
+            sensor_threads = {}
 
             for i in sensors.keys():
                 logger.info(f"Initializing sensor {i}")
@@ -204,16 +204,22 @@ def main():
                 )
                 t.start()
                 owned_threads.append(t)
+                sensor_threads[i] = t
                 logger.info(f"Thread started for sensor {i}")
 
         # get the onboard gnss source if configured
         gnss_source = None
-        for i in sensors.keys():
-            if i.lower().startswith("gps"):
-                name = sensors[i]["name"]
-                gnss_source = sensor_handler[name].obj.get_gnss_source()
-                logger.info(f"GNSS source initialized from GPS sensor")
-                break
+        if sensors is not None:
+            for i in sensors.keys():
+                if i.lower().startswith("gps"):
+                    name = sensors[i]["name"]
+                    gps_thread = sensor_threads.get(name)
+                    if gps_thread is not None and gps_thread.ready.wait(timeout=params.SENSOR_INIT_TIMEOUT) and hasattr(gps_thread.handler, "obj"):
+                        gnss_source = gps_thread.handler.obj.get_gnss_source()
+                        logger.info(f"GNSS source initialized from GPS sensor")
+                    else:
+                        logger.error(f"GPS sensor {name} did not initialize in time, no GNSS source available")
+                    break
 
         # start Valon synthesizer if source is configured
         if source is not None:
